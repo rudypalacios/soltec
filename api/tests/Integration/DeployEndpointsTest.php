@@ -33,7 +33,7 @@ final class DeployEndpointsTest extends IntegrationTestCase
     public function testMigrationsAreRefusedWhileAnotherRunHoldsTheLock(): void
     {
         $other = \Soltec\Kernel\Db\ConnectionFactory::create($this->config);
-        self::assertSame(1, (int) $other->fetchOne("SELECT GET_LOCK('soltec_migrations', 0)"));
+        self::assertContains($other->fetchOne("SELECT GET_LOCK('soltec_migrations', 0)"), [1, '1']);
 
         $response = $this->call('POST', '/api/system/migrations/apply', $this->deployHeaders());
 
@@ -48,9 +48,9 @@ final class DeployEndpointsTest extends IntegrationTestCase
 
         self::assertSame(200, $response->getStatusCode());
         $body = $this->json($response);
-        self::assertSame(PHP_VERSION, $body['php']['version'] ?? null);
-        self::assertTrue($body['extensions']['pdo_mysql'] ?? false);
-        self::assertTrue($body['database']['generated_column_unique']['supported'] ?? false);
+        self::assertSame(PHP_VERSION, $this->valueAt($body, 'php', 'version'));
+        self::assertTrue($this->valueAt($body, 'extensions', 'pdo_mysql'));
+        self::assertTrue($this->valueAt($body, 'database', 'generated_column_unique', 'supported'));
         self::assertStringNotContainsString(self::DEPLOY_TOKEN, (string) $response->getBody());
         self::assertStringNotContainsString((string) getenv('DB_PASS'), (string) $response->getBody());
     }

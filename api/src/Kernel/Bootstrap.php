@@ -6,6 +6,7 @@ namespace Soltec\Kernel;
 
 use DI\ContainerBuilder;
 use Doctrine\DBAL\Connection;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Slim\App;
@@ -21,7 +22,10 @@ use function DI\factory;
 /** Builds the Slim application: container, middleware and routes. */
 final class Bootstrap
 {
-    /** @param Config|null $config settings to use; null reads the .env file and the environment */
+    /**
+     * @param Config|null $config settings to use; null reads the .env file and the environment
+     * @return App<ContainerInterface>
+     */
     public static function createApp(string $appRoot, ?Config $config = null): App
     {
         $paths = new Paths($appRoot);
@@ -52,12 +56,14 @@ final class Bootstrap
         $app->addBodyParsingMiddleware();
 
         $errors = $app->addErrorMiddleware($config->isDebug(), false, false);
-        $errors->setDefaultErrorHandler($container->get(ProblemDetailsErrorHandler::class));
+        $errors->setDefaultErrorHandler(ProblemDetailsErrorHandler::class);
 
         // Added last so it is the outermost layer and also covers the error responses.
         $app->add(SecurityHeadersMiddleware::class);
 
-        (require $appRoot . '/config/routes.php')($app);
+        /** @var callable(App<ContainerInterface>): void $routes */
+        $routes = require $appRoot . '/config/routes.php';
+        $routes($app);
 
         return $app;
     }

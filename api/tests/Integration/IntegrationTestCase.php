@@ -6,6 +6,7 @@ namespace Soltec\Tests\Integration;
 
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Slim\App;
 use Slim\Psr7\Factory\ServerRequestFactory;
@@ -24,6 +25,7 @@ abstract class IntegrationTestCase extends TestCase
 
     protected Config $config;
     protected Connection $connection;
+    /** @var App<ContainerInterface> */
     protected App $app;
 
     protected function setUp(): void
@@ -68,6 +70,24 @@ abstract class IntegrationTestCase extends TestCase
         return $body;
     }
 
+    /**
+     * Reads a nested value of a decoded JSON body, or null when any step is missing.
+     *
+     * @param array<array-key, mixed> $data
+     */
+    protected function valueAt(array $data, string ...$keys): mixed
+    {
+        $current = $data;
+        foreach ($keys as $key) {
+            if (!is_array($current) || !array_key_exists($key, $current)) {
+                return null;
+            }
+            $current = $current[$key];
+        }
+
+        return $current;
+    }
+
     /** @return array<string, string> */
     protected function deployHeaders(): array
     {
@@ -84,7 +104,8 @@ abstract class IntegrationTestCase extends TestCase
         $this->connection = ConnectionFactory::create($this->config);
         $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
         foreach ($this->connection->fetchFirstColumn('SHOW TABLES') as $table) {
-            $this->connection->executeStatement(sprintf('DROP TABLE `%s`', (string) $table));
+            self::assertIsString($table);
+            $this->connection->executeStatement(sprintf('DROP TABLE `%s`', $table));
         }
         $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
     }

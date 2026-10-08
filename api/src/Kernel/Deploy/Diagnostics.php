@@ -68,13 +68,20 @@ final class Diagnostics
     {
         try {
             return [
-                'server_version' => (string) $this->connection->fetchOne('SELECT VERSION()'),
-                'sql_mode' => (string) $this->connection->fetchOne('SELECT @@sql_mode'),
+                'server_version' => $this->scalar('SELECT VERSION()'),
+                'sql_mode' => $this->scalar('SELECT @@sql_mode'),
                 'generated_column_unique' => $this->generatedColumnUniqueness(),
             ];
         } catch (Throwable $error) {
             return ['error' => 'The database is not reachable.'];
         }
+    }
+
+    private function scalar(string $sql): string
+    {
+        $value = $this->connection->fetchOne($sql);
+
+        return is_scalar($value) ? (string) $value : '';
     }
 
     /**

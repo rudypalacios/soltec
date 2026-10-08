@@ -37,7 +37,8 @@ final class MigrationRunner
      */
     public function apply(): array
     {
-        if ((int) $this->connection->fetchOne('SELECT GET_LOCK(?, 0)', [self::LOCK_NAME]) !== 1) {
+        $acquired = $this->connection->fetchOne('SELECT GET_LOCK(?, 0)', [self::LOCK_NAME]);
+        if (!in_array($acquired, [1, '1'], true)) {
             throw new MigrationInProgressException('Another migration run is in progress.');
         }
 

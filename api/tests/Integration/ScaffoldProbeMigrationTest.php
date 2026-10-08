@@ -31,6 +31,6 @@ final class ScaffoldProbeMigrationTest extends IntegrationTestCase
         $this->connection->executeStatement("INSERT INTO scaffold_probe (code) VALUES ('A')");
         $this->connection->executeStatement("INSERT INTO scaffold_probe (code, deleted_at) VALUES ('A', NOW())");
 
-        self::assertSame(3, (int) $this->connection->fetchOne('SELECT COUNT(*) FROM scaffold_probe'));
+        self::assertEquals(3, $this->connection->fetchOne('SELECT COUNT(*) FROM scaffold_probe'));
     }
 }
