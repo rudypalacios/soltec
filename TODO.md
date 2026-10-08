@@ -6,9 +6,13 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] Resumen de entendimiento, riesgos y contradicciones
 - [x] ADR 0001 a 0014 (`docs/adr/`)
 - [x] 1. Mapa de módulos y matriz de dependencias
-- [x] 2. Estructura del repositorio (en revisión)
-- [ ] 3. Scaffolding (0B): Slim y React mínimos, CI, despliegue por FTPS a `test`, endpoint de migraciones, endpoint de salud
-- [ ] 3b. Verificar en el servidor: columna generada con índice único (MySQL 5.7), WebP en GD, envío de correo por SMTP con un buzón de cPanel (entrega a Gmail y Outlook)
+- [x] 2. Estructura del repositorio
+- [ ] 3. Scaffolding (0B), en etapas:
+  - [ ] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
+  - [ ] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
+  - [ ] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía
+  - [ ] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
+  - [ ] 3.5 Verificación del correo: buzón de cPanel por SMTP y entrega a Gmail y Outlook (agrega PHPMailer y una prueba de envío)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3

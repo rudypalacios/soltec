@@ -1,0 +1,123 @@
+name: Deploy
+
+# Branch-to-environment rule (ADR-0004): a push to any branch deploys to "staging"; a push to main (the squash
+# merge of a PR) deploys to production ("production"). "Run workflow" applies the same rule to the chosen branch,
+# so running it on main redeploys production.
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
+  deploy:
+    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    needs: tests
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    # One deployment per environment at a time. A waiting run is replaced by the newer one; a run already
+    # uploading is never cancelled, because FTP uploads must not be interrupted halfway.
+    concurrency:
+      group: deploy-${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      cancel-in-progress: false
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, intl
+          coverage: none
+          tools: composer
+
+      - name: Install API production dependencies
+        working-directory: api
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build the web app
+        run: |
+          npm ci
+          npm run build
+
+      # 1) Upload only the migrations and apply them, so the schema is ready before the code that needs it.
+      #    Migrations must therefore be backward compatible with the code that is still running (ADR-0003).
+      - name: Upload migrations
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./db/migrations/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}db/migrations/
+
+      - name: Apply migrations
+        # 404/405 are tolerated only here: on the very first deployment the endpoint is not on the server
+        # yet, and the step after the upload applies the migrations instead.
+        run: .github/scripts/migrate.sh --allow-missing
+
+      # 2) Upload the application. Files that only live on the server (.env, .htaccess, storage) are never
+      #    uploaded nor deleted: they are outside these directories or excluded.
+      - name: Upload the API
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./api/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}api/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            public/**
+            tests/**
+            storage/**
+            .env
+            .env.*
+            .phpunit.cache/**
+            phpcs.xml
+            phpstan.neon.dist
+            phpunit.xml
+
+      - name: Upload the API front controller
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./api/public/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}public/api/
+
+      - name: Upload the web app
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./web/dist/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}public/
+          exclude: |
+            **/.git*
+            .htaccess
+            api/**
+
+      - name: Apply migrations (no-op unless this is the first deployment)
+        run: .github/scripts/migrate.sh
+
+      - name: Smoke test and server diagnostics
+        run: .github/scripts/smoke.sh

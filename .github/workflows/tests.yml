@@ -1,9 +1,8 @@
 name: Tests
 
+# Runs only as part of the Deploy workflow (every push), whose checks also show up on the pull request.
+# A separate pull_request/push trigger would run the same tests twice.
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_call:
 
 jobs:
