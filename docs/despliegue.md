@@ -31,7 +31,7 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
 
 ### 2.1 En cPanel (una vez por entorno)
 
-1. **Subdominio.** En *Domains* crea el subdominio y pon su *Document Root* en `<carpeta de la instancia>/public`, por ejemplo `test.musicos-catolicos.com/public`. cPanel crea ambas carpetas. La *carpeta de la instancia* (`test.musicos-catolicos.com/`) es la raíz de todo lo del entorno: dentro van `public/` (lo único que el navegador ve), `api/`, `db/` y `storage/`, y a su lado el `.env`. Así el código y las credenciales quedan fuera del alcance de la web.
+1. **Subdominio.** En *Domains* crea el subdominio y pon su *Document Root* en `<carpeta de la instancia>/public`, por ejemplo `test.musicos-catolicos.com/public`. cPanel puede dejar el *Document Root* en la carpeta de la instancia en vez de `public/`: verifícalo en *Domains → Manage* y corrígelo si hace falta (ver la comprobación de la sección 3). Si se queda en la instancia, `.env`, `api/` y `db/` quedan expuestos por URL. La *carpeta de la instancia* (`test.musicos-catolicos.com/`) es la raíz de todo lo del entorno: dentro van `public/` (lo único que el navegador ve), `api/`, `db/` y `storage/`, y a su lado el `.env`. Así el código y las credenciales quedan fuera del alcance de la web.
 2. **Qué crea el despliegue.** Tú no creas nada dentro: `public/`, `api/` y `db/migrations/` los sube el workflow (el scaffolding ya los trae). Solo `.env` y `public/.htaccess` los pones tú, porque son propios del servidor.
 3. **PHP 8.3.** En *MultiPHP Manager* asigna PHP 8.3 al subdominio. Las extensiones no hace falta revisarlas a mano: el diagnóstico (sección 4) las comprueba en el primer despliegue y avisa si falta alguna.
 4. **Base de datos.** En *MySQL Databases* crea una base de datos y un usuario, y agrégalo a la base con **solo estos privilegios**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `DROP`, `INDEX`, `REFERENCES` y `CREATE TEMPORARY TABLES`. No marques *All Privileges*. Los cuatro primeros son los que usa la aplicación al correr; los demás los necesitan las migraciones (crear y alterar tablas, índices y llaves foráneas) y el diagnóstico (una tabla temporal). Hoy las migraciones corren por el mismo usuario, por eso están todos; separar un usuario de solo lectura/escritura para la aplicación es una mejora pendiente. cPanel antepone tu usuario a los nombres: anota los nombres completos.
@@ -50,7 +50,7 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    DEPLOY_TOKEN=<ver 2.3>
    ```
 
-8. **`.htaccess`.** Copia el contenido de [`deploy/htaccess.sample`](../deploy/htaccess.sample) a `public/.htaccess`. Es de una sola vez: el despliegue nunca lo sube ni lo borra.
+8. **`.htaccess`.** Copia el contenido de [`deploy/htaccess.sample`](../deploy/htaccess.sample) a `public/.htaccess`. Es de una sola vez: el despliegue nunca lo sube ni lo borra. Si cPanel generó en esa carpeta un bloque `# php -- BEGIN cPanel-generated handler` (al asignar PHP 8.3 en *MultiPHP Manager*), déjalo al final del archivo. Si cambiaste el *Document Root* después de asignar PHP, vuelve a asignar PHP 8.3 para que cPanel lo regenere.
 
 No se usa protección de directorio de cPanel: el acceso lo controla el login de la aplicación y los endpoints de despliegue exigen el token (2.3).
 
@@ -91,6 +91,7 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 3. En el log, el paso **Apply migrations** (el primero) responde 404 y se tolera; el segundo debe responder `200` con la migración aplicada.
 4. El paso **Smoke test** debe terminar en verde y mostrar el diagnóstico.
 5. Abre `https://test.musicos-catolicos.com`: debe verse la pantalla vacía con «El servicio está en línea».
+6. Comprueba que `https://test.musicos-catolicos.com/.env` **no** devuelve el archivo (404 o 403). Si lo devuelve, el *Document Root* no es `public/`: corrígelo y cambia la contraseña de la base de datos y el `DEPLOY_TOKEN`.
 
 ## 4. Qué debe decir el diagnóstico
 
