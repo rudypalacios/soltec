@@ -1,6 +1,6 @@
 # ADR-0011: Cálculo de precios
 
-**Estado:** Aceptada · **Fecha:** 2026-10-08
+**Estado:** Aceptada (precisada por [ADR-0014](0014-el-servidor-calcula-los-precios.md)) · **Fecha:** 2026-10-08
 
 ## Contexto
 El legacy calcula el precio de venta a partir del costo del producto y de un nivel de margen (MC) elegido al consultar el producto. La fórmula fue confirmada y reproduce exactamente los valores del legacy (verificado con tres productos reales). El costo registrado es el de la factura del proveedor, es decir, **con IVA**.
