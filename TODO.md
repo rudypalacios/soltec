@@ -8,7 +8,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] 1. Mapa de módulos y matriz de dependencias (en revisión: PR #2)
 - [ ] 2. Estructura del repositorio
 - [ ] 3. Scaffolding (0B): Slim y React mínimos, CI, despliegue por FTPS a `test`, endpoint de migraciones, endpoint de salud
-- [ ] 3b. Verificar en el servidor: columna generada con índice único (MySQL 5.7), WebP en GD, envío de correo por SMTP (puerto saliente y entrega a Gmail y Outlook)
+- [ ] 3b. Verificar en el servidor: columna generada con índice único (MySQL 5.7), WebP en GD, envío de correo por SMTP con un buzón de cPanel (entrega a Gmail y Outlook)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3

@@ -56,7 +56,7 @@ El Hito 0 tiene dos partes: **0A Planeación** (documentos) y **0B Scaffolding**
 
 1. **Mapa de módulos y matriz de dependencias** (0A, hecho): `docs/arquitectura/mapa-de-modulos.md`.
 2. **Estructura del repositorio** (0A): `api/`, `shared/`, `web/`, `docs/`, migraciones. `mobile/` se crea en el Hito 8.
-3. **Scaffolding** (0B): Slim y React (Vite + MUI) mínimos, CI (tests, phpcs, phpstan, eslint, tsc), despliegue por FTPS a `test` con el endpoint de migraciones, una migración de prueba y un endpoint de salud. Verifica en el servidor real lo que el diseño asume: columna generada con índice único en MySQL 5.7, soporte WebP en GD y envío de correo (puerto SMTP saliente y entrega a Gmail y Outlook). Criterio de terminado: un push despliega a `test` el endpoint de salud y una pantalla vacía de React, con CI verde y la migración aplicada. Antes de empezar, indica al usuario exactamente qué configurar (secretos de GitHub, bases de datos y `.env`).
+3. **Scaffolding** (0B): Slim y React (Vite + MUI) mínimos, CI (tests, phpcs, phpstan, eslint, tsc), despliegue por FTPS a `test` con el endpoint de migraciones, una migración de prueba y un endpoint de salud. Verifica en el servidor real lo que el diseño asume: columna generada con índice único en MySQL 5.7, soporte WebP en GD y envío de correo (buzón de cPanel por SMTP y entrega a Gmail y Outlook). Criterio de terminado: un push despliega a `test` el endpoint de salud y una pantalla vacía de React, con CI verde y la migración aplicada. Antes de empezar, indica al usuario exactamente qué configurar (secretos de GitHub, bases de datos y `.env`).
 4. **ERD:** entidades, cardinalidades, PK/FK, índices y campos de sync. Cubre al menos: usuarios (internos y externos) y perfiles, parámetros PM, contactos, clientes (prospecto y venta), proveedores, productos y paquetes, bodegas, cotizaciones, plantillas de tipo de proyecto (etapas/actividades), proyectos, tareas, solicitudes de compra y OC, facturación, CXC/CXP. Alcance propuesto, pendiente de confirmar: detallado para los hitos 1 a 3 y esbozado para el resto.
 5. **Esqueleto de autenticación y roles:** diseño según ADR-0012 (roles y permisos como datos, alcance de datos, JWT con refresh, usuarios externos).
 6. **Especificación OpenAPI** de los hitos 1 a 3.
@@ -147,7 +147,7 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 | 6 | P1 (FEL; la moneda ya es GTQ), P8 (rentabilidad) |
 | 7 | P9 (CM/UOP/UAI/UN), P10 (comisiones), P11 (reportes), P13 (cliente de convenio), P21 (campos extendidos del ticket) |
 | 8 | P6 (geolocalización y dispositivos), P12 (Agenda), P22 (chat libre) |
-| Antes de producción | P14 (normativa de datos) |
+| Antes de producción | P14 (normativa de datos), P24 (dominio remitente del correo) |
 
 El detalle de P1 a P16 y el Anexo A de propuestas están en el documento de requerimientos; P17 a P23 están en `docs/arquitectura/mapa-de-modulos.md`.
 

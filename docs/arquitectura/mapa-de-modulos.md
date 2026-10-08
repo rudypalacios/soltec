@@ -316,7 +316,7 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 - **Redondeo:** se calcula sin redondear; se redondea a 2 decimales al mostrar o cerrar una línea; el IVA se calcula sobre el total del documento.
 - **Moneda:** quetzales (GTQ).
 - **Usuarios externos:** los clientes de la empresa tendrán acceso limitado, solo para ver progreso y facturación, sin administrar. El modelo (tipo de usuario, cliente asignado, alcance por cliente) se define desde el ERD y el entregable de autenticación; las pantallas llegan con el Portal (Hito 9). Ver [ADR-0012](adr/0012-autenticacion-y-autorizacion.md).
-- **Email:** SMTP del proveedor donde vive el correo del dominio (la primera instancia usa un buzón dedicado de la organización); `mail()` del hosting como alternativa. Ver [ADR-0013](adr/0013-envio-de-email.md).
+- **Email:** SMTP autenticado. En desarrollo y pruebas, con un buzón creado en el cPanel y remitente en el dominio del hosting; `mail()` como plan B. Ver [ADR-0013](adr/0013-envio-de-email.md).
 - **Tickets y tareas:** hilo de actividad por registro, tipo ticket de Jira. El chat libre entre usuarios queda para el Hito 8.
 
 ## 8. Preguntas nuevas (continúan la numeración de P1 a P16)
@@ -330,6 +330,7 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 | P21 | Campos extendidos del ticket (equipo, contrato, SLA, prioridad) y canal de aviso de emergencias | Fuera de la primera versión; aviso por polling y email | Hito 7 |
 | P22 | ¿Basta el hilo por registro o el cliente quiere un chat libre entre usuarios? | Basta el hilo | Hito 8 |
 | P23 | Migración del legacy: esquema real de la base de datos y datos a importar | Se obtiene un volcado de estructura al planear el Hito 3 | Hito 3 |
+| P24 | Dominio remitente del correo en producción: ¿el de la organización (con un buzón que cree su administrador) o un dominio propio? | Dominio del hosting con buzón de cPanel; el de la organización se evalúa antes de producción | Antes de producción |
 
 ## 9. Siguiente paso
 
