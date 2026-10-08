@@ -1,26 +1,69 @@
-# Dependencies and build output
-node_modules/
-dist/
-coverage/
-api/vendor/
-
+# ---------------------------------------------------------------------------
 # Secrets and server-only files: never commit them
+# ---------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
+*.env.bak
+*.pem
+*.key
 
-# Runtime files
-api/storage/*
-!api/storage/.gitkeep
+# Real data: database dumps and exports (the legacy system holds client data)
+*.sql
+*.sql.gz
+*.dump
+*.bak
+/data/
+/legacy/
+
+# ---------------------------------------------------------------------------
+# PHP (api/)
+# ---------------------------------------------------------------------------
+api/vendor/
 .phpunit.cache/
 .phpunit.result.cache
 .php-cs-fixer.cache
+.phpcs-cache
+.phpstan.cache
+phpstan-baseline.tmp
+
+# Runtime files written by the API (the folder itself is kept)
+api/storage/*
+!api/storage/.gitkeep
+/storage/
+
+# ---------------------------------------------------------------------------
+# Node (shared/, web/)
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.eslintcache
+.vite/
+.vitest/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Generated from contract/openapi.yaml (see ADR-0006)
 shared/src/api/generated/
 
-# Editors and OS
+# ---------------------------------------------------------------------------
+# Deployment tooling
+# ---------------------------------------------------------------------------
+# State file that FTP-Deploy-Action keeps next to the files it uploads
+.ftp-deploy-sync-state.json
+
+# ---------------------------------------------------------------------------
+# Editors, operating systems and local tool settings
+# ---------------------------------------------------------------------------
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
 *.log
+.claude/settings.local.json
