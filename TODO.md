@@ -10,7 +10,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [ ] 3. Scaffolding (0B), en etapas:
   - [ ] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
   - [ ] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
-  - [ ] 3.3 **Configuración del usuario y primer despliegue a `test`**: cPanel, GitHub Environments y `.env` según la guía
+  - [ ] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía
   - [ ] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
   - [ ] 3.5 Verificación del correo: buzón de cPanel por SMTP y entrega a Gmail y Outlook (agrega PHPMailer y una prueba de envío)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)

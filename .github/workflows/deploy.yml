@@ -1,7 +1,7 @@
 name: Deploy
 
-# Branch-to-environment rule (ADR-0004): a push to any branch deploys to "test"; a push to main (the squash
-# merge of a PR) deploys to production ("soltec"). "Run workflow" applies the same rule to the chosen branch,
+# Branch-to-environment rule (ADR-0004): a push to any branch deploys to "staging"; a push to main (the squash
+# merge of a PR) deploys to production ("production"). "Run workflow" applies the same rule to the chosen branch,
 # so running it on main redeploys production.
 on:
   push:
@@ -13,14 +13,14 @@ jobs:
     uses: ./.github/workflows/tests.yml
 
   deploy:
-    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
+    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     needs: tests
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     # One deployment per environment at a time. A waiting run is replaced by the newer one; a run already
     # uploading is never cancelled, because FTP uploads must not be interrupted halfway.
     concurrency:
-      group: deploy-${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
+      group: deploy-${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
       cancel-in-progress: false
     env:
       APP_URL: ${{ vars.APP_URL }}

@@ -1,6 +1,6 @@
 # Despliegue
 
-Guía para configurar un entorno (`test` o `soltec`) y hacer el primer despliegue. El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan `test.musicos-catolicos.com`; para `soltec` se repite todo cambiando el nombre.
+Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
 
 ## 1. Cómo funciona
 
@@ -8,10 +8,10 @@ El workflow **Deploy** se dispara solo con cada `push`:
 
 | Push a | Despliega en |
 |---|---|
-| cualquier rama distinta de `main` | `test` |
-| `main` (el squash merge de un PR) | `soltec` (producción) |
+| cualquier rama distinta de `main` | `staging` (`test.musicos-catolicos.com`) |
+| `main` (el squash merge de un PR) | `production` (`soltec.musicos-catolicos.com`) |
 
-También puede lanzarse a mano (Actions → Deploy → *Run workflow*) y aplica la misma regla a la rama elegida: lanzado desde `main` vuelve a desplegar producción. `test` es compartido: despliega la última rama que se subió, y las migraciones de una rama sin fusionar quedan aplicadas en la base de test. Por cada despliegue:
+También puede lanzarse a mano (Actions → Deploy → *Run workflow*) y aplica la misma regla a la rama elegida: lanzado desde `main` vuelve a desplegar producción. `staging` es compartido: despliega la última rama que se subió, y las migraciones de una rama sin fusionar quedan aplicadas en la base de `staging`. Por cada despliegue:
 
 1. Corre las pruebas; si fallan, no se despliega. Son las únicas pruebas del CI: sus resultados aparecen también en el PR.
 2. Compila la API (`composer install --no-dev`) y la web (`npm run build`).
@@ -56,7 +56,7 @@ No se usa protección de directorio de cPanel: el acceso lo controla el login de
 
 ### 2.2 En GitHub (una vez por entorno)
 
-*Settings → Environments → New environment*, con el nombre `test` (y luego `soltec`).
+*Settings → Environments → New environment*, con el nombre `staging` (el servidor `test.musicos-catolicos.com`) y luego `production` (el servidor `soltec.musicos-catolicos.com`).
 
 | Tipo | Nombre | Valor |
 |---|---|---|
@@ -70,9 +70,9 @@ No se usa protección de directorio de cPanel: el acceso lo controla el login de
 
 **Cómo se evita desplegar al entorno equivocado.** Los nombres son los mismos en los dos entornos (`FTP_PASSWORD`, `DEPLOY_TOKEN`...), pero cada *Environment* guarda su propio valor y el workflow toma los del entorno que corresponde a la rama; un prefijo por entorno (`TEST_FTP_PASSWORD`) obligaría a escoger el nombre con lógica en el workflow, que es justo donde se cometería el error. Las reglas que sí protegen:
 
-- **`soltec` solo acepta `main`.** En *Environments → soltec → Deployment branches and tags* elige *Selected branches* y agrega `main`. Con eso ninguna otra rama puede desplegar a producción aunque el workflow se equivoque.
+- **`production` solo acepta `main`.** En *Environments → production → Deployment branches and tags* elige *Selected branches* y agrega `main`. Con eso ninguna otra rama puede desplegar a producción aunque el workflow se equivoque.
 - **Todo va en el Environment, nada en *Repository secrets* ni *Repository variables*.** Un secret a nivel de repositorio lo ven todos los entornos; si falta uno en el Environment, el workflow tomaría el del repositorio sin avisar.
-- **`soltec` con *Required reviewers*** (opcional): como producción despliega sola al fusionar, esto agrega una aprobación manual antes de subir. Sin él, el merge a `main` publica directamente.
+- **`production` con *Required reviewers*** (opcional): como producción despliega sola al fusionar, esto agrega una aprobación manual antes de subir. Sin él, el merge a `main` publica directamente.
 - El log del smoke test muestra la URL a la que apunta; verifícala antes de aprobar.
 
 ### 2.3 El token de despliegue
@@ -87,7 +87,7 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.
-2. Sube cualquier rama que no sea `main` (o lanza *Actions → Deploy → Run workflow* sobre una): despliega a `test`.
+2. Sube cualquier rama que no sea `main` (o lanza *Actions → Deploy → Run workflow* sobre una): despliega a `staging`.
 3. En el log, el paso **Apply migrations** (el primero) responde 404 y se tolera; el segundo debe responder `200` con la migración aplicada.
 4. El paso **Smoke test** debe terminar en verde y mostrar el diagnóstico.
 5. Abre `https://test.musicos-catolicos.com`: debe verse la pantalla vacía con «El servicio está en línea».
