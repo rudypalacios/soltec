@@ -12,7 +12,7 @@ Dos entornos ya existen: `test.musicos-catolicos.com` y `soltec.musicos-catolico
 - Secretos y URL por entorno (GitHub Environments). `concurrency` por entorno para no desplegar dos veces a la vez.
 - Los tests corren contra un servicio MySQL 5.7 antes de desplegar.
 - En test, una rama a la vez, con acción manual para resetear su base de datos.
-- Por confirmar: web en `/` y API en `/api` bajo el mismo subdominio (sin CORS, refresh token en cookie httpOnly).
+- Web en `/` y API en `/api/v1` bajo el mismo subdominio (sin CORS, refresh token en cookie httpOnly). La versión en la ruta permite migrar la API poco a poco. *(Confirmado.)*
 
 ## Alternativas descartadas
 - Deploy manual por FTP: sin trazabilidad ni tests.

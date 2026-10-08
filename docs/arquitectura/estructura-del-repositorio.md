@@ -65,17 +65,19 @@ soltec/
 
 La regla de dependencias es: `Http → Application → Domain ← Infrastructure`. Un módulo no importa las clases internas de otro: se comunican por la capa `Application` o por eventos del `Kernel`.
 
-## 4. Convenciones de nombres (propuesta, por confirmar)
+## 4. Convenciones de nombres
 
-- **Vocabulario de dominio en español** (tablas, columnas, rutas, clases de dominio) porque es el lenguaje del negocio: `clientes`, `/clientes`, `Cliente`. **Sufijos técnicos en inglés**: `ClienteRepository`, `CrearClienteService`, `AuthMiddleware`.
-- Base de datos: `snake_case`, tablas en plural. Migraciones: nombre en español en imperativo (`CrearTablaPerfiles`).
-- API: `/api/v1/…`; el contrato fija el versionado y los cambios incompatibles van a una versión nueva.
+- **URLs en español, código en inglés.** Las rutas de la API usan el vocabulario del negocio en español (`/api/v1/clientes`). Todo el código está en inglés: identificadores, comentarios y mensajes de log. Sufijos técnicos habituales: `ClientRepository`, `CreateClientService`, `AuthMiddleware`. *(Confirmado.)*
+- **Por confirmar:** la base de datos (tablas y columnas) y los campos JSON también en inglés, porque son código; los textos que ve el usuario viven en la web, en español, y la API devuelve códigos de error en inglés; la documentación, los commits y los PR siguen en español.
+- **Glosario:** un archivo `docs/arquitectura/glosario.md` (español → inglés, por ejemplo `paquete` → `bundle`) mantendrá consistentes los nombres entre sesiones. Se crea al confirmar el punto anterior.
+- Base de datos: `snake_case`, tablas en plural. Migraciones con nombre en inglés en imperativo (`CreateProfilesTable`).
+- API versionada en la ruta: `/api/v1/…`. El contrato fija el versionado; los cambios incompatibles van a una versión nueva (`/api/v2`) que convive con la anterior mientras los clientes migran.
 - PHP: PSR-12 con líneas de hasta 120 caracteres; namespace raíz `Soltec\` mapeado a `api/src/` (PSR-4).
 - TypeScript: modo estricto, sin `any` implícito.
 
 ## 5. Del repositorio al servidor
 
-Cada instancia vive en una carpeta propia del hosting. El subdominio apunta a `public/`; todo lo demás queda fuera del alcance de internet. La web se sirve en `/` y la API en `/api`, bajo el mismo origen (sin CORS, refresh token en cookie; ver ADR-0004 y ADR-0012).
+Cada instancia vive en una carpeta propia del hosting. El subdominio apunta a `public/`; todo lo demás queda fuera del alcance de internet. La web se sirve en `/` y la API en `/api/v1`, bajo el mismo origen (sin CORS, refresh token en cookie; ver ADR-0004 y ADR-0012).
 
 ```
 <raíz de la instancia>/
@@ -98,7 +100,7 @@ Cada instancia vive en una carpeta propia del hosting. El subdominio apunta a `p
 | `deploy/htaccess.sample` | `public/.htaccess` | No se sube; lo copia una persona la primera vez |
 | — | `.env`, `storage/` | Nunca se suben ni se sobrescriben |
 
-- `index.php` carga `../../api/vendor/autoload.php` y lee `../../.env`; Slim se configura con `/api` como ruta base.
+- `index.php` carga `../../api/vendor/autoload.php` y lee `../../.env`; Slim se configura con `/api` como ruta base y agrupa las rutas bajo `/v1`; una versión nueva convive con la anterior, para poder cambiar la API poco a poco.
 - El `.htaccess` reenvía `/api/*` a `public/api/index.php` y cualquier otra ruta que no sea un archivo a `index.html` (para el enrutado de React).
 - El despliegue excluye `.env`, `.htaccess`, `storage/`, pruebas y archivos de desarrollo. `api/bin/` **sí** se sube: contiene el comando del primer administrador.
 - El scaffolding verifica que cada paso de subida no borre lo que subió el otro.
@@ -117,11 +119,16 @@ El CI ejecuta un trabajo por paquete y el despliegue depende de que todos pasen.
 
 `mobile/`, la sincronización offline y el endpoint `GET /sync` (Hito 8), el portal de cliente (Hito 9) y cualquier carpeta de módulo de un hito posterior. Cada módulo aparece cuando llega su hito.
 
-## 8. Decisiones que necesitan confirmación
+## 8. Estado de las decisiones
 
-1. **Un solo origen** (`/` y `/api`), pendiente en el ADR-0004.
-2. **`npm workspaces`** para que `web/` use `shared/` sin publicarlo como paquete.
-3. **Organización por módulo con capas dentro**, en vez de capas globales con los módulos dentro.
-4. **Idioma de nombres** (sección 4).
-5. **Código generado sin versionar** (sección 6).
-6. **El servidor calcula los precios y `shared/` solo los previsualiza,** con los mismos vectores de prueba en `contract/test-vectors/`. Precisa el ADR-0011: ver [ADR-0014](../adr/0014-el-servidor-calcula-los-precios.md).
+**Confirmadas**
+1. Un solo origen: web en `/`, API en `/api/v1` (versionada para migrar poco a poco).
+2. Organización por módulo, con módulos autocontenidos y capas dentro.
+3. URLs en español; código, comentarios e identificadores en inglés.
+
+**Pendientes**
+1. `npm workspaces` para que `web/` use `shared/` sin publicarlo (explicado; falta confirmar).
+2. Código generado desde el contrato sin versionar (explicado; falta confirmar).
+3. Detalles del idioma: base de datos y campos JSON en inglés, textos de usuario en la web, documentación y commits en español (sección 4).
+4. Si "atómico" incluye Atomic Design para los componentes de la web.
+5. El servidor calcula los precios y `shared/` solo los previsualiza, con los mismos vectores de prueba en `contract/test-vectors/`: ver [ADR-0014](../adr/0014-el-servidor-calcula-los-precios.md).

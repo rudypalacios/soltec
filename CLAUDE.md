@@ -48,6 +48,7 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - Errores explícitos con mensajes útiles; sin `catch` vacíos.
 - Simple primero (KISS/YAGNI): no construyas abstracciones para necesidades imaginarias. Extrae lógica repetida a partir de la segunda repetición.
 - Decisiones relevantes de arquitectura se registran como ADR breves en `docs/adr/`, con alternativas y consecuencias.
+- Idioma: las URLs de la API en español; todo el código (identificadores, comentarios, mensajes de log) en inglés. Detalle en `docs/arquitectura/estructura-del-repositorio.md`, sección 4.
 - Commits y PR explican el *por qué*. Los cambios que afectan cómo se corre o estructura el proyecto actualizan el README en el mismo cambio.
 
 ## 2. Hito 0 — Planeación y scaffolding (antes de programar funcionalidades)
