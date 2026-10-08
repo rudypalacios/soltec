@@ -8,15 +8,22 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] 1. Mapa de módulos y matriz de dependencias
 - [x] 2. Estructura del repositorio
 - [ ] 3. Scaffolding (0B), en etapas:
-  - [ ] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
-  - [ ] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
-  - [ ] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía
-  - [ ] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
+  - [x] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
+  - [x] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
+  - [x] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía (`production` también desplegó)
+  - [x] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
   - [ ] 3.5 Verificación del correo: buzón de cPanel por SMTP y entrega a Gmail y Outlook (agrega PHPMailer y una prueba de envío)
+- **Pendientes del 0B** (no bloquean el ERD):
+  - [ ] 3.5 Correo: crear el buzón en cPanel, agregar PHPMailer y probar entrega a Gmail y Outlook (P24: dominio remitente)
+  - [ ] Staging: rotar la contraseña de la base y el `DEPLOY_TOKEN` (el *Document Root* estuvo mal y `.env` pudo ser accesible) y comprobar que `/.env` no se sirve
+  - [ ] Production: comprobar `/.env`, el `.htaccess` y el diagnóstico; decidir si `production` lleva *Required reviewers*
+  - [ ] Dos usuarios de base de datos (aplicación sin privilegios de esquema y otro para migraciones), antes de producción real
+  - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
+  - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3
-- [ ] Confirmar ADR-0004 (despliegue) y ADR-0006 (OpenAPI), hoy en `Propuesta`
+- [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
 
 ## Hito 1 — Fundaciones
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
