@@ -6,17 +6,18 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 | Dónde | Idioma |
 |---|---|
-| Textos de la interfaz, URLs de la API, documentación, commits y PR | Español |
-| Identificadores, comentarios, mensajes de log, base de datos, campos JSON, valores de enumeraciones y códigos de error | Inglés |
+| Textos de la interfaz, rutas de las pantallas de la web, documentación, commits y PR | Español |
+| Identificadores, comentarios, mensajes de log, endpoints de la API, base de datos, campos JSON, valores de enumeraciones y códigos de error | Inglés |
 
-- **URLs:** minúsculas, plural, con guiones (`/api/v1/niveles-de-margen`).
+- **Endpoints de la API:** en inglés, con el nombre de la tabla en plural y con guiones (`margin_levels` → `/api/v1/margin-levels`). Los que no corresponden a una tabla se nombran por su función (`/api/v1/auth/login`, `/api/v1/me`, `/api/v1/sync`).
+- **Rutas de la web** (las pantallas que ve el usuario): en español, en minúsculas y con guiones (`/niveles-de-margen`). La columna «Ruta web» de las tablas las fija.
 - **Tablas:** `snake_case` en plural (`margin_levels`). Clave foránea: `<singular>_id` (`client_id`). Booleanos: `is_…` o `has_…`. Fechas y horas: `…_at` (`due_at`). Valores de enumeración: minúsculas en inglés (`prospect`, `customer`).
 - **Palabras reservadas de MySQL:** no se usan como nombre. Por eso `product_groups` (no `groups`) y `setting_key` (no `key`).
 - Los documentos anteriores a este glosario usan nombres en español para algunas tablas (`dispositivos`, `eventos_ubicacion`, `perfil_usuario`). Manda este glosario; el ERD lo usa.
 
 ## Acceso y organización
 
-| Español | Inglés (código y base de datos) | URL |
+| Español | Inglés (código y base de datos) | Ruta web |
 |---|---|---|
 | usuario | `User` · `users` | `/usuarios` |
 | usuario interno / externo | `users.type`: `internal` / `external` | |
@@ -34,7 +35,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Configuración y precios
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | configuración general | `Setting` · `settings` (`setting_key`) | `/configuracion` |
 | datos de la empresa | `company` (grupo de ajustes) | |
@@ -49,7 +50,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Catálogo
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | parámetro de catálogo | `CatalogParameter` · `catalog_parameters` (campo `type`) | `/parametros` |
 | tipo de contacto (PM1) | `contact_type` | |
@@ -66,7 +67,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Clientes y proveedores
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | cliente | `Client` · `clients` | `/clientes` |
 | prospecto / cliente de venta | `clients.type`: `prospect` / `customer` | |
@@ -77,7 +78,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Tareas, tickets y flujos
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | tarea | `Task` · `tasks` | `/tareas` |
 | ticket | `Ticket` · `tickets` | `/tickets` |
@@ -94,7 +95,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Comercial, compras e inventario
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | cotización | `Quote` · `quotes` | `/cotizaciones` |
 | línea de cotización | `QuoteLine` · `quote_lines` | |
@@ -114,7 +115,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 ## Finanzas, administración y móvil
 
-| Español | Inglés | URL |
+| Español | Inglés | Ruta web |
 |---|---|---|
 | factura | `Invoice` · `invoices` | `/facturas` |
 | cuentas por cobrar / por pagar | `accounts_receivable` / `accounts_payable` | `/cuentas-por-cobrar`, `/cuentas-por-pagar` |
@@ -124,5 +125,5 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 | comisión | `Commission` · `commissions` | `/comisiones` |
 | reporte | `Report` | `/reportes` |
 | portal de cliente | `client portal` | |
-| sincronización | `sync` | `/sincronizacion` |
+| sincronización | `sync` | |
 | clave de idempotencia | `idempotency_key` | |
