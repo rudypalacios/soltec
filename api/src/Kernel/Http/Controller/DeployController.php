@@ -31,7 +31,12 @@ final class DeployController
         try {
             $applied = $this->migrations->apply();
         } catch (MigrationInProgressException $error) {
-            return $this->problems->respond(409, 'migration_in_progress', 'Migration in progress', $error->getMessage());
+            return $this->problems->respond(
+                409,
+                'migration_in_progress',
+                'Migration in progress',
+                $error->getMessage(),
+            );
         } catch (Throwable $error) {
             $this->logger->error('Migration failed.', ['exception' => $error]);
 
