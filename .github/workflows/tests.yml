@@ -10,27 +10,29 @@ jobs:
   api:
     name: API (PHP 8.3, MySQL 5.7)
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        # Same engine as the hosting (ADR-0001): MySQL 5.7.
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: soltec_test
-          MYSQL_USER: soltec
-          MYSQL_PASSWORD: soltec_local
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     defaults:
       run:
         working-directory: api
     steps:
       - uses: actions/checkout@v4
+
+      # MySQL runs from a step instead of a service container: GitHub dumps the whole service log at the
+      # end of the job, which buries the output of the checks that matter.
+      - name: Start MySQL 5.7
+        run: |
+          docker run -d --name mysql57 -p 3306:3306 \
+            -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=soltec_test \
+            -e MYSQL_USER=soltec -e MYSQL_PASSWORD=soltec_local \
+            mysql:5.7 > /dev/null
+          for attempt in $(seq 1 40); do
+            if docker exec mysql57 mysqladmin ping -h 127.0.0.1 -proot --silent; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL 5.7 did not become ready"
+          docker logs mysql57 | tail -30
+          exit 1
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
