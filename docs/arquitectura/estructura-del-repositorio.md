@@ -68,7 +68,7 @@ La regla de dependencias es: `Http → Application → Domain ← Infrastructure
 
 ## 4. Convenciones de nombres
 
-- **URLs en español, código en inglés.** Las rutas de la API usan el vocabulario del negocio en español (`/api/v1/clientes`). Todo el código está en inglés: identificadores, comentarios y mensajes de log. Sufijos técnicos habituales: `ClientRepository`, `CreateClientService`, `AuthMiddleware`. *(Confirmado.)*
+- **API y código en inglés; rutas de la web en español.** Los endpoints de la API están en inglés (`/api/v1/clients`), igual que todo el código: identificadores, comentarios y mensajes de log. Las rutas de las pantallas de la web, que ve el usuario, están en español (`/clientes`). Sufijos técnicos habituales: `ClientRepository`, `CreateClientService`, `AuthMiddleware`. *(Confirmado.)*
 - **También en inglés:** tablas y columnas de la base de datos y campos JSON, porque son código. Los textos que ve el usuario viven en la web, en español, y la API devuelve códigos de error en inglés. La documentación, los commits y los PR están en español. *(Confirmado.)*
 - **Glosario:** `docs/arquitectura/glosario.md` (español → inglés, por ejemplo `paquete` → `bundle`) mantiene consistentes los nombres entre sesiones; todo término nuevo se agrega ahí en el mismo cambio que lo introduce.
 - Base de datos: `snake_case`, tablas en plural. Migraciones con nombre en inglés en imperativo (`CreateProfilesTable`).
@@ -125,7 +125,7 @@ El CI ejecuta un trabajo por paquete y el despliegue depende de que todos pasen.
 **Confirmadas**
 1. Un solo origen: web en `/`, API en `/api/v1` (versionada para migrar poco a poco).
 2. Organización por módulo, con módulos autocontenidos y capas dentro; sin Atomic Design.
-3. URLs en español; código, comentarios, base de datos y campos JSON en inglés; textos de usuario en la web, en español.
+3. Endpoints de la API, código, comentarios, base de datos y campos JSON en inglés; rutas de la web y textos de usuario en español.
 4. `npm workspaces` para que `web/` use `shared/` sin publicarlo.
 5. Código generado desde el contrato sin versionar: si el contrato y lo generado difieren, el CI lo detecta.
 
