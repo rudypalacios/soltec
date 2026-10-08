@@ -64,41 +64,54 @@ No avances a código de funcionalidades hasta que estos 5 existan y estén revis
 
 ## 3. Hitos de desarrollo
 
+El orden prioriza la **paridad con el sistema legacy** (hitos 1 a 3): se cubre primero lo que el legacy ya hace, para apagarlo pronto, y después se construye el resto. El detalle de módulos, dependencias y validación del orden está en `docs/arquitectura/mapa-de-modulos.md`.
+
 Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fuera de cada uno.
 
 **Hito 1 — Fundaciones**
-- Usuarios, roles, permisos, jerarquías
-- Auditoría (usuario, acción, timestamp), desactivación lógica
-- Parámetros PM1 a PM13 con CRUD y precarga de PM1, PM5 y PM9
-- Configuración de la empresa (tabla de configuración)
-- Notificaciones configurables por rol y área; tareas básicas (flujo Asignada → Cerrada)
-- Dashboard base con widgets por rol
+- Usuarios, perfiles (roles) y permisos por módulo; departamentos y jerarquía (jefe directo); alcance de datos (propio, equipo, todo)
+- Auditoría (usuario, acción, fecha, valores antes/después), desactivación lógica
+- Configuración general: datos de la empresa, IVA, ISR, días de costo desactualizado, validez de cotización, correlativos, SMTP
+- Niveles de margen (MC) y función de precio (ADR-0011)
+- Dashboard base: contenedor y registro de widgets por perfil
 
-**Hito 2 — Núcleo comercial**
-- Contactos; clientes (prospecto y venta, conversión automática, validación de NIT duplicado); proveedores (cascada de desactivación a productos)
-- Productos, listado de precios, variables globales, combos con actualización automática
+**Hito 2 — Catálogo y clientes**
+- Parámetros de catálogo (CRUD genérico: tipo de contacto, estado de cliente, segmentos, régimen fiscal, formas de pago), con precarga de PM1 y PM5
+- Marcas, áreas (precarga de PM9) y grupos (cada grupo pertenece a un área)
+- Contactos; proveedores (cascada de desactivación a productos)
+- Productos simples y paquetes (precio del paquete = suma de sus componentes, calculado); alerta de costo desactualizado
+- Clientes (prospecto y venta, NIT sin duplicados, vendedor asignado; conversión manual hasta que exista el Cotizador)
 
-**Hito 3 — Cotizador**
-- Nueva oferta y plantillas ("ofertas tipo"), estados configurables, PDF descargable
-- Precio histórico conservado; alerta de "sin existencia"
-- Conversión prospecto → cliente al aceptar la primera cotización
+**Hito 3 — Tareas, tickets y cierre del legacy**
+- Motor de estados (estados, transiciones y banderas semánticas; un estado nuevo aplica solo a registros futuros)
+- Hilo de actividad (comentarios, cambios de estado, menciones; bandera interno/externo)
+- Notificaciones configurables por perfil y departamento (en la aplicación y por email) y endpoint de actualizaciones para el polling
+- Archivos y fotos (almacenamiento local, WebP normal y miniatura, metadatos en JSON)
+- Tareas (asignada, estado, vencimiento, hilo) y tickets mínimos (cliente, asignado, estado, descripción, hilo)
+- Importación de datos del legacy, prueba paralela y apagado del legacy
 
-**Hito 4 — Proyectos, compras e inventarios**
+**Hito 4 — Cotizador**
+- Nueva oferta y plantillas ("ofertas tipo"), estados configurables, PDF descargable, versiones
+- Validez configurable (15 días); precio y composición congelados en la cotización; una cotización nueva toma los precios vigentes
+- Alerta "validar disponibilidad" por bandera del producto (hasta que exista Inventarios)
+- Conversión prospecto → cliente al aceptar la primera cotización; aviso a cotizaciones vigentes al desactivar un proveedor
+
+**Hito 5 — Proyectos, compras e inventarios**
 - Plantillas de tipo de proyecto (etapas/actividades ponderadas) y avance ponderado
 - Conversión oferta → proyecto con **motor de reglas de aprobación extensible** (diseñado como motor, no como 4 `if`)
-- Solicitud de compra, comparación bodega/ofertado/solicitado, OC en PDF por proveedor
-- Bodegas y movimientos de inventario
+- Solicitud de compra (paquetes desglosados), comparación bodega/ofertado/solicitado, OC en PDF por proveedor
+- Bodegas y movimientos de inventario; la alerta de existencia pasa a leer el saldo real
 
-**Hito 5 — Facturación y finanzas**
-- Facturación flexible por etapa (con FEL si P1 lo confirma), CXC, CXP, costo real por proyecto
+**Hito 6 — Facturación y finanzas**
+- Facturación flexible por etapa (con FEL si P1 lo confirma), CXC, CXP, costo real y rentabilidad por proyecto
 
-**Hito 6 — Administración, soporte y reportes**
-- Bancos y conciliación, RRHH, comisiones (motor configurable), reportes, helpdesk, mantenimiento, sala de reuniones
+**Hito 7 — Administración, soporte y reportes**
+- Bancos y conciliación, RRHH, comisiones (motor configurable), reportes, helpdesk extendido (equipos, contratos, SLA, prioridad), mantenimiento, sala de reuniones
 
-**Hito 7 — Móvil (PWA)**
+**Hito 8 — Móvil (PWA)**
 - Dashboard móvil, offline con sync, geolocalización, chat de proyecto
 
-**Hito 8 — Portal de cliente externo**
+**Hito 9 — Portal de cliente externo**
 - Vista de lo propio, facturación, progreso, comunicación tipo JIRA, aislamiento estricto por cliente
 
 ## 4. Invariantes (no negociables en ningún hito)
@@ -110,6 +123,7 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 - Notificaciones configurables por rol y área, no hardcodeadas.
 - Numeración de proyectos, cotizaciones y OC autogenerada, única y a prueba de concurrencia.
 - Los estados nuevos aplican solo a registros futuros.
+- El precio de catálogo no se guarda: se calcula desde el costo, el nivel de margen, el IVA y el ISR (ADR-0011).
 
 ## 5. Flujo de trabajo sugerido en la sesión
 
@@ -123,17 +137,18 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 
 | Hito | Preguntas a confirmar antes de empezar |
 |------|----------------------------------------|
-| 0 | P15 (motor de BD) |
+| 0 | P15 resuelta: MySQL 5.7 (ADR-0001) |
 | 1 | P5 (roles; no bloquea el esquema) |
 | 2 | P3 (estados de cliente) antes de cerrarlo |
-| 3 | P1 (moneda) |
-| 4 | P2 (proyectos consolidados), P4 (momento de la OC) |
-| 5 | P1 (FEL), P8 (rentabilidad) |
-| 6 | P9 (CM/UOP/UAI/UN), P10 (comisiones), P11 (reportes), P13 (cliente de convenio) |
-| 7 | P6 (geolocalización y dispositivos), P12 (Agenda) |
-| Antes de producción | P7 (migración de datos), P14 (normativa de datos) |
+| 3 | P7 (migración de datos), P20 (contraseñas del legacy), P23 (esquema y datos del legacy) |
+| 4 | P17 (descuento de paquete), P18 (paquetes anidados), P19 (renovación de cotización vencida) |
+| 5 | P2 (proyectos consolidados), P4 (momento de la OC) |
+| 6 | P1 (FEL; la moneda ya es GTQ), P8 (rentabilidad) |
+| 7 | P9 (CM/UOP/UAI/UN), P10 (comisiones), P11 (reportes), P13 (cliente de convenio), P21 (campos extendidos del ticket) |
+| 8 | P6 (geolocalización y dispositivos), P12 (Agenda), P22 (chat libre) |
+| Antes de producción | P14 (normativa de datos) |
 
-El detalle, el supuesto provisional de cada una y el Anexo A de propuestas están en el documento de requerimientos.
+El detalle de P1 a P16 y el Anexo A de propuestas están en el documento de requerimientos; P17 a P23 están en `docs/arquitectura/mapa-de-modulos.md`.
 
 ## 7. Entorno de ejecución y reglas de sesión
 
