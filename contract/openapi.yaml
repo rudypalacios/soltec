@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Soltec API
+  version: 1.0.0
+  description: >-
+    Contract of the Soltec CRM-ERP API. It is the single source of truth: the TypeScript types and the
+    typed client are generated from it, and a test fails when a route is missing here or listed here
+    without a route. Deployment endpoints (/system) are not part of the public contract.
+servers:
+  - url: /api
+    description: Same origin as the web app.
+tags:
+  - name: System
+    description: Service status.
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: Check that the API and its database answer.
+      description: Public and free of internal detail. Used by the deployment smoke test and by monitoring.
+      tags: [System]
+      responses:
+        '200':
+          description: The API and its database answer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: The API answers but the database does not.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          description: Unexpected error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        checks:
+          type: object
+          required: [database]
+          properties:
+            database:
+              type: string
+              enum: [ok, error]
+    Problem:
+      type: object
+      description: RFC 9457 problem details. "code" is a stable identifier in English; the web app maps it to Spanish text.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string

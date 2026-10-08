@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+api
+db
+docs
+package-lock.json
+**/generated

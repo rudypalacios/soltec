@@ -1,0 +1,26 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+api/vendor/
+
+# Secrets and server-only files: never commit them
+.env
+.env.*
+!.env.example
+
+# Runtime files
+api/storage/*
+!api/storage/.gitkeep
+.phpunit.cache/
+.phpunit.result.cache
+.php-cs-fixer.cache
+
+# Generated from contract/openapi.yaml (see ADR-0006)
+shared/src/api/generated/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+*.log
