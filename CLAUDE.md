@@ -20,8 +20,8 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - **Backend:** PHP + SLIM, API RESTful, API-first. Prohibido renderizar vistas desde PHP.
 - **Frontend web:** React + TypeScript, desktop-first.
 - **Móvil:** PWA (Android e iOS) con offline y sincronización posterior. Ver 1.1 para dejar la puerta abierta a Expo.
-- **Base de datos:** MySQL (provisional, P15; confírmalo en el Hito 0 antes del ERD).
-- **Migraciones:** esquema versionado con Phinx (o equivalente). Todo cambio de esquema es una migración; nunca se edita la base a mano.
+- **Base de datos:** MySQL 5.7, compatible con 8.0 (decidido, ADR-0001).
+- **Migraciones:** esquema versionado con Phinx (ADR-0003). Todo cambio de esquema es una migración; nunca se edita la base a mano.
 - **Despliegue: una instancia por empresa.** No hay multiempresa ni multi-tenant: **no uses `empresa_id` en las tablas**. Cada empresa es una instancia independiente (subdominio y BD propios) con el mismo código. Consecuencias que debes respetar:
   - Datos de la empresa (nombre, datos fiscales, logo, moneda, correlativos) en una **tabla de configuración**, nunca hardcodeados.
   - Cero valores específicos de un cliente en el código.
@@ -50,17 +50,18 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - Decisiones relevantes de arquitectura se registran como ADR breves en `docs/adr/`, con alternativas y consecuencias.
 - Commits y PR explican el *por qué*. Los cambios que afectan cómo se corre o estructura el proyecto actualizan el README en el mismo cambio.
 
-## 2. Hito 0 — Planeación (antes de programar funcionalidades)
+## 2. Hito 0 — Planeación y scaffolding (antes de programar funcionalidades)
 
-Genera estos 5 entregables, **uno a la vez, deteniéndote para revisión después de cada uno**. El ERD es el que más debe revisarse con calma.
+El Hito 0 tiene dos partes: **0A Planeación** (documentos) y **0B Scaffolding** (un esqueleto que camina, sin funcionalidades). Genera estos entregables **en este orden, uno a la vez, deteniéndote para revisión después de cada uno**. El ERD es el que más debe revisarse con calma.
 
-1. **Mapa de módulos y matriz de dependencias** (qué módulo requiere a cuál). Úsala para validar el orden de los hitos y propón ajustes si algo está mal ordenado.
-2. **ERD:** entidades, cardinalidades, PK/FK, índices y campos de sync. Cubre al menos: usuarios y roles, parámetros PM, contactos, clientes (prospecto y venta), proveedores, productos y combos, bodegas, cotizaciones, plantillas de tipo de proyecto (etapas/actividades), proyectos, tareas, solicitudes de compra y OC, facturación, CXC/CXP.
-3. **Estructura del repositorio** (`api/`, `web/`, `mobile/`, `shared/`, `docs/`, migraciones).
-4. **Especificación OpenAPI** de los hitos 1 a 3.
-5. **Esqueleto de autenticación y roles:** roles y permisos **como datos configurables** (no hardcodeados), permisos granulares por módulo, JWT con refresh.
+1. **Mapa de módulos y matriz de dependencias** (0A, hecho): `docs/arquitectura/mapa-de-modulos.md`.
+2. **Estructura del repositorio** (0A): `api/`, `shared/`, `web/`, `docs/`, migraciones. `mobile/` se crea en el Hito 8.
+3. **Scaffolding** (0B): Slim y React (Vite + MUI) mínimos, CI (tests, phpcs, phpstan, eslint, tsc), despliegue por FTPS a `test` con el endpoint de migraciones, una migración de prueba y un endpoint de salud. Verifica en el servidor real lo que el diseño asume: columna generada con índice único en MySQL 5.7, soporte WebP en GD y entrega de `mail()` a Gmail y Outlook. Criterio de terminado: un push despliega a `test` el endpoint de salud y una pantalla vacía de React, con CI verde y la migración aplicada. Antes de empezar, indica al usuario exactamente qué configurar (secretos de GitHub, bases de datos y `.env`).
+4. **ERD:** entidades, cardinalidades, PK/FK, índices y campos de sync. Cubre al menos: usuarios (internos y externos) y perfiles, parámetros PM, contactos, clientes (prospecto y venta), proveedores, productos y paquetes, bodegas, cotizaciones, plantillas de tipo de proyecto (etapas/actividades), proyectos, tareas, solicitudes de compra y OC, facturación, CXC/CXP. Alcance propuesto, pendiente de confirmar: detallado para los hitos 1 a 3 y esbozado para el resto.
+5. **Esqueleto de autenticación y roles:** diseño según ADR-0012 (roles y permisos como datos, alcance de datos, JWT con refresh, usuarios externos).
+6. **Especificación OpenAPI** de los hitos 1 a 3.
 
-No avances a código de funcionalidades hasta que estos 5 existan y estén revisados.
+No avances a código de funcionalidades hasta que estos entregables existan y estén revisados.
 
 ## 3. Hitos de desarrollo
 
@@ -166,4 +167,5 @@ Las decisiones técnicas menores que Claude toma sin consultar (nomenclatura, es
 | Fecha | Decisión | Motivo |
 |-------|----------|--------|
 | 2026-10-08 | Las preguntas nuevas continúan la numeración del documento de requerimientos (P17 en adelante) y viven en `docs/arquitectura/mapa-de-modulos.md`. | Evita editar el documento de requerimientos, que es la fuente funcional. |
+| 2026-10-08 | El scaffolding (0B) va después de la estructura del repositorio y antes del ERD. | Valida el hosting real (MySQL 5.7, FTPS, GD, correo) antes de diseñar el modelo de datos sobre él. |
 | 2026-10-08 | Las secciones 2 a 5 del mapa de módulos se generan con `docs/arquitectura/herramientas/generar_mapa.py` (`python3 -I generar_mapa.py salida.md`). | Tabla, matriz y diagrama salen de una sola fuente y el script valida que ninguna dependencia dura apunte a un hito posterior. |

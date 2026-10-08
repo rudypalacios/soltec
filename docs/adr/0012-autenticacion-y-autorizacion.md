@@ -1,6 +1,6 @@
 # ADR-0012: Autenticación y autorización
 
-**Estado:** Propuesta (falta verificar el terminal de cPanel para el método del primer administrador) · **Fecha:** 2026-10-08
+**Estado:** Aceptada · **Fecha:** 2026-10-08
 
 ## Contexto
 API-first con React (web y PWA, quizá Expo después). Habrá usuarios internos y usuarios externos: los clientes de la empresa tendrán acceso limitado, solo para ver su progreso y su facturación, sin administrar. El hosting no tiene SSH. Se parte de un RBAC ya probado en otro proyecto (una aplicación con sesiones y plantillas Twig): se conservan sus reglas y se cambia el mecanismo.
@@ -30,7 +30,7 @@ API-first con React (web y PWA, quizá Expo después). Habrá usuarios internos 
 En la configuración general, con límites mínimo y máximo validados y cambios auditados: inactividad de sesión web, duración del refresh móvil, intentos y minutos de bloqueo, expiración de contraseña y longitud mínima (solo se puede subir por encima de 12). Valores por defecto: 30 min de inactividad en web, unos 30 días de refresh en móvil, 3 intentos, 15 minutos.
 
 ### Primer administrador y secretos
-- Preferido: un **comando de consola** ejecutado en el terminal de cPanel, que pide correo y contraseña sin eco e inserta el usuario. Si no hay terminal: un endpoint de configuración inicial protegido con el token de despliegue, que solo funciona mientras no exista ningún usuario y se deshabilita después. **Pendiente de verificar el terminal.**
+- Un **comando de consola** ejecutado en el terminal de cPanel (verificado: PHP 8.3.6 en `test` y en `soltec`), que pide correo y contraseña sin eco e inserta el usuario. No expone ninguna ruta. El comando vive en `bin/` y debe subirse con el despliegue. Si el terminal dejara de estar disponible, la alternativa sería un endpoint de configuración inicial protegido con el token de despliegue, que solo funcione mientras no exista ningún usuario.
 - Ningún secreto en el repo: el `.env` se crea en el servidor, fuera de `public/`, con permisos 600; `JWT_SECRET` distinto por instancia. Las variables nuevas no son obligatorias globalmente, para que un deploy con código nuevo y `.env` viejo no tumbe el sitio.
 
 ### Lecciones de implementación (del proyecto anterior)

@@ -333,4 +333,4 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 
 ## 9. Siguiente paso
 
-Revisión de este mapa. Si se aprueba, se actualizan la lista de hitos de CLAUDE.md y se crea `TODO.md` con esta secuencia, y se continúa con el entregable 2 (ERD), detallado para los hitos 1 a 3 y esbozado para el resto.
+El orden de hitos fue aprobado y ya está en `CLAUDE.md` y `TODO.md`. Siguen, en este orden: estructura del repositorio, scaffolding (0B), ERD, esqueleto de autenticación y OpenAPI de los hitos 1 a 3.

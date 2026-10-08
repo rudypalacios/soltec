@@ -2,21 +2,26 @@
 
 Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícitamente qué queda **fuera**. Orden y dependencias: `docs/arquitectura/mapa-de-modulos.md`.
 
-## Hito 0 — Planeación
+## Hito 0 — Planeación y scaffolding
 - [x] Resumen de entendimiento, riesgos y contradicciones
-- [x] ADR 0001 a 0011 (`docs/adr/`)
-- [x] Entregable 1: mapa de módulos y matriz de dependencias (en revisión: PR #2)
-- [ ] Entregable 2: ERD (detallado para los hitos 1 a 3, esbozado para el resto; incluye campos de sync)
-- [ ] Entregable 3: estructura del repositorio
-- [ ] Entregable 4: especificación OpenAPI de los hitos 1 a 3
-- [ ] Entregable 5: esqueleto de autenticación y roles
+- [x] ADR 0001 a 0013 (`docs/adr/`)
+- [x] 1. Mapa de módulos y matriz de dependencias (en revisión: PR #2)
+- [ ] 2. Estructura del repositorio
+- [ ] 3. Scaffolding (0B): Slim y React mínimos, CI, despliegue por FTPS a `test`, endpoint de migraciones, endpoint de salud
+- [ ] 3b. Verificar en el servidor: columna generada con índice único (MySQL 5.7), WebP en GD, `mail()` hacia Gmail y Outlook
+- [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
+- [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
+- [ ] 6. Especificación OpenAPI de los hitos 1 a 3
 - [ ] Confirmar ADR-0004 (despliegue) y ADR-0006 (OpenAPI), hoy en `Propuesta`
 
 ## Hito 1 — Fundaciones
-- [ ] Usuarios, perfiles y permisos por módulo, login con JWT y refresh
-- [ ] Departamentos, jerarquía (jefe directo), alcance de datos
+- [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
+- [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
+- [ ] Modelo de usuarios externos (tipo y cliente asignado); las pantallas llegan en el Hito 9
+- [ ] Primer administrador por comando de consola
+- [ ] Departamentos y jerarquía (jefe directo)
 - [ ] Auditoría y desactivación lógica
-- [ ] Configuración general (empresa, IVA, ISR, días de costo, validez de cotización, correlativos, SMTP)
+- [ ] Configuración general (empresa, IVA, ISR, días de costo, validez de cotización, correlativos, remitente de correo, parámetros de sesión y bloqueo)
 - [ ] Niveles de margen y función de precio, con los casos de prueba del ADR-0011
 - [ ] Dashboard base (contenedor y registro de widgets)
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
