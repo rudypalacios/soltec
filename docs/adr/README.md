@@ -18,3 +18,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0008](0008-ui-con-mui.md) | Interfaz web con MUI | Aceptada |
 | [0009](0009-archivos-e-imagenes.md) | Archivos locales e imágenes en WebP | Aceptada |
 | [0010](0010-email-smtp-por-instancia.md) | Email por SMTP configurable por instancia | Aceptada |
+| [0011](0011-calculo-de-precios.md) | Cálculo de precios (fórmula, redondeo, congelamiento) | Aceptada |
