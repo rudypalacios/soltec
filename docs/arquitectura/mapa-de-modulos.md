@@ -316,7 +316,7 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 - **Redondeo:** se calcula sin redondear; se redondea a 2 decimales al mostrar o cerrar una línea; el IVA se calcula sobre el total del documento.
 - **Moneda:** quetzales (GTQ).
 - **Usuarios externos:** los clientes de la empresa tendrán acceso limitado, solo para ver progreso y facturación, sin administrar. El modelo (tipo de usuario, cliente asignado, alcance por cliente) se define desde el ERD y el entregable de autenticación; las pantallas llegan con el Portal (Hito 9). Ver [ADR-0012](adr/0012-autenticacion-y-autorizacion.md).
-- **Email:** `mail()` del hosting por defecto, SMTP opcional. Ver [ADR-0013](adr/0013-email-con-mail-por-defecto.md).
+- **Email:** SMTP del proveedor donde vive el correo del dominio (la primera instancia usa un buzón dedicado de la organización); `mail()` del hosting como alternativa. Ver [ADR-0013](adr/0013-envio-de-email.md).
 - **Tickets y tareas:** hilo de actividad por registro, tipo ticket de Jira. El chat libre entre usuarios queda para el Hito 8.
 
 ## 8. Preguntas nuevas (continúan la numeración de P1 a P16)

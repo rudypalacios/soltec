@@ -20,4 +20,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0010](0010-email-smtp-por-instancia.md) | Email por SMTP configurable por instancia | Reemplazada parcialmente por 0013 |
 | [0011](0011-calculo-de-precios.md) | Cálculo de precios (fórmula, redondeo, congelamiento) | Aceptada |
 | [0012](0012-autenticacion-y-autorizacion.md) | Autenticación y autorización | Aceptada |
-| [0013](0013-email-con-mail-por-defecto.md) | Email con `mail()` por defecto, SMTP opcional | Aceptada |
+| [0013](0013-envio-de-email.md) | Envío de email: SMTP del proveedor del dominio, `mail()` como alternativa | Aceptada |
