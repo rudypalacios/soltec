@@ -134,3 +134,21 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 | Antes de producción | P7 (migración de datos), P14 (normativa de datos) |
 
 El detalle, el supuesto provisional de cada una y el Anexo A de propuestas están en el documento de requerimientos.
+
+## 7. Entorno de ejecución y reglas de sesión
+
+> Cada sesión nueva arranca sin memoria de las anteriores. Lo que importa vive en el repo: este archivo y `docs/` (requerimientos, `docs/adr/`, `docs/arquitectura/`). Léelos al empezar.
+
+- **Dónde corres.** Claude Code en la web, dentro de un *environment* configurado por el usuario: un contenedor en la nube, efímero, con sus repositorios, variables y secretos, política de red y script de setup. Lo que no se commitea y se sube a GitHub se pierde cuando termina la sesión.
+- **Si algo no se puede alcanzar** (un host bloqueado por la red del environment, un secreto o variable que falta, una herramienta que no está instalada, un permiso de GitHub), normalmente se puede configurar. No lo rodees en silencio: avisa al usuario qué falta y dale los pasos concretos. Los pasos vigentes están en la documentación del environment (herramienta `read_documentation`).
+- **Ramas.** Toda rama sale de `main` actualizada, salvo que el usuario indique otra base. No se trabaja directo en `main`. **Nunca se hace push a una rama cuyo PR ya fue fusionado:** se reinicia desde `main` (`git fetch origin main && git checkout -B <rama> origin/main`, conservando el nombre de rama que designe la sesión) y el trabajo nuevo va en un PR nuevo.
+- **Pull requests.** Cuando consideres terminado el trabajo y quieras que el usuario lo revise, crea el PR de inmediato contra `main`, sin esperar a que lo pida; el cuerpo explica el porqué del cambio. Aplica también a cada entregable del Hito 0: el PR se crea en el punto en que te detienes para revisión.
+
+## 8. Registro de decisiones técnicas de Claude
+
+Las decisiones técnicas menores que Claude toma sin consultar (nomenclatura, estructura interna, herramientas de apoyo) se anotan aquí con fecha y motivo. Las decisiones grandes o difíciles de revertir se consultan al usuario y se registran como ADR en `docs/adr/`.
+
+| Fecha | Decisión | Motivo |
+|-------|----------|--------|
+| 2026-10-08 | Las preguntas nuevas continúan la numeración del documento de requerimientos (P17 en adelante) y viven en `docs/arquitectura/mapa-de-modulos.md`. | Evita editar el documento de requerimientos, que es la fuente funcional. |
+| 2026-10-08 | Las secciones 2 a 5 del mapa de módulos se generan con `docs/arquitectura/herramientas/generar_mapa.py` (`python3 -I generar_mapa.py salida.md`). | Tabla, matriz y diagrama salen de una sola fuente y el script valida que ninguna dependencia dura apunte a un hito posterior. |
