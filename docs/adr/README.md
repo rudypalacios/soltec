@@ -18,6 +18,7 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0008](0008-ui-con-mui.md) | Interfaz web con MUI | Aceptada |
 | [0009](0009-archivos-e-imagenes.md) | Archivos locales e imágenes en WebP | Aceptada |
 | [0010](0010-email-smtp-por-instancia.md) | Email por SMTP configurable por instancia | Reemplazada parcialmente por 0013 |
-| [0011](0011-calculo-de-precios.md) | Cálculo de precios (fórmula, redondeo, congelamiento) | Aceptada |
+| [0011](0011-calculo-de-precios.md) | Cálculo de precios (fórmula, redondeo, congelamiento) | Aceptada (precisada por 0014) |
 | [0012](0012-autenticacion-y-autorizacion.md) | Autenticación y autorización | Aceptada |
 | [0013](0013-envio-de-email.md) | Envío de email: SMTP autenticado, `mail()` como plan B | Aceptada |
+| [0014](0014-el-servidor-calcula-los-precios.md) | El servidor calcula los precios; `shared/` solo los previsualiza | Aceptada |

@@ -48,6 +48,7 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - Errores explícitos con mensajes útiles; sin `catch` vacíos.
 - Simple primero (KISS/YAGNI): no construyas abstracciones para necesidades imaginarias. Extrae lógica repetida a partir de la segunda repetición.
 - Decisiones relevantes de arquitectura se registran como ADR breves en `docs/adr/`, con alternativas y consecuencias.
+- Idioma: las URLs de la API en español; todo el código (identificadores, comentarios, mensajes de log) en inglés. Detalle en `docs/arquitectura/estructura-del-repositorio.md`, sección 4.
 - Commits y PR explican el *por qué*. Los cambios que afectan cómo se corre o estructura el proyecto actualizan el README en el mismo cambio.
 
 ## 2. Hito 0 — Planeación y scaffolding (antes de programar funcionalidades)
@@ -174,4 +175,5 @@ Las decisiones técnicas menores que Claude toma sin consultar (nomenclatura, es
 |-------|----------|--------|
 | 2026-10-08 | Las preguntas nuevas continúan la numeración del documento de requerimientos (P17 en adelante) y viven en `docs/arquitectura/mapa-de-modulos.md`. | Evita editar el documento de requerimientos, que es la fuente funcional. |
 | 2026-10-08 | El scaffolding (0B) va después de la estructura del repositorio y antes del ERD. | Valida el hosting real (MySQL 5.7, FTPS, GD, correo) antes de diseñar el modelo de datos sobre él. |
+| 2026-10-08 | El servidor (PHP) calcula los precios; `shared/` tiene una versión TypeScript solo para vista previa, y ambas se prueban con los mismos vectores (`contract/test-vectors/`). Ver ADR-0014. | El ADR-0011 decía solo `shared/`, pero el servidor debe ser la fuente de verdad para congelar precios. |
 | 2026-10-08 | Las secciones 2 a 5 del mapa de módulos se generan con `docs/arquitectura/herramientas/generar_mapa.py` (`python3 -I generar_mapa.py salida.md`). | Tabla, matriz y diagrama salen de una sola fuente y el script valida que ninguna dependencia dura apunte a un hito posterior. |
