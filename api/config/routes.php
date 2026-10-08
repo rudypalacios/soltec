@@ -10,12 +10,13 @@ use Soltec\Kernel\Http\DeployTokenMiddleware;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
 // Deployment routes live under /system, are not versioned and are protected by the deploy token.
+// Group callables are not static: Slim binds them to the container.
 return static function (App $app): void {
-    $app->group('/v1', static function (RouteCollectorProxy $group): void {
+    $app->group('/v1', function (RouteCollectorProxy $group): void {
         $group->get('/health', HealthController::class);
     });
 
-    $app->group('/system', static function (RouteCollectorProxy $group): void {
+    $app->group('/system', function (RouteCollectorProxy $group): void {
         $group->post('/migrations/apply', [DeployController::class, 'applyMigrations']);
         $group->get('/diagnostics', [DeployController::class, 'diagnostics']);
     })->add(DeployTokenMiddleware::class);
