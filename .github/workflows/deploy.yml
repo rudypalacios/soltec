@@ -30,8 +30,6 @@ jobs:
     env:
       APP_URL: ${{ vars.APP_URL }}
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-      # The cPanel directory protection is optional: without it both secrets are empty (":").
-      BASIC_AUTH: ${{ secrets.BASIC_AUTH_USER }}:${{ secrets.BASIC_AUTH_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 

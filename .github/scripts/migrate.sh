@@ -2,7 +2,7 @@
 # Applies pending migrations through the deployment endpoint and fails the workflow when they fail.
 # Usage: migrate.sh [--allow-missing]
 #   --allow-missing  tolerate 404/405 while the endpoint is not deployed yet (first deployment).
-# Environment: APP_URL, DEPLOY_TOKEN and, optionally, BASIC_AUTH ("user:password").
+# Environment: APP_URL, DEPLOY_TOKEN.
 set -euo pipefail
 
 : "${APP_URL:?APP_URL is required (variable of the GitHub environment)}"
@@ -11,15 +11,8 @@ set -euo pipefail
 # Outside the workspace, so the log is never uploaded to the server.
 log=$(mktemp)
 
-# The cPanel directory protection is optional: with it removed the secrets are empty (":").
-auth=()
-if [ -n "${BASIC_AUTH:-}" ] && [ "$BASIC_AUTH" != ":" ]; then
-    auth=(--user "$BASIC_AUTH")
-fi
-
 status=$(curl --silent --show-error --max-time 180 --output "$log" --write-out '%{http_code}' \
     --request POST \
-    "${auth[@]}" \
     --header "X-Deploy-Token: $DEPLOY_TOKEN" \
     "$APP_URL/api/system/migrations/apply")
 

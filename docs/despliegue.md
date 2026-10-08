@@ -9,21 +9,26 @@ El workflow **Deploy** (GitHub → Actions → Deploy → *Run workflow*) se lan
 1. Corre las mismas pruebas del CI; si fallan, no se despliega.
 2. Compila la API (`composer install --no-dev`) y la web (`npm run build`).
 3. Sube por FTPS **solo las migraciones** y las aplica (`POST /api/system/migrations/apply`).
-4. Sube la API, su `index.php` y la web.
+4. Sube la API, su `index.php` y la web. La subida es **incremental**: el primer despliegue sube todo y los siguientes solo lo que cambió (ver 1.1).
 5. Aplica migraciones otra vez (no hace nada salvo en el primer despliegue).
 6. Comprueba `GET /api/v1/health` y muestra el **diagnóstico del servidor** en el log.
 
 El FTP no es atómico: durante la subida el sitio puede estar a medias unos segundos. Las migraciones se aplican antes que el código nuevo, así que deben ser compatibles con el código anterior.
 
+### 1.1 Qué se sube y qué se aplica en cada despliegue
+
+- **Archivos:** cada carpeta subida guarda en el servidor un archivo `.ftp-deploy-sync-state.json` con el hash de lo que hay arriba. En el siguiente despliegue solo se suben los archivos nuevos o modificados y se borran los que ya no existen. El primero es el más lento (sube `vendor/` completo).
+- **Migraciones:** Phinx lleva en la base de datos la tabla `phinxlog` con las migraciones ya aplicadas y ejecuta únicamente las pendientes. Aplicar dos veces es seguro.
+
 ## 2. Lo que configuras tú
 
 ### 2.1 En cPanel (una vez por entorno)
 
-1. **Carpeta de la instancia.** Crea una carpeta para el entorno, por ejemplo `test.musicos-catolicos.com/`, con una subcarpeta `public/`.
-2. **Subdominio.** Crea el subdominio y apunta su *Document Root* a `<carpeta de la instancia>/public`.
-3. **PHP 8.3.** En *MultiPHP Manager* asigna PHP 8.3 al subdominio. En *Select PHP Version* (o *MultiPHP INI Editor*) verifica que estén `pdo_mysql`, `mbstring`, `intl`, `gd`, `fileinfo`, `openssl` y `curl`.
-4. **Base de datos.** En *MySQL Databases* crea una base de datos y un usuario, y agrégalo a la base con **todos los privilegios** (la prueba de diagnóstico usa una tabla temporal). cPanel antepone tu usuario a los nombres: anota los nombres completos.
-5. **Cuenta FTP.** En *FTP Accounts* crea una cuenta cuyo directorio sea la **carpeta de la instancia**. Con eso `FTP_SERVER_DIR` vale `/`. Anota el servidor y el usuario; el protocolo es FTPS.
+1. **Subdominio.** En *Domains* crea el subdominio y pon su *Document Root* en `<carpeta de la instancia>/public`, por ejemplo `test.musicos-catolicos.com/public`. cPanel crea ambas carpetas. La *carpeta de la instancia* (`test.musicos-catolicos.com/`) es la raíz de todo lo del entorno: dentro van `public/` (lo único que el navegador ve), `api/`, `db/` y `storage/`, y a su lado el `.env`. Así el código y las credenciales quedan fuera del alcance de la web.
+2. **Qué crea el despliegue.** Tú no creas nada dentro: `public/`, `api/` y `db/migrations/` los sube el workflow (el scaffolding ya los trae). Solo `.env` y `public/.htaccess` los pones tú, porque son propios del servidor.
+3. **PHP 8.3.** En *MultiPHP Manager* asigna PHP 8.3 al subdominio. Las extensiones no hace falta revisarlas a mano: el diagnóstico (sección 4) las comprueba en el primer despliegue y avisa si falta alguna.
+4. **Base de datos.** En *MySQL Databases* crea una base de datos y un usuario, y agrégalo a la base con **solo estos privilegios**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `DROP`, `INDEX`, `REFERENCES` y `CREATE TEMPORARY TABLES`. No marques *All Privileges*. Los cuatro primeros son los que usa la aplicación al correr; los demás los necesitan las migraciones (crear y alterar tablas, índices y llaves foráneas) y el diagnóstico (una tabla temporal). Hoy las migraciones corren por el mismo usuario, por eso están todos; separar un usuario de solo lectura/escritura para la aplicación es una mejora pendiente. cPanel antepone tu usuario a los nombres: anota los nombres completos.
+5. **Cuenta FTP.** En *FTP Accounts* crea una cuenta cuyo directorio sea la **carpeta de la instancia** (la que contiene `public/`, no `public/` misma). Al conectarse, la cuenta ya cae en esa raíz, así que `FTP_SERVER_DIR` vale `/`. Anota el servidor y el usuario; el protocolo es FTPS.
 6. **HTTPS.** Verifica que AutoSSL esté activo en el subdominio y activa *Force HTTPS Redirect*.
 7. **Archivo `.env`.** En la carpeta de la instancia (al lado de `public/`, nunca dentro) crea `.env` con permisos `600`:
 
@@ -39,7 +44,8 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    ```
 
 8. **`.htaccess`.** Copia el contenido de [`deploy/htaccess.sample`](../deploy/htaccess.sample) a `public/.htaccess`. Es de una sola vez: el despliegue nunca lo sube ni lo borra.
-9. **Protección de directorio (opcional).** Si activas una clave de cPanel sobre el subdominio, guarda sus datos como `BASIC_AUTH_USER` y `BASIC_AUTH_PASSWORD` (ver 2.2).
+
+No se usa protección de directorio de cPanel: el acceso lo controla el login de la aplicación y los endpoints de despliegue exigen el token (2.3).
 
 ### 2.2 En GitHub (una vez por entorno)
 
@@ -52,21 +58,23 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
 | Secret | `FTP_PASSWORD` | Contraseña de la cuenta FTP |
 | Secret | `FTP_SERVER_DIR` | `/` (si la cuenta FTP apunta a la carpeta de la instancia) |
 | Secret | `DEPLOY_TOKEN` | El mismo valor que en el `.env` |
-| Secret (opcional) | `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` | Solo si hay protección de directorio |
 | Variable | `APP_URL` | `https://test.musicos-catolicos.com` (sin barra final) |
 | Variable (opcional) | `FTP_PROTOCOL` | `ftps` (es el valor por defecto) |
 
-En `soltec` conviene activar *Required reviewers* para que cada despliegue pida aprobación.
+**Cómo se evita desplegar al entorno equivocado.** Los nombres son los mismos en los dos entornos (`FTP_PASSWORD`, `DEPLOY_TOKEN`...), pero cada *Environment* guarda su propio valor y el workflow toma los del entorno que eliges en *Run workflow*; un prefijo por entorno (`TEST_FTP_PASSWORD`) obligaría a escoger el nombre con lógica en el workflow, que es justo donde se cometería el error. Las reglas que sí protegen:
+
+- **Todo va en el Environment, nada en *Repository secrets* ni *Repository variables*.** Un secret a nivel de repositorio lo ven todos los entornos; si falta uno en el Environment, el workflow tomaría el del repositorio sin avisar.
+- **`soltec` con *Required reviewers***: cada despliegue a producción espera tu aprobación explícita.
+- El log del smoke test muestra la URL a la que apunta; verifícala antes de aprobar.
 
 ### 2.3 El token de despliegue
 
-Es una clave larga y aleatoria que protege los endpoints de migraciones y diagnóstico (mínimo 32 caracteres; sin ella quedan deshabilitados). Genérala en el terminal de cPanel:
+No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servidor y GitHub que protege los endpoints de migraciones y diagnóstico (sin ella, o con menos de 32 caracteres, quedan deshabilitados).
 
-```bash
-php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
-```
-
-Pégala en el `.env` del servidor y en el secret `DEPLOY_TOKEN` del entorno de GitHub. Un token distinto por entorno. No la pegues en un chat.
+- **Formato:** 64 caracteres aleatorios, solo letras y números (los símbolos pueden romper el `.env` o el encabezado HTTP).
+- **Cómo generarlo:** sirve cualquier generador con buena aleatoriedad, incluido el de Proton Pass (longitud 64, sin símbolos). Desde el terminal de cPanel también: `php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'`.
+- **Dónde va:** el mismo valor en el `.env` del servidor (`DEPLOY_TOKEN`) y en el secret `DEPLOY_TOKEN` del Environment de GitHub.
+- **Uno distinto por entorno.** No lo pegues en un chat.
 
 ## 3. Primer despliegue
 
@@ -97,7 +105,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) se verif
 | Migraciones: `503 deploy_token_not_configured` | El `.env` no tiene `DEPLOY_TOKEN`, o no está en la carpeta de la instancia |
 | Migraciones: `503 deploy_token_too_short` | El token tiene menos de 32 caracteres |
 | Migraciones: `401 unauthorized` | El secret `DEPLOY_TOKEN` no coincide con el del `.env` |
-| Migraciones: `500 migration_failed` | El mensaje dice la causa; casi siempre credenciales o privilegios de la base de datos |
+| Migraciones: `500 migration_failed` | El mensaje dice la causa; casi siempre credenciales o un privilegio que falta (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`) |
 | Migraciones: responde 200 pero no es JSON | Falta el `.htaccess` o el API no llegó a `public/api/` |
 | Smoke: `degraded` | La API responde pero la base de datos no: revisa `DB_*` en el `.env` |
 | Smoke: 404 en `/api/v1/health` | Falta `.htaccess` o `mod_rewrite` |
