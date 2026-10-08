@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<ruleset name="Soltec">
+    <description>PSR-12 with 120-character lines.</description>
+
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <file>public</file>
+    <file>src</file>
+    <file>config</file>
+    <file>tests</file>
+    <file>../db</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+
+    <rule ref="PSR12"/>
+
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="120"/>
+        </properties>
+    </rule>
+
+    <!-- Phinx loads migrations by file name and they live outside any namespace. -->
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <exclude-pattern>*/db/migrations/*</exclude-pattern>
+    </rule>
+</ruleset>

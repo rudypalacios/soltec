@@ -1,0 +1,21 @@
+{
+  "name": "@soltec/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "generate": "openapi-typescript ../contract/openapi.yaml -o src/api/generated/schema.ts",
+    "typecheck": "npm run generate && tsc --noEmit",
+    "test": "npm run generate && vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "openapi-typescript": "^7.5.2",
+    "vitest": "^3.0.4"
+  }
+}

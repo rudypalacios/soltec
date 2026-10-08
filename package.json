@@ -1,0 +1,34 @@
+{
+  "name": "soltec",
+  "private": true,
+  "type": "module",
+  "description": "CRM-ERP monorepo: shared (TypeScript) and web (React). The PHP API lives in api/.",
+  "workspaces": [
+    "shared",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "generate": "npm run generate --workspace @soltec/shared",
+    "lint": "eslint . && prettier --check \"shared/**/*.ts\" \"web/**/*.{ts,tsx,json,html}\" \"contract/*.yaml\" \"*.json\"",
+    "lint:contract": "spectral lint contract/openapi.yaml --fail-severity=warn",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspace @soltec/web",
+    "dev": "npm run dev --workspace @soltec/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@stoplight/spectral-cli": "^6.14.2",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0"
+  },
+  "overrides": {
+    "vite": "^6.0.6"
+  }
+}

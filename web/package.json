@@ -1,0 +1,31 @@
+{
+  "name": "@soltec/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run generate --workspace @soltec/shared && tsc --noEmit && vite build",
+    "typecheck": "npm run generate --workspace @soltec/shared && tsc --noEmit",
+    "test": "npm run generate --workspace @soltec/shared && vitest run"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.3.0",
+    "@soltec/shared": "*",
+    "@tanstack/react-query": "^5.62.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "vite": "^6.0.6",
+    "vitest": "^3.0.4"
+  }
+}
