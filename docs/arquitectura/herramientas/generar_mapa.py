@@ -19,8 +19,8 @@ HITOS = {
 
 # slug, nombre, contenido, hito, dependencias duras, dependencias blandas
 MODULOS = [
-    ("acceso", "Acceso y permisos", "Usuarios, perfiles (roles) con permisos por módulo, login con JWT y refresh revocable, dispositivos", 1, [], []),
-    ("org", "Organización", "Departamentos, jefe directo (jerarquía), alcance de datos: propio, equipo o todo", 1, ["acceso"], []),
+    ("acceso", "Acceso y permisos", "Usuarios internos y externos (clientes de la empresa, solo lectura), perfiles (roles) con permisos por módulo y acción, login con JWT y refresh revocable, recuperar contraseña, bloqueo por intentos, dispositivos", 1, [], []),
+    ("org", "Organización", "Departamentos, jefe directo (jerarquía), alcance de datos: propio, equipo, todo o solo el cliente asignado (usuarios externos)", 1, ["acceso"], []),
     ("config", "Configuración general", "Datos de la empresa, IVA, ISR, días para marcar un costo desactualizado, validez de cotización (15 días), correlativos, SMTP", 1, ["acceso"], []),
     ("margen", "Niveles de margen y motor de precios", "Niveles de MC (uno por defecto) y fórmula de precio: costo con IVA → sin IVA → con IVA", 1, ["config"], []),
     ("audit", "Auditoría y desactivación lógica", "Registro de usuario, acción, fecha y valores antes/después; activo/inactivo en lugar de borrar", 1, ["acceso"], []),

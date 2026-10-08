@@ -29,8 +29,8 @@ Las dependencias duras (●) son las que obligan el orden de construcción. Las 
 
 | ID | Módulo | Contenido | Depende de | Depende de (blanda) |
 |----|--------|-----------|------------|---------------------|
-| 01 | Acceso y permisos | Usuarios, perfiles (roles) con permisos por módulo, login con JWT y refresh revocable, dispositivos | — | — |
-| 02 | Organización | Departamentos, jefe directo (jerarquía), alcance de datos: propio, equipo o todo | 01 | — |
+| 01 | Acceso y permisos | Usuarios internos y externos (clientes de la empresa, solo lectura), perfiles (roles) con permisos por módulo y acción, login con JWT y refresh revocable, recuperar contraseña, bloqueo por intentos, dispositivos | — | — |
+| 02 | Organización | Departamentos, jefe directo (jerarquía), alcance de datos: propio, equipo, todo o solo el cliente asignado (usuarios externos) | 01 | — |
 | 03 | Configuración general | Datos de la empresa, IVA, ISR, días para marcar un costo desactualizado, validez de cotización (15 días), correlativos, SMTP | 01 | — |
 | 04 | Niveles de margen y motor de precios | Niveles de MC (uno por defecto) y fórmula de precio: costo con IVA → sin IVA → con IVA | 03 | — |
 | 05 | Auditoría y desactivación lógica | Registro de usuario, acción, fecha y valores antes/después; activo/inactivo en lugar de borrar | 01 | — |
@@ -315,6 +315,8 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 - **Cotización:** tiene validez configurable (15 días). Los precios y la composición se congelan en la cotización. Una cotización nueva toma los precios vigentes. "Vigente" significa dentro de su validez.
 - **Redondeo:** se calcula sin redondear; se redondea a 2 decimales al mostrar o cerrar una línea; el IVA se calcula sobre el total del documento.
 - **Moneda:** quetzales (GTQ).
+- **Usuarios externos:** los clientes de la empresa tendrán acceso limitado, solo para ver progreso y facturación, sin administrar. El modelo (tipo de usuario, cliente asignado, alcance por cliente) se define desde el ERD y el entregable de autenticación; las pantallas llegan con el Portal (Hito 9). Ver [ADR-0012](adr/0012-autenticacion-y-autorizacion.md).
+- **Email:** `mail()` del hosting por defecto, SMTP opcional. Ver [ADR-0013](adr/0013-email-con-mail-por-defecto.md).
 - **Tickets y tareas:** hilo de actividad por registro, tipo ticket de Jira. El chat libre entre usuarios queda para el Hito 8.
 
 ## 8. Preguntas nuevas (continúan la numeración de P1 a P16)

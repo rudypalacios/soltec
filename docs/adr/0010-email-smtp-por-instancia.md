@@ -1,6 +1,6 @@
 # ADR-0010: Email por SMTP configurable por instancia
 
-**Estado:** Aceptada · **Fecha:** 2026-10-08
+**Estado:** Reemplazada parcialmente por [ADR-0013](0013-email-con-mail-por-defecto.md) · **Fecha:** 2026-10-08
 
 ## Contexto
 Se necesita enviar correos (notificaciones, cotizaciones) de forma gratuita y estable, desde el servidor. Cada instancia es una empresa distinta con su propio dominio.
