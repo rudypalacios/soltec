@@ -11,6 +11,7 @@ Este documento fija dónde vive cada cosa en el repositorio y dónde termina cad
 - **La API no renderiza vistas.** La única excepción son las plantillas HTML de los PDF (ADR-0007).
 - **Sin carpetas para hitos futuros.** `mobile/` se crea en el Hito 8; la sincronización offline, en el mismo hito.
 - **El código se organiza por módulo,** con capas dentro. Los módulos son los del [mapa de módulos](mapa-de-modulos.md).
+- **Módulos autocontenidos e independientes.** Lo que puede ser agnóstico lo es (va a `shared/` o al `Kernel`) y lo que debe ir junto, va junto. El criterio es el alcance, el mantenimiento y la legibilidad: así cada módulo se prueba por separado y se reutiliza mejor. No se adopta Atomic Design: los componentes reutilizables de la web viven en `web/src/components/` y el resto, en su módulo.
 
 ## 2. Árbol del repositorio
 
@@ -68,8 +69,8 @@ La regla de dependencias es: `Http → Application → Domain ← Infrastructure
 ## 4. Convenciones de nombres
 
 - **URLs en español, código en inglés.** Las rutas de la API usan el vocabulario del negocio en español (`/api/v1/clientes`). Todo el código está en inglés: identificadores, comentarios y mensajes de log. Sufijos técnicos habituales: `ClientRepository`, `CreateClientService`, `AuthMiddleware`. *(Confirmado.)*
-- **Por confirmar:** la base de datos (tablas y columnas) y los campos JSON también en inglés, porque son código; los textos que ve el usuario viven en la web, en español, y la API devuelve códigos de error en inglés; la documentación, los commits y los PR siguen en español.
-- **Glosario:** un archivo `docs/arquitectura/glosario.md` (español → inglés, por ejemplo `paquete` → `bundle`) mantendrá consistentes los nombres entre sesiones. Se crea al confirmar el punto anterior.
+- **También en inglés:** tablas y columnas de la base de datos y campos JSON, porque son código. Los textos que ve el usuario viven en la web, en español, y la API devuelve códigos de error en inglés. La documentación, los commits y los PR están en español. *(Confirmado.)*
+- **Glosario:** `docs/arquitectura/glosario.md` (español → inglés, por ejemplo `paquete` → `bundle`) mantiene consistentes los nombres entre sesiones; todo término nuevo se agrega ahí en el mismo cambio que lo introduce.
 - Base de datos: `snake_case`, tablas en plural. Migraciones con nombre en inglés en imperativo (`CreateProfilesTable`).
 - API versionada en la ruta: `/api/v1/…`. El contrato fija el versionado; los cambios incompatibles van a una versión nueva (`/api/v2`) que convive con la anterior mientras los clientes migran.
 - PHP: PSR-12 con líneas de hasta 120 caracteres; namespace raíz `Soltec\` mapeado a `api/src/` (PSR-4).
@@ -123,12 +124,10 @@ El CI ejecuta un trabajo por paquete y el despliegue depende de que todos pasen.
 
 **Confirmadas**
 1. Un solo origen: web en `/`, API en `/api/v1` (versionada para migrar poco a poco).
-2. Organización por módulo, con módulos autocontenidos y capas dentro.
-3. URLs en español; código, comentarios e identificadores en inglés.
+2. Organización por módulo, con módulos autocontenidos y capas dentro; sin Atomic Design.
+3. URLs en español; código, comentarios, base de datos y campos JSON en inglés; textos de usuario en la web, en español.
+4. `npm workspaces` para que `web/` use `shared/` sin publicarlo.
+5. Código generado desde el contrato sin versionar: si el contrato y lo generado difieren, el CI lo detecta.
 
-**Pendientes**
-1. `npm workspaces` para que `web/` use `shared/` sin publicarlo (explicado; falta confirmar).
-2. Código generado desde el contrato sin versionar (explicado; falta confirmar).
-3. Detalles del idioma: base de datos y campos JSON en inglés, textos de usuario en la web, documentación y commits en español (sección 4).
-4. Si "atómico" incluye Atomic Design para los componentes de la web.
-5. El servidor calcula los precios y `shared/` solo los previsualiza, con los mismos vectores de prueba en `contract/test-vectors/`: ver [ADR-0014](../adr/0014-el-servidor-calcula-los-precios.md).
+**Pendiente**
+- Confirmar que el servidor calcula los precios y `shared/` solo los previsualiza, con los mismos vectores de prueba en `contract/test-vectors/`: ver [ADR-0014](../adr/0014-el-servidor-calcula-los-precios.md).
