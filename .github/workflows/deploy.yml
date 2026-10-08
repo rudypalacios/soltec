@@ -91,6 +91,14 @@ jobs:
             phpcs.xml
             phpstan.neon.dist
             phpunit.xml
+            # Documentation, tests and examples inside vendor/ are never loaded at runtime. Skipping them
+            # cuts thousands of files, and the shared host drops long FTP sessions ("Server sent FIN packet").
+            vendor/**/docs/**
+            vendor/**/doc/**
+            vendor/**/tests/**
+            vendor/**/Tests/**
+            vendor/**/examples/**
+            vendor/**/*.md
 
       - name: Upload the API front controller
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

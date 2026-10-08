@@ -116,5 +116,6 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) se verif
 | Migraciones: `401 unauthorized` | El secret `DEPLOY_TOKEN` no coincide con el del `.env` |
 | Migraciones: `500 migration_failed` | El mensaje dice la causa; casi siempre credenciales o un privilegio que falta (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`) |
 | Migraciones: responde 200 pero no es JSON | Falta el `.htaccess` o el API no llegó a `public/api/` |
+| Subida de la API: `Server sent FIN packet unexpectedly` | El hosting cortó una sesión FTP larga. El primer despliegue sube miles de archivos de `vendor/`; relanza con *Re-run failed jobs* (el workflow ya omite la documentación y las pruebas de `vendor/` para acortarlo) |
 | Smoke: `degraded` | La API responde pero la base de datos no: revisa `DB_*` en el `.env` |
 | Smoke: 404 en `/api/v1/health` | Falta `.htaccess` o `mod_rewrite` |
