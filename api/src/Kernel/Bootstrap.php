@@ -24,7 +24,7 @@ final class Bootstrap
 {
     /**
      * @param Config|null $config settings to use; null reads the .env file and the environment
-     * @return App<ContainerInterface>
+     * @return App<ContainerInterface|null>
      */
     public static function createApp(string $appRoot, ?Config $config = null): App
     {
@@ -61,7 +61,7 @@ final class Bootstrap
         // Added last so it is the outermost layer and also covers the error responses.
         $app->add(SecurityHeadersMiddleware::class);
 
-        /** @var callable(App<ContainerInterface>): void $routes */
+        /** @var callable(App<ContainerInterface|null>): void $routes */
         $routes = require $appRoot . '/config/routes.php';
         $routes($app);
 

@@ -25,7 +25,7 @@ abstract class IntegrationTestCase extends TestCase
 
     protected Config $config;
     protected Connection $connection;
-    /** @var App<ContainerInterface> */
+    /** @var App<ContainerInterface|null> */
     protected App $app;
 
     protected function setUp(): void
