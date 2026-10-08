@@ -20,8 +20,8 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - **Backend:** PHP + SLIM, API RESTful, API-first. Prohibido renderizar vistas desde PHP.
 - **Frontend web:** React + TypeScript, desktop-first.
 - **Móvil:** PWA (Android e iOS) con offline y sincronización posterior. Ver 1.1 para dejar la puerta abierta a Expo.
-- **Base de datos:** MySQL (provisional, P15; confírmalo en el Hito 0 antes del ERD).
-- **Migraciones:** esquema versionado con Phinx (o equivalente). Todo cambio de esquema es una migración; nunca se edita la base a mano.
+- **Base de datos:** MySQL 5.7, compatible con 8.0 (decidido, ADR-0001).
+- **Migraciones:** esquema versionado con Phinx (ADR-0003). Todo cambio de esquema es una migración; nunca se edita la base a mano.
 - **Despliegue: una instancia por empresa.** No hay multiempresa ni multi-tenant: **no uses `empresa_id` en las tablas**. Cada empresa es una instancia independiente (subdominio y BD propios) con el mismo código. Consecuencias que debes respetar:
   - Datos de la empresa (nombre, datos fiscales, logo, moneda, correlativos) en una **tabla de configuración**, nunca hardcodeados.
   - Cero valores específicos de un cliente en el código.
@@ -50,55 +50,69 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - Decisiones relevantes de arquitectura se registran como ADR breves en `docs/adr/`, con alternativas y consecuencias.
 - Commits y PR explican el *por qué*. Los cambios que afectan cómo se corre o estructura el proyecto actualizan el README en el mismo cambio.
 
-## 2. Hito 0 — Planeación (antes de programar funcionalidades)
+## 2. Hito 0 — Planeación y scaffolding (antes de programar funcionalidades)
 
-Genera estos 5 entregables, **uno a la vez, deteniéndote para revisión después de cada uno**. El ERD es el que más debe revisarse con calma.
+El Hito 0 tiene dos partes: **0A Planeación** (documentos) y **0B Scaffolding** (un esqueleto que camina, sin funcionalidades). Genera estos entregables **en este orden, uno a la vez, deteniéndote para revisión después de cada uno**. El ERD es el que más debe revisarse con calma.
 
-1. **Mapa de módulos y matriz de dependencias** (qué módulo requiere a cuál). Úsala para validar el orden de los hitos y propón ajustes si algo está mal ordenado.
-2. **ERD:** entidades, cardinalidades, PK/FK, índices y campos de sync. Cubre al menos: usuarios y roles, parámetros PM, contactos, clientes (prospecto y venta), proveedores, productos y combos, bodegas, cotizaciones, plantillas de tipo de proyecto (etapas/actividades), proyectos, tareas, solicitudes de compra y OC, facturación, CXC/CXP.
-3. **Estructura del repositorio** (`api/`, `web/`, `mobile/`, `shared/`, `docs/`, migraciones).
-4. **Especificación OpenAPI** de los hitos 1 a 3.
-5. **Esqueleto de autenticación y roles:** roles y permisos **como datos configurables** (no hardcodeados), permisos granulares por módulo, JWT con refresh.
+1. **Mapa de módulos y matriz de dependencias** (0A, hecho): `docs/arquitectura/mapa-de-modulos.md`.
+2. **Estructura del repositorio** (0A): `api/`, `shared/`, `web/`, `docs/`, migraciones. `mobile/` se crea en el Hito 8.
+3. **Scaffolding** (0B): Slim y React (Vite + MUI) mínimos, CI (tests, phpcs, phpstan, eslint, tsc), despliegue por FTPS a `test` con el endpoint de migraciones, una migración de prueba y un endpoint de salud. Verifica en el servidor real lo que el diseño asume: columna generada con índice único en MySQL 5.7, soporte WebP en GD y envío de correo (buzón de cPanel por SMTP y entrega a Gmail y Outlook). Criterio de terminado: un push despliega a `test` el endpoint de salud y una pantalla vacía de React, con CI verde y la migración aplicada. Antes de empezar, indica al usuario exactamente qué configurar (secretos de GitHub, bases de datos y `.env`).
+4. **ERD:** entidades, cardinalidades, PK/FK, índices y campos de sync. Cubre al menos: usuarios (internos y externos) y perfiles, parámetros PM, contactos, clientes (prospecto y venta), proveedores, productos y paquetes, bodegas, cotizaciones, plantillas de tipo de proyecto (etapas/actividades), proyectos, tareas, solicitudes de compra y OC, facturación, CXC/CXP. Alcance propuesto, pendiente de confirmar: detallado para los hitos 1 a 3 y esbozado para el resto.
+5. **Esqueleto de autenticación y roles:** diseño según ADR-0012 (roles y permisos como datos, alcance de datos, JWT con refresh, usuarios externos).
+6. **Especificación OpenAPI** de los hitos 1 a 3.
 
-No avances a código de funcionalidades hasta que estos 5 existan y estén revisados.
+No avances a código de funcionalidades hasta que estos entregables existan y estén revisados.
 
 ## 3. Hitos de desarrollo
+
+El orden prioriza la **paridad con el sistema legacy** (hitos 1 a 3): se cubre primero lo que el legacy ya hace, para apagarlo pronto, y después se construye el resto. El detalle de módulos, dependencias y validación del orden está en `docs/arquitectura/mapa-de-modulos.md`.
 
 Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fuera de cada uno.
 
 **Hito 1 — Fundaciones**
-- Usuarios, roles, permisos, jerarquías
-- Auditoría (usuario, acción, timestamp), desactivación lógica
-- Parámetros PM1 a PM13 con CRUD y precarga de PM1, PM5 y PM9
-- Configuración de la empresa (tabla de configuración)
-- Notificaciones configurables por rol y área; tareas básicas (flujo Asignada → Cerrada)
-- Dashboard base con widgets por rol
+- Usuarios, perfiles (roles) y permisos por módulo; departamentos y jerarquía (jefe directo); alcance de datos (propio, equipo, todo)
+- Auditoría (usuario, acción, fecha, valores antes/después), desactivación lógica
+- Configuración general: datos de la empresa, IVA, ISR, días de costo desactualizado, validez de cotización, correlativos, SMTP
+- Niveles de margen (MC) y función de precio (ADR-0011)
+- Dashboard base: contenedor y registro de widgets por perfil
 
-**Hito 2 — Núcleo comercial**
-- Contactos; clientes (prospecto y venta, conversión automática, validación de NIT duplicado); proveedores (cascada de desactivación a productos)
-- Productos, listado de precios, variables globales, combos con actualización automática
+**Hito 2 — Catálogo y clientes**
+- Parámetros de catálogo (CRUD genérico: tipo de contacto, estado de cliente, segmentos, régimen fiscal, formas de pago), con precarga de PM1 y PM5
+- Marcas, áreas (precarga de PM9) y grupos (cada grupo pertenece a un área)
+- Contactos; proveedores (cascada de desactivación a productos)
+- Productos simples y paquetes (precio del paquete = suma de sus componentes, calculado); alerta de costo desactualizado
+- Clientes (prospecto y venta, NIT sin duplicados, vendedor asignado; conversión manual hasta que exista el Cotizador)
 
-**Hito 3 — Cotizador**
-- Nueva oferta y plantillas ("ofertas tipo"), estados configurables, PDF descargable
-- Precio histórico conservado; alerta de "sin existencia"
-- Conversión prospecto → cliente al aceptar la primera cotización
+**Hito 3 — Tareas, tickets y cierre del legacy**
+- Motor de estados (estados, transiciones y banderas semánticas; un estado nuevo aplica solo a registros futuros)
+- Hilo de actividad (comentarios, cambios de estado, menciones; bandera interno/externo)
+- Notificaciones configurables por perfil y departamento (en la aplicación y por email) y endpoint de actualizaciones para el polling
+- Archivos y fotos (almacenamiento local, WebP normal y miniatura, metadatos en JSON)
+- Tareas (asignada, estado, vencimiento, hilo) y tickets mínimos (cliente, asignado, estado, descripción, hilo)
+- Importación de datos del legacy, prueba paralela y apagado del legacy
 
-**Hito 4 — Proyectos, compras e inventarios**
+**Hito 4 — Cotizador**
+- Nueva oferta y plantillas ("ofertas tipo"), estados configurables, PDF descargable, versiones
+- Validez configurable (15 días); precio y composición congelados en la cotización; una cotización nueva toma los precios vigentes
+- Alerta "validar disponibilidad" por bandera del producto (hasta que exista Inventarios)
+- Conversión prospecto → cliente al aceptar la primera cotización; aviso a cotizaciones vigentes al desactivar un proveedor
+
+**Hito 5 — Proyectos, compras e inventarios**
 - Plantillas de tipo de proyecto (etapas/actividades ponderadas) y avance ponderado
 - Conversión oferta → proyecto con **motor de reglas de aprobación extensible** (diseñado como motor, no como 4 `if`)
-- Solicitud de compra, comparación bodega/ofertado/solicitado, OC en PDF por proveedor
-- Bodegas y movimientos de inventario
+- Solicitud de compra (paquetes desglosados), comparación bodega/ofertado/solicitado, OC en PDF por proveedor
+- Bodegas y movimientos de inventario; la alerta de existencia pasa a leer el saldo real
 
-**Hito 5 — Facturación y finanzas**
-- Facturación flexible por etapa (con FEL si P1 lo confirma), CXC, CXP, costo real por proyecto
+**Hito 6 — Facturación y finanzas**
+- Facturación flexible por etapa (con FEL si P1 lo confirma), CXC, CXP, costo real y rentabilidad por proyecto
 
-**Hito 6 — Administración, soporte y reportes**
-- Bancos y conciliación, RRHH, comisiones (motor configurable), reportes, helpdesk, mantenimiento, sala de reuniones
+**Hito 7 — Administración, soporte y reportes**
+- Bancos y conciliación, RRHH, comisiones (motor configurable), reportes, helpdesk extendido (equipos, contratos, SLA, prioridad), mantenimiento, sala de reuniones
 
-**Hito 7 — Móvil (PWA)**
+**Hito 8 — Móvil (PWA)**
 - Dashboard móvil, offline con sync, geolocalización, chat de proyecto
 
-**Hito 8 — Portal de cliente externo**
+**Hito 9 — Portal de cliente externo**
 - Vista de lo propio, facturación, progreso, comunicación tipo JIRA, aislamiento estricto por cliente
 
 ## 4. Invariantes (no negociables en ningún hito)
@@ -110,6 +124,7 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 - Notificaciones configurables por rol y área, no hardcodeadas.
 - Numeración de proyectos, cotizaciones y OC autogenerada, única y a prueba de concurrencia.
 - Los estados nuevos aplican solo a registros futuros.
+- El precio de catálogo no se guarda: se calcula desde el costo, el nivel de margen, el IVA y el ISR (ADR-0011).
 
 ## 5. Flujo de trabajo sugerido en la sesión
 
@@ -123,14 +138,39 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 
 | Hito | Preguntas a confirmar antes de empezar |
 |------|----------------------------------------|
-| 0 | P15 (motor de BD) |
+| 0 | P15 resuelta: MySQL 5.7 (ADR-0001) |
 | 1 | P5 (roles; no bloquea el esquema) |
 | 2 | P3 (estados de cliente) antes de cerrarlo |
-| 3 | P1 (moneda) |
-| 4 | P2 (proyectos consolidados), P4 (momento de la OC) |
-| 5 | P1 (FEL), P8 (rentabilidad) |
-| 6 | P9 (CM/UOP/UAI/UN), P10 (comisiones), P11 (reportes), P13 (cliente de convenio) |
-| 7 | P6 (geolocalización y dispositivos), P12 (Agenda) |
-| Antes de producción | P7 (migración de datos), P14 (normativa de datos) |
+| 3 | P7 (migración de datos), P20 (contraseñas del legacy), P23 (esquema y datos del legacy) |
+| 4 | P17 (descuento de paquete), P18 (paquetes anidados), P19 (renovación de cotización vencida) |
+| 5 | P2 (proyectos consolidados), P4 (momento de la OC) |
+| 6 | P1 (FEL; la moneda ya es GTQ), P8 (rentabilidad) |
+| 7 | P9 (CM/UOP/UAI/UN), P10 (comisiones), P11 (reportes), P13 (cliente de convenio), P21 (campos extendidos del ticket) |
+| 8 | P6 (geolocalización y dispositivos), P12 (Agenda), P22 (chat libre) |
+| Antes de producción | P14 (normativa de datos), P24 (dominio remitente del correo) |
 
-El detalle, el supuesto provisional de cada una y el Anexo A de propuestas están en el documento de requerimientos.
+El detalle de P1 a P16 y el Anexo A de propuestas están en el documento de requerimientos; P17 a P23 están en `docs/arquitectura/mapa-de-modulos.md`.
+
+## 7. Entorno de ejecución y reglas de sesión
+
+> Cada sesión nueva arranca sin memoria de las anteriores. Lo que importa vive en el repo: este archivo y `docs/` (requerimientos, `docs/adr/`, `docs/arquitectura/`). Léelos al empezar.
+
+- **Dónde corres.** Claude Code en la web, dentro de un *environment* configurado por el usuario: un contenedor en la nube, efímero, con sus repositorios, variables y secretos, política de red y script de setup. Lo que no se commitea y se sube a GitHub se pierde cuando termina la sesión.
+- **Si algo no se puede alcanzar** (un host bloqueado por la red del environment, un secreto o variable que falta, una herramienta que no está instalada, un permiso de GitHub), normalmente se puede configurar. No lo rodees en silencio: avisa al usuario qué falta y dale los pasos concretos. Los pasos vigentes están en la documentación del environment (herramienta `read_documentation`).
+- **Ramas.** Toda rama sale de `main` actualizada, salvo que el usuario indique otra base. No se trabaja directo en `main`. **Nunca se hace push a una rama cuyo PR ya fue fusionado:** se reinicia desde `main` (`git fetch origin main && git checkout -B <rama> origin/main`, conservando el nombre de rama que designe la sesión) y el trabajo nuevo va en un PR nuevo.
+- **Squash and merge.** Los PR se fusionan siempre con *squash and merge*: cada rama entra a `main` como un solo commit, y los commits de la rama no quedan como ancestros de `main`. Por eso:
+  - Antes de empezar a trabajar y antes de cada push: `git fetch origin main && git rebase origin/main`. Si la rama ya estaba subida, el push es `git push --force-with-lease`. No se hace merge de `main` a la rama: el historial se mantiene lineal.
+  - No se apilan ramas sobre otra rama sin fusionar. Si un trabajo depende de un PR abierto, se espera su merge; si hay que adelantarse, al fusionarse el PR base se corta con `git rebase --onto origin/main <último commit del PR base>`.
+  - Después de que una rama se fusiona no se reutiliza su historial: se reinicia desde `main` (regla anterior).
+  - El título del PR pasa a ser el mensaje del commit en `main`, junto con su descripción o la lista de commits según la configuración del repo: escríbelos como mensaje final (el porqué) y mantenlos actualizados si el PR cambia.
+- **Pull requests.** Cuando consideres terminado el trabajo y quieras que el usuario lo revise, crea el PR de inmediato contra `main`, sin esperar a que lo pida; el cuerpo explica el porqué del cambio. Aplica también a cada entregable del Hito 0: el PR se crea en el punto en que te detienes para revisión.
+
+## 8. Registro de decisiones técnicas de Claude
+
+Las decisiones técnicas menores que Claude toma sin consultar (nomenclatura, estructura interna, herramientas de apoyo) se anotan aquí con fecha y motivo. Las decisiones grandes o difíciles de revertir se consultan al usuario y se registran como ADR en `docs/adr/`.
+
+| Fecha | Decisión | Motivo |
+|-------|----------|--------|
+| 2026-10-08 | Las preguntas nuevas continúan la numeración del documento de requerimientos (P17 en adelante) y viven en `docs/arquitectura/mapa-de-modulos.md`. | Evita editar el documento de requerimientos, que es la fuente funcional. |
+| 2026-10-08 | El scaffolding (0B) va después de la estructura del repositorio y antes del ERD. | Valida el hosting real (MySQL 5.7, FTPS, GD, correo) antes de diseñar el modelo de datos sobre él. |
+| 2026-10-08 | Las secciones 2 a 5 del mapa de módulos se generan con `docs/arquitectura/herramientas/generar_mapa.py` (`python3 -I generar_mapa.py salida.md`). | Tabla, matriz y diagrama salen de una sola fuente y el script valida que ninguna dependencia dura apunte a un hito posterior. |
