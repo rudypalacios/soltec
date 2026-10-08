@@ -1,32 +1,27 @@
 name: Deploy
 
-# Manual on purpose: choose the branch in "Run workflow" and the target environment. Automatic deployments
-# (on push) are added once the branch-to-environment rule is decided (ADR-0004).
+# Branch-to-environment rule (ADR-0004): a push to any branch deploys to "test"; a push to main (the squash
+# merge of a PR) deploys to production ("soltec"). "Run workflow" applies the same rule to the chosen branch,
+# so running it on main redeploys production.
 on:
+  push:
+    branches: ['**']
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Target environment
-        type: choice
-        options:
-          - test
-          - soltec
-        default: test
-
-# Never run two deployments to the same environment at the same time.
-concurrency:
-  group: deploy-${{ inputs.environment }}
-  cancel-in-progress: false
 
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
 
   deploy:
-    name: Deploy to ${{ inputs.environment }}
+    name: Deploy to ${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
     needs: tests
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
+    # One deployment per environment at a time. A waiting run is replaced by the newer one; a run already
+    # uploading is never cancelled, because FTP uploads must not be interrupted halfway.
+    concurrency:
+      group: deploy-${{ github.ref == 'refs/heads/main' && 'soltec' || 'test' }}
+      cancel-in-progress: false
     env:
       APP_URL: ${{ vars.APP_URL }}
       DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
