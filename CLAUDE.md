@@ -166,6 +166,15 @@ El detalle de P1 a P16 y el Anexo A de propuestas están en el documento de requ
   - No se apilan ramas sobre otra rama sin fusionar. Si un trabajo depende de un PR abierto, se espera su merge; si hay que adelantarse, al fusionarse el PR base se corta con `git rebase --onto origin/main <último commit del PR base>`.
   - El título del PR pasa a ser el mensaje del commit en `main`, junto con su descripción o la lista de commits según la configuración del repo: escríbelos como mensaje final (el porqué) y mantenlos actualizados si el PR cambia.
 - **Pull requests.** Cuando consideres terminado el trabajo y quieras que el usuario lo revise, crea el PR de inmediato contra `main`, sin esperar a que lo pida; el cuerpo explica el porqué del cambio. Aplica también a cada entregable del Hito 0: el PR se crea en el punto en que te detienes para revisión.
+- **Cierre de sesión.** Una sesión se abre para un contexto (por ejemplo, la autenticación), no para un PR. Un PR fusionado no es motivo de cierre: un mismo tema puede generar varios PR y correcciones. El corte llega cuando **el contexto para el que se abrió la sesión quedó completo** (un entregable, un hito o una parte completa) y **lo que sigue ya no necesita la conversación**, porque todo lo necesario está en el repo. Entonces, y solo entonces, sugiere al usuario cerrar la sesión y abrir una nueva. Si para decidir el siguiente paso todavía hay que apoyarse en lo hablado en la sesión, no se cambia de sesión.
+
+  La sugerencia es corta e incluye:
+  1. **Qué quedó hecho:** PR abiertos o fusionados, con su enlace.
+  2. **Qué falta del usuario:** fusiones y respuestas pendientes.
+  3. **Siguiente paso:** el entregable o el hito que sigue.
+  4. **Prompt listo para pegar** en la sesión nueva: qué archivos leer (`CLAUDE.md`, `TODO.md` y los documentos del tema) y la tarea concreta.
+
+  Antes de sugerirlo, deja `TODO.md` al día y confirma que nada importante vive solo en la conversación. No se sugiere con trabajo sin subir, con un PR esperando un arreglo del CI ni con una decisión en discusión. La decisión de cerrar es del usuario.
 
 ## 8. Registro de decisiones técnicas de Claude
 
