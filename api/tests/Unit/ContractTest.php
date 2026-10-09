@@ -16,7 +16,37 @@ final class ContractTest extends TestCase
 
     public function testEveryVersionedRouteIsDescribedInTheContractAndViceVersa(): void
     {
-        self::assertEqualsCanonicalizing($this->contractOperations(), $this->versionedRoutes());
+        self::assertEqualsCanonicalizing($this->contractOperations(planned: false), $this->versionedRoutes());
+    }
+
+    public function testNoRouteIsHiddenBehindAPlannedFlag(): void
+    {
+        $implementedAndPlanned = array_intersect($this->contractOperations(planned: true), $this->versionedRoutes());
+
+        self::assertSame(
+            [],
+            array_values($implementedAndPlanned),
+            'Remove x-planned from operations that have a route.',
+        );
+    }
+
+    public function testEveryOperationDeclaresItsAccessRule(): void
+    {
+        $missing = [];
+        foreach ($this->contractPaths() as $path => $item) {
+            foreach ($item as $method => $operation) {
+                if (!in_array($method, self::HTTP_METHODS, true)) {
+                    continue;
+                }
+                self::assertIsArray($operation);
+                $rule = $operation['x-permission'] ?? null;
+                if (!is_string($rule) || !preg_match('/^(public|authenticated|[a-z_]+\.[a-z_]+)$/', $rule)) {
+                    $missing[] = sprintf('%s %s', strtoupper((string) $method), $path);
+                }
+            }
+        }
+
+        self::assertSame([], $missing, 'Operations without a valid x-permission.');
     }
 
     /** @return list<string> operations such as "GET /v1/health" */
@@ -37,24 +67,42 @@ final class ContractTest extends TestCase
         return $operations;
     }
 
-    /** @return list<string> */
-    private function contractOperations(): array
+    /**
+     * @param bool $planned true lists only operations flagged x-planned (specified, no route yet); false lists the rest
+     * @return list<string>
+     */
+    private function contractOperations(bool $planned): array
     {
-        $contract = Yaml::parseFile(dirname(__DIR__, 3) . '/contract/openapi.yaml');
-        self::assertIsArray($contract);
-        self::assertIsArray($contract['paths']);
-
         $operations = [];
-        foreach ($contract['paths'] as $path => $item) {
-            self::assertIsString($path);
-            self::assertIsArray($item);
-            foreach (array_keys($item) as $method) {
-                if (in_array($method, self::HTTP_METHODS, true)) {
+        foreach ($this->contractPaths() as $path => $item) {
+            foreach ($item as $method => $operation) {
+                if (!in_array($method, self::HTTP_METHODS, true)) {
+                    continue;
+                }
+                self::assertIsArray($operation);
+                if (($operation['x-planned'] ?? false) === $planned) {
                     $operations[] = sprintf('%s %s', strtoupper((string) $method), $path);
                 }
             }
         }
 
         return $operations;
+    }
+
+    /** @return array<string, array<mixed>> */
+    private function contractPaths(): array
+    {
+        $contract = Yaml::parseFile(dirname(__DIR__, 3) . '/contract/openapi.yaml');
+        self::assertIsArray($contract);
+        self::assertIsArray($contract['paths']);
+
+        $paths = [];
+        foreach ($contract['paths'] as $path => $item) {
+            self::assertIsString($path);
+            self::assertIsArray($item);
+            $paths[$path] = $item;
+        }
+
+        return $paths;
     }
 }

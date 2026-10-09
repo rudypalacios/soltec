@@ -22,10 +22,17 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
 - [x] 5. Esqueleto de autenticación y roles (`docs/arquitectura/autenticacion-y-roles.md`)
-- [ ] 6. Especificación OpenAPI de los hitos 1 a 3
+- [x] 6. Especificación OpenAPI: **cambio de estrategia** (2026-10-09). No se especifica un hito completo por adelantado: el contrato crece por rebanadas verticales (ver abajo). Quedó la rebanada 1.1 en `contract/openapi.yaml` (19 operaciones con `x-planned`; el flag se quita en el PR que agrega la ruta)
 - [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
 
 ## Hito 1 — Fundaciones
+**Se construye por rebanadas verticales:** cada una incluye migraciones, API con tests, contrato OpenAPI de sus rutas y lo mínimo en la web para probarla en `staging`. No se pasa a la siguiente sin la anterior desplegada y probada.
+- [ ] **1.1 Acceso:** primer administrador por consola; login, refresh y logout; cambio de contraseña; `/me`; usuarios internos; perfiles, permisos y alcance `own`/`all`; auditoría de esos cambios. Web (desktop-first, usable y bien presentada en móvil; verificada a 390 y 1280 px): login, cambio de contraseña, lista y alta de usuarios y de perfiles
+- [ ] 1.2 Organización: departamentos, jefe directo y alcance `team`
+- [ ] 1.3 Configuración general y correlativos
+- [ ] 1.4 Niveles de margen y función de precio
+- [ ] 1.5 Recuperar contraseña por correo, dispositivos, desbloqueo, auditoría consultable y dashboard base
+Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
 - [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
 - [ ] Modelo de usuarios externos (tipo y cliente asignado); las pantallas llegan en el Hito 9

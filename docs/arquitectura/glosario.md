@@ -46,7 +46,9 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 | precio sin IVA / con IVA | `price_without_vat` / `price_with_vat` | |
 | validez de cotización (días) | `quote_validity_days` | |
 | días para marcar un costo desactualizado | `stale_cost_days` | |
-| correlativo | `Sequence` · `sequences` | |
+| correlativo | `Sequence` · `sequences` (recurso `sequences`) | |
+| marcador de operación especificada y aún sin ruta | `x-planned` (contrato) | |
+| permiso de una operación | `x-permission` (contrato) | |
 
 ## Catálogo
 
