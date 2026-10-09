@@ -127,8 +127,9 @@ PK compuesta de las tres columnas. Sin campos comunes.
 | `code` | `VARCHAR(30)` | no | Automático (`supplier`). Único entre activos |
 | `trade_name` | `VARCHAR(190)` | no | Nombre comercial |
 | `legal_name` | `VARCHAR(190)` | sí | Razón social |
-| `tax_id` | `VARCHAR(30)` | sí | NIT normalizado y validado ([ver validación](#validación-del-nit)) |
-| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`; índice único: un NIT identifica a un solo proveedor activo |
+| `tax_id_type` | `ENUM('nit','cui','none')` | no | Con qué se identifica. `none`: sin identificación (economía informal) |
+| `tax_id` | `VARCHAR(30)` | sí | Número normalizado y validado según el tipo ([ver validación](#validación-de-la-identificación)). `NULL` si el tipo es `none` |
+| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`. Índice único (`tax_id_type`, `active_tax_id`): la misma identificación no se repite entre proveedores activos |
 | `tax_regime_id` | `BINARY(16)` | sí | FK `tax_regimes` |
 | `payment_method_id` | `BINARY(16)` | sí | FK `payment_methods` |
 | `credit_days` | `SMALLINT UNSIGNED` | sí | Términos de crédito |
@@ -218,8 +219,9 @@ Existe solo para clientes de venta (relación 1 a 1 con `clients`).
 |---|---|---|---|
 | `client_id` | `BINARY(16)` | no | FK `clients`. Único |
 | `legal_name` | `VARCHAR(190)` | no | Nombre fiscal |
-| `tax_id` | `VARCHAR(30)` | no | NIT normalizado y validado ([ver validación](#validación-del-nit)) |
-| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`; índice único: **el NIT no se repite entre clientes activos** |
+| `tax_id_type` | `ENUM('nit','cui','none')` | no | Con qué se identifica; el UI lo pide en una lista. `none`: sin identificación; sus facturas, cuando existan, irán a consumidor final |
+| `tax_id` | `VARCHAR(30)` | sí | Número normalizado y validado según el tipo ([ver validación](#validación-de-la-identificación)). `NULL` si el tipo es `none` |
+| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`. Índice único (`tax_id_type`, `active_tax_id`): **la misma identificación no se repite entre clientes activos** |
 | `tax_regime_id` | `BINARY(16)` | sí | FK `tax_regimes` |
 | `payment_method_id` | `BINARY(16)` | sí | FK `payment_methods` |
 | `credit_days` | `SMALLINT UNSIGNED` | sí | |
@@ -232,9 +234,11 @@ Misma forma que `supplier_addresses` (`client_id`, `label`, `line`, `zone`, `cou
 
 ---
 
-## Validación del NIT
+## Validación de la identificación
 
-Un NIT identifica a una sola persona o entidad, así que no se repite. Se **normaliza** (sin guiones ni espacios, mayúsculas) y se **valida con el dígito verificador** de la SAT: módulo 11 ponderado. El último carácter es el verificador y puede ser un dígito o la letra `K`.
+Cada cliente y proveedor se identifica con un **NIT**, con un **CUI** (empresas o personas nuevas pueden estar registradas solo con el CUI) o **sin identificación** (`none`, economía informal): el UI lo pide en una lista y el número se valida según el tipo. Una identificación corresponde a una sola persona o entidad, así que no se repite entre activos. Siempre se **normaliza** (sin guiones ni espacios, mayúsculas) antes de guardar y comparar.
+
+**NIT:** se valida con el dígito verificador de la SAT, módulo 11 ponderado. El último carácter es el verificador y puede ser un dígito o la letra `K`.
 
 1. Con los dígitos sin el verificador, de derecha a izquierda, se multiplican por 2, 3, 4, … y se suman.
 2. `verificador = (11 − suma mod 11) mod 11`; si da `10`, es `K`.
@@ -244,14 +248,18 @@ Un NIT identifica a una sola persona o entidad, así que no se repite. Se **norm
 | `576937-K` | válido (suma 166, 166 mod 11 = 1, 11 − 1 = 10 → K) |
 | `8977112-0` | inválido (le corresponde 5) |
 
-El servidor valida (PHP) y `shared/` repite la regla solo para dar aviso en pantalla; ambos se prueban con los mismos vectores, como en el ADR-0014. La fórmula reproduce los dos ejemplos publicados por python-stdnum; **falta confirmarla contra la consulta oficial de la SAT** con NIT reales de la empresa.
+**CUI:** 13 dígitos. Su regla de validación (verificador y códigos de departamento y municipio) se define al implementarlo, con ejemplos reales.
+
+**Sin identificación:** el tipo `none` no lleva número. Un cliente `none` es un cliente real, registrado con el resto de sus datos, al que se factura como consumidor final; no hay un cliente «consumidor final» genérico.
+
+El servidor valida (PHP) y `shared/` repite la regla solo para dar aviso en pantalla; ambos se prueban con los mismos vectores, como en el ADR-0014. La fórmula del NIT reproduce los dos ejemplos publicados por python-stdnum; **falta confirmarla contra la consulta oficial de la SAT** con NIT reales de la empresa.
 
 ## Reglas que el esquema no puede garantizar (van en el código y en tests)
 - Un cliente `customer` tiene siempre su `client_billing_profile`; uno `prospect`, no.
 - El grupo de un producto, y el de un paquete, deben estar activos; el área de un grupo también.
 - Cascada de desactivación de proveedor a productos, y notificación si el producto está en una oferta vigente.
 - Una dirección principal por cliente y por proveedor.
-- Normalizar y validar el NIT antes de guardar y comparar ([validación](#validación-del-nit)).
+- Normalizar y validar la identificación antes de guardar y comparar ([validación](#validación-de-la-identificación)); `tax_id` es obligatorio si el tipo no es `none` y nulo si lo es.
 - Alcance `own` de clientes por `seller_id`; los usuarios externos solo ven su `client_id`.
 
 ## Preguntas abiertas de este hito
@@ -260,6 +268,7 @@ El servidor valida (PHP) y `shared/` repite la regla solo para dar aviso en pant
 |---|---|---|
 | **P3** Estados reales del cliente | `client_statuses` sin valores fijos | Solo datos |
 | **P17 / P18** Descuento y anidación de paquetes | Sin descuento propio, sin anidados | Migración en `package_items` |
-| **CUI como NIT**: desde 2023 los NIT de personas se derivan del CUI y la SAT acepta el CUI de 13 dígitos en las facturas | `tax_id` solo acepta NIT con dígito verificador | Se amplía la validación (con FEL, P1, Hito 6) |
-| **Consumidor final («CF»)** | No es un cliente: la factura a «CF» no necesita un registro de cliente | Se define con la facturación (Hito 6) |
+| **Regla del CUI** | Se define al implementarlo, con ejemplos reales | Ninguna en el modelo |
+| **Misma persona con NIT y con CUI**: desde 2023 el NIT de una persona se deriva de su CUI | No se detecta automáticamente (son tipos distintos); se avisa si hay otro registro con el mismo nombre | Una regla de derivación NIT ↔ CUI |
+| **Facturar a un cliente sin identificación** | Se factura como consumidor final | Se define con la facturación (Hito 6) |
 | Precisión de `cost` | `DECIMAL(14,4)` | Migración |
