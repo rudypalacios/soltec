@@ -1,13 +1,13 @@
 # ERD — convenciones y mapa
 
-**Entregable 4 del Hito 0** · Estado: borrador para revisión (parte 1 de 4) · Fecha: 2026-10-09
+**Entregable 4 del Hito 0** · Estado: partes 1 y 2 de 4 en revisión · Fecha: 2026-10-09
 
 El modelo de datos se entrega en cuatro PR, para revisarlo con calma:
 
 | Parte | Contenido | Nivel |
 |---|---|---|
 | 1 | Convenciones y **Hito 1**: acceso, organización, configuración, márgenes, auditoría, dashboard → [`01-fundaciones.md`](01-fundaciones.md) | Detallado |
-| 2 | **Hito 2**: catálogos, contactos, proveedores, productos y paquetes, clientes | Detallado |
+| 2 | **Hito 2**: catálogos, contactos, proveedores, productos y paquetes, clientes → [`02-catalogo-y-clientes.md`](02-catalogo-y-clientes.md) | Detallado |
 | 3 | **Hito 3**: motor de estados, hilo, notificaciones, archivos, tareas, tickets, importación del legacy | Detallado |
 | 4 | **Hitos 4 a 9**: cotizaciones, proyectos, compras, inventarios, facturación, finanzas, móvil | Esbozo |
 
