@@ -23,7 +23,7 @@ soltec/
 │   ├── workflows/            tests.yml (reutilizable) · deploy.yml (test y producción)
 │   └── scripts/              migrate.sh
 ├── contract/                 contrato de la API (fuente única, ADR-0006)
-│   ├── openapi.yaml · paths/ · schemas/
+│   ├── openapi.yaml          un solo archivo; se divide en paths/ y schemas/ solo si deja de ser manejable
 │   └── test-vectors/         casos de prueba compartidos entre PHP y TypeScript
 ├── api/                      backend PHP 8.3 + Slim 4
 │   ├── composer.json · phpcs.xml · phpstan.neon.dist · phpunit.xml · .env.example
@@ -112,7 +112,7 @@ Cada instancia vive en una carpeta propia del hosting. El subdominio apunta a `p
 |---|---|
 | `api` | phpcs (PSR-12), phpstan en nivel estricto desde el inicio, phpunit (unitarias e integración contra MySQL 5.7) |
 | `shared`, `web` | ESLint, Prettier, `tsc --noEmit` en modo estricto, Vitest |
-| `contract` | Lint del OpenAPI y un test que falla si una ruta de la API no está en el contrato o no declara su permiso |
+| `contract` | Lint del OpenAPI y un test que falla si una ruta de la API no está en el contrato, si una operación del contrato sin `x-planned` no tiene ruta, o si alguna no declara `x-permission` |
 
 El CI ejecuta un trabajo por paquete y el despliegue depende de que todos pasen. El código generado desde `contract/` no se versiona: se genera en el CI y con un comando local, y el CI verifica que el contrato y el código coincidan.
 

@@ -22,7 +22,9 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
 - [x] 5. Esqueleto de autenticación y roles (`docs/arquitectura/autenticacion-y-roles.md`)
-- [ ] 6. Especificación OpenAPI de los hitos 1 a 3
+- [ ] 6. Especificación OpenAPI de los hitos 1 a 3:
+  - [x] Hito 1 completo (`contract/openapi.yaml`, 50 operaciones con `x-planned`; el flag se quita en el PR que agrega la ruta)
+  - [ ] Hitos 2 y 3: se agregan al planear cada hito, cuando sus columnas estén definidas (el ERD solo los esboza)
 - [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
 
 ## Hito 1 — Fundaciones

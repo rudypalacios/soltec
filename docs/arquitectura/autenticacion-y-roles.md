@@ -56,12 +56,13 @@ Todos bajo `/api/v1`. Errores en `application/problem+json` con un `code` establ
 | `POST /auth/invitations/accept` | pública (token de un solo uso) | Un usuario externo fija su contraseña |
 | `GET /me` | autenticada | Usuario, roles, permisos efectivos y alcances |
 | `GET /me/devices`, `DELETE /me/devices/{id}` | autenticada | Ver y cerrar sesión en un dispositivo propio |
+| `POST /users/{id}/unlock` | `users.edit` | Quita el bloqueo por intentos fallidos |
 | `GET/POST /users`, `GET/PATCH /users/{id}` | `users.view/create/edit` | Administración de usuarios |
 | `POST /users/{id}/deactivate`, `/reactivate`, `/invite` | `users.deactivate`, `users.edit` | Desactivar (revoca sesiones), reactivar, reenviar invitación |
 | `GET/POST /roles`, `GET/PATCH /roles/{id}` | `roles.*` | Roles con su matriz de permisos y alcances |
 | `GET /resources`, `GET /permissions` | `roles.view` | Catálogos de solo lectura para armar la matriz |
 
-El resto de módulos agrega sus rutas con su recurso. La contraseña y los tokens nunca salen en respuestas ni en la auditoría.
+El contrato completo del Hito 1 está en [`contract/openapi.yaml`](../../contract/openapi.yaml); cada operación declara su permiso en `x-permission`. El resto de módulos agrega sus rutas con su recurso. La contraseña y los tokens nunca salen en respuestas ni en la auditoría.
 
 ## 6. Contraseña vencida o inicial
 
@@ -90,12 +91,12 @@ Mismo mecanismo con `users.type = 'external'`: perfiles externos de solo lectura
 ## 9. Datos iniciales y primer administrador
 
 - Una migración siembra `resources`, `permissions` y dos roles de sistema: **`admin`** (inmutable, todos los permisos y alcance `all`) y **`external_client`** (solo lectura, alcance `client`). Los demás roles (P5) los crea el administrador desde la interfaz.
-- Recursos del Hito 1: `users`, `roles`, `departments`, `company`, `financial_settings`, `security_settings`, `mail_settings`, `margin_levels`, `audit_logs`, `dashboard`. Cada módulo posterior agrega los suyos en su migración.
+- Recursos del Hito 1: `users`, `roles`, `departments`, `company`, `financial_settings`, `security_settings`, `mail_settings`, `margin_levels`, `sequences`, `audit_logs`, `dashboard`. Cada módulo posterior agrega los suyos en su migración.
 - **Primer administrador**: `php api/bin/console user:create-admin`, ejecutado en el terminal de cPanel. Pide correo y contraseña sin eco, cumple la misma política de contraseña y **se niega si ya existe un administrador**. No expone ninguna ruta.
 
 ## 10. Errores
 
-Códigos estables en inglés: `invalid_credentials` (mismo para correo inexistente, contraseña errónea y cuenta bloqueada), `password_change_required`, `token_expired`, `token_invalid`, `forbidden`, `not_found`, `validation_failed`, `conflict` (versión desfasada), `last_admin`, `auth_not_configured` (falta `JWT_SECRET`).
+Códigos estables en inglés: `invalid_credentials` (mismo para correo inexistente, contraseña errónea y cuenta bloqueada), `password_change_required`, `token_expired`, `token_invalid`, `forbidden`, `not_found`, `validation_failed`, `conflict` (versión desfasada, o regla que bloquea el cambio, como un perfil en uso), `last_admin`, `system_role_immutable` (perfil de sistema), `default_margin_level` (nivel de margen por defecto), `auth_not_configured` (falta `JWT_SECRET`). La lista cerrada vive en `ErrorCode` del contrato. Un intento de desactivarse a sí mismo o de dar el perfil `admin` sin ser admin responde `forbidden`.
 
 ## 11. Pruebas obligatorias
 
