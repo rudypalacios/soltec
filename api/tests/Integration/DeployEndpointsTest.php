@@ -123,7 +123,9 @@ final class DeployEndpointsTest extends IntegrationTestCase
         $statuses = [];
         foreach ($checks as $check) {
             self::assertIsArray($check);
-            $statuses[(string) $check['id']] = $check['status'];
+            $id = $check['id'] ?? null;
+            self::assertIsString($id);
+            $statuses[$id] = $check['status'] ?? null;
         }
 
         return $statuses;

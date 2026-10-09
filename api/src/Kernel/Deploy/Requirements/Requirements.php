@@ -235,7 +235,8 @@ final class Requirements
     {
         try {
             $connection = ConnectionFactory::create($this->config);
-            $version = (string) $connection->fetchOne('SELECT VERSION()');
+            $version = $connection->fetchOne('SELECT VERSION()');
+            $version = is_string($version) ? $version : '';
         } catch (Throwable $error) {
             return [new RequirementCheck(
                 'db.connection',
@@ -246,7 +247,8 @@ final class Requirements
             )];
         }
 
-        $uniqueIndex = (new Diagnostics($connection, $this->paths))->collect()['database'];
+        $facts = (new Diagnostics($connection, $this->paths))->collect();
+        $uniqueIndex = is_array($facts['database'] ?? null) ? $facts['database'] : [];
         $probe = $this->probeSchemaPrivileges($connection);
         $applied = $this->migrationsTableExists($connection);
 
