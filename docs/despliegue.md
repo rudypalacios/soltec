@@ -136,7 +136,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale 
 Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS y el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada). Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
 
 - El workflow Deploy la imprime en el paso *Check server requirements* y marca cada problema como anotación; **no detiene** el despliegue.
-- A mano: `curl -H "X-Deploy-Token: <token>" https://<subdominio>/api/system/requirements | jq`.
+- Sin token: ábrela en el navegador en `https://<subdominio>/api/system/requirements`. No está en el contrato ni en buscadores (`X-Robots-Tag` y `robots.txt`).
 - Solo responde si la API arranca. Si no hay respuesta, la causa está en el `error_log` de PHP de la instancia.
 
 ## 5. Si algo falla

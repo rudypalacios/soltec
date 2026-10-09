@@ -9,7 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Soltec\Kernel\Deploy\Requirements\Requirements;
 use Soltec\Kernel\Http\Json;
 
-/** Pre-flight checklist for a new instance. Protected by the deploy token, like the other /system routes. */
+/** Pre-flight checklist for a new instance. Open (no token) and kept out of search engines; see routes.php. */
 final class RequirementsController
 {
     public function __construct(private readonly Requirements $requirements)
@@ -24,6 +24,7 @@ final class RequirementsController
         $forwarded = strtolower($request->getHeaderLine('X-Forwarded-Proto'));
         $isHttps = $request->getUri()->getScheme() === 'https' || $forwarded === 'https';
 
-        return Json::write($response, $this->requirements->evaluate($documentRoot, $isHttps)->toArray());
+        return Json::write($response, $this->requirements->evaluate($documentRoot, $isHttps)->toArray())
+            ->withHeader('X-Robots-Tag', 'noindex, nofollow');
     }
 }
