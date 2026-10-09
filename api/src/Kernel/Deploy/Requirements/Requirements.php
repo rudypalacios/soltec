@@ -302,7 +302,7 @@ final class Requirements
             );
     }
 
-    /** @param array<string, mixed> $database */
+    /** @param array<mixed> $database */
     private function generatedColumn(array $database): RequirementCheck
     {
         $probe = $database['generated_column_unique'] ?? null;
