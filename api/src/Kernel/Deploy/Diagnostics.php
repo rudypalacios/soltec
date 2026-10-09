@@ -14,7 +14,10 @@ use Throwable;
  */
 final class Diagnostics
 {
-    private const REQUIRED_EXTENSIONS = ['pdo_mysql', 'mbstring', 'gd', 'fileinfo', 'openssl', 'curl', 'intl'];
+    /** What the application and its libraries load at runtime (Slim, DBAL, phpdotenv, PHPMailer, GD for photos). */
+    public const REQUIRED_EXTENSIONS = [
+        'pdo_mysql', 'mbstring', 'ctype', 'json', 'filter', 'gd', 'fileinfo', 'openssl', 'curl', 'intl',
+    ];
 
     public function __construct(
         private readonly Connection $connection,

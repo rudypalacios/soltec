@@ -26,6 +26,13 @@ final class FakeMailTransport implements MailTransport
         $this->sent[] = $message;
     }
 
+    public function verify(): void
+    {
+        if ($this->failure !== null) {
+            throw $this->failure;
+        }
+    }
+
     public function driver(): string
     {
         return 'fake';

@@ -41,6 +41,24 @@ final class PhpMailerTransport implements MailTransport
         }
     }
 
+    public function verify(): void
+    {
+        $settings = MailSettings::fromConfig($this->config);
+        if ($settings->driver !== MailSettings::DRIVER_SMTP) {
+            return;
+        }
+
+        $mailer = new PHPMailer(true);
+        try {
+            $this->configureDriver($mailer, $settings);
+            $mailer->smtpConnect();
+        } catch (PhpMailerException $error) {
+            throw new MailException($error->errorMessage(), 0, $error);
+        } finally {
+            $mailer->smtpClose();
+        }
+    }
+
     public function driver(): string
     {
         return MailSettings::fromConfig($this->config)->driver;

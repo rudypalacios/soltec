@@ -19,6 +19,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Production: sin *Required reviewers* (decisión del usuario: único revisor, repo privado)
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
   - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
+  - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3
