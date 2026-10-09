@@ -31,6 +31,7 @@ final class Requirements
     public function __construct(
         private readonly Config $config,
         private readonly Paths $paths,
+        private readonly MailRequirements $mail,
     ) {
     }
 
@@ -45,6 +46,7 @@ final class Requirements
             ...$this->configuration($documentRoot, $isHttps),
             ...$this->storage(),
             ...$this->database(),
+            ...$this->mail->checks(),
         ]);
     }
 

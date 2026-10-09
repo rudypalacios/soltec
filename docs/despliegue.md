@@ -133,7 +133,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale 
 
 ### 4.1 Lista de requisitos (`/api/system/requirements`)
 
-Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones y HTTPS. Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
+Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS y el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada). Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
 
 - El workflow Deploy la imprime en el paso *Check server requirements* y marca cada problema como anotación; **no detiene** el despliegue.
 - A mano: `curl -H "X-Deploy-Token: <token>" https://<subdominio>/api/system/requirements | jq`.
