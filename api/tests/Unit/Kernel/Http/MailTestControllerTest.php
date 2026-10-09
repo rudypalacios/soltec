@@ -84,7 +84,7 @@ final class MailTestControllerTest extends TestCase
         return $controller->send($request, $factory->createResponse());
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<array-key, mixed> */
     private function payload(ResponseInterface $response): array
     {
         $decoded = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
