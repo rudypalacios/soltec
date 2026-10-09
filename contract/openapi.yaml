@@ -2,32 +2,30 @@ openapi: 3.1.0
 info:
   title: Soltec API
   version: 1.0.0
-  description: >-
-    Contract of the Soltec CRM-ERP API. It is the single source of truth: the TypeScript types and the
-    typed client are generated from it, and a test fails when a route is missing here or listed here
-    without a route. Deployment endpoints (/system) are not part of the public contract.
+  description:
+    'Contract of the Soltec CRM-ERP API. It is the single source of truth: the TypeScript types and the
+    typed client are generated from it, and a test fails when a route is missing here or listed here without a route.
+    Deployment endpoints (/system) are not part of the public contract.
 
 
     Conventions:
 
-    - Every operation declares its access rule in `x-permission`: `public` (no session), `authenticated`
-    (any user with a session) or `<resource>.<action>` (for example `users.view`). A route without it
-    fails a test (ADR-0012). A session with a restricted token (password change pending) only reaches
-    operations marked `x-allows-restricted-token`. An operation marked `x-planned: true` is specified but
-    not implemented yet; the flag is removed in the pull request that adds its route.
+    - Every operation declares its access rule in `x-permission`: `public` (no session), `authenticated` (any user
+    with a session) or `<resource>.<action>` (for example `users.view`). A route without it fails a test (ADR-0012).
+    A session with a restricted token (password change pending) only reaches operations marked `x-allows-restricted-token`.
+    An operation marked `x-planned: true` is specified but not implemented yet; the flag is removed in the pull
+    request that adds its route.
 
     - Errors are `application/problem+json` with a stable English `code`; the web app maps it to Spanish.
 
-    - Records that can be edited carry `version`. An update sends the version it read; a stale one answers
-    409 `conflict`.
+    - Records that can be edited carry `version`. An update sends the version it read; a stale one answers 409 `conflict`.
 
-    - Nothing is deleted: `deactivate` and `reactivate` change `is_active`. Lists hide inactive records
-    unless `status` says otherwise.
+    - Nothing is deleted: `deactivate` and `reactivate` change `is_active`. Lists hide inactive records unless `status`
+    says otherwise.
 
     - Ids are UUID strings; timestamps are UTC ISO 8601 with milliseconds.
 
-    - Scope of this version: Hito 1 (Fundaciones). Hitos 2 and 3 are added when each one is planned and its
-    columns are defined.
+    - Scope: only the slices already being built. Each slice adds its own operations (see TODO.md).'
 servers:
   - url: /api
     description: Same origin as the web app.
@@ -37,34 +35,23 @@ tags:
   - name: System
     description: Service status.
   - name: Auth
-    description: Login, token refresh, password recovery and invitations.
+    description: Login, token refresh and password change.
   - name: Me
     description: The signed-in user and their own devices.
   - name: Users
-    description: Internal and external user accounts.
+    description: Internal user accounts.
   - name: Roles
-    description: Roles (perfiles) with their permission matrix, data scopes and dashboard widgets.
+    description: Roles (perfiles) with their permission matrix and data scopes.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
-  - name: Departments
-    description: Organization units.
-  - name: Settings
-    description: Company data and one-row settings by topic (ADR-0016).
-  - name: Sequences
-    description: Concurrency-safe numbering.
-  - name: Margin levels
-    description: Contribution margin levels used by the price function (ADR-0011).
-  - name: Audit
-    description: Append-only change log.
-  - name: Dashboard
-    description: Widgets the user sees.
 paths:
   /v1/health:
     get:
       operationId: getHealth
       summary: Check that the API and its database answer.
       description: Public and free of internal detail. Used by the deployment smoke test and by monitoring.
-      tags: [System]
+      tags:
+        - System
       x-permission: public
       security: []
       responses:
@@ -82,20 +69,19 @@ paths:
                 $ref: '#/components/schemas/Health'
         default:
           $ref: '#/components/responses/Unexpected'
-
-  # ---------------------------------------------------------------- Auth
   /v1/auth/login:
     post:
       operationId: login
       summary: Sign in with email and password.
-      description: >-
-        Returns a short-lived access token (about 15 minutes) and the user with their effective permissions.
-        On the web the refresh token travels in an httpOnly cookie scoped to /api/v1/auth; on mobile it is
-        returned in the body (`refresh_token`) for secure storage. Wrong email, wrong password and a locked
-        account all answer the same 401 `invalid_credentials`. If the password expired or must be changed,
-        the call succeeds with `password_change_required: true` and a restricted token that only works on
-        POST /v1/auth/password/change. Answers 503 `auth_not_configured` when the server has no JWT secret.
-      tags: [Auth]
+      description:
+        'Returns a short-lived access token (about 15 minutes) and the user with their effective permissions.
+        On the web the refresh token travels in an httpOnly cookie scoped to /api/v1/auth; on mobile it is returned
+        in the body (`refresh_token`) for secure storage. Wrong email, wrong password and a locked account all answer
+        the same 401 `invalid_credentials`. If the password expired or must be changed, the call succeeds with `password_change_required:
+        true` and a restricted token that only works on POST /v1/auth/password/change. Answers 503 `auth_not_configured`
+        when the server has no JWT secret.'
+      tags:
+        - Auth
       x-permission: public
       x-planned: true
       security: []
@@ -129,12 +115,13 @@ paths:
     post:
       operationId: refreshToken
       summary: Rotate the refresh token and get a new access token.
-      description: >-
-        The refresh token comes from the cookie (web) or from the body (mobile). Each refresh issues a new
-        refresh token and revokes the previous one. Presenting a token that was already revoked revokes every
-        token of that device (suspected theft), apart from a short grace window that covers two tabs
-        refreshing at once. Answers 401 `token_invalid` or `token_expired`.
-      tags: [Auth]
+      description:
+        The refresh token comes from the cookie (web) or from the body (mobile). Each refresh issues
+        a new refresh token and revokes the previous one. Presenting a token that was already revoked revokes every
+        token of that device (suspected theft), apart from a short grace window that covers two tabs refreshing
+        at once. Answers 401 `token_invalid` or `token_expired`.
+      tags:
+        - Auth
       x-permission: public
       x-planned: true
       security: []
@@ -174,7 +161,8 @@ paths:
       operationId: logout
       summary: Sign out of the current device.
       description: Revokes the current device and all its refresh tokens, and clears the cookie.
-      tags: [Auth]
+      tags:
+        - Auth
       x-permission: authenticated
       x-planned: true
       responses:
@@ -184,67 +172,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         default:
           $ref: '#/components/responses/Unexpected'
-  /v1/auth/password/forgot:
-    post:
-      operationId: requestPasswordReset
-      summary: Ask for a password recovery email.
-      description: >-
-        Always answers 202, whether or not the account exists. If it does, a one-hour, single-use link built
-        from the server's APP_URL is emailed after responding; at most one email per minute per account.
-      tags: [Auth]
-      x-permission: public
-      x-planned: true
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ForgotPasswordRequest'
-      responses:
-        '202':
-          description: Accepted.
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/auth/password/reset:
-    post:
-      operationId: resetPassword
-      summary: Set a new password with a recovery token.
-      description: >-
-        The token is single use even under simultaneous requests. Success clears the lockout and revokes
-        every refresh token of the user. Answers 400 `token_invalid` or `token_expired`, and 422 when the
-        password breaks the policy.
-      tags: [Auth]
-      x-permission: public
-      x-planned: true
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ResetPasswordRequest'
-      responses:
-        '204':
-          description: Password changed.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
   /v1/auth/password/change:
     post:
       operationId: changePassword
       summary: Change the password of the signed-in user.
-      description: >-
-        Requires the current password. Works with a restricted token, which is how an expired or initial
-        password gets replaced. The new password must follow the policy (minimum length from the security
-        settings, at most 72 bytes, different from the email). A wrong current password answers 422 with the
-        field error `current_password_incorrect`.
-      tags: [Auth]
+      description:
+        Requires the current password. Works with a restricted token, which is how an initial password
+        gets replaced. The new password must follow the policy (at least 12 characters, at most 72 bytes, different
+        from the email). A wrong current password answers 422 with the field error `current_password_incorrect`.
+      tags:
+        - Auth
       x-permission: authenticated
       x-planned: true
       x-allows-restricted-token: true
@@ -263,44 +200,17 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
-  /v1/auth/invitations/accept:
-    post:
-      operationId: acceptInvitation
-      summary: Accept an invitation by setting a password.
-      description: >-
-        For external users created by staff. The token is single use. Answers 400 `token_invalid` or
-        `token_expired`, and 422 when the password breaks the policy.
-      tags: [Auth]
-      x-permission: public
-      x-planned: true
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AcceptInvitationRequest'
-      responses:
-        '204':
-          description: Password set; the user can sign in.
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # ------------------------------------------------------------------ Me
   /v1/me:
     get:
       operationId: getMe
       summary: Get the signed-in user with roles, effective permissions and scopes.
-      description: >-
-        Permissions are the union of all the user's roles, read from the database on every request, so a
-        role change applies at the next call. With several roles the widest scope wins (all, then team, then
-        own). The web app uses it to hide menus; the server is the real control. With a restricted token it
-        answers 403 `password_change_required`.
-      tags: [Me]
+      description:
+        Permissions are the union of all the user's roles, read from the database on every request, so
+        a role change applies at the next call. With several roles the widest scope wins (all, then team, then own).
+        The web app uses it to hide menus; the server is the real control. With a restricted token it answers 403
+        `password_change_required`.
+      tags:
+        - Me
       x-permission: authenticated
       x-planned: true
       responses:
@@ -316,58 +226,13 @@ paths:
           $ref: '#/components/responses/Forbidden'
         default:
           $ref: '#/components/responses/Unexpected'
-  /v1/me/devices:
-    get:
-      operationId: listMyDevices
-      summary: List the devices where the signed-in user has an open session.
-      description: Revoked devices are not listed.
-      tags: [Me]
-      x-permission: authenticated
-      x-planned: true
-      responses:
-        '200':
-          description: The devices.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeviceList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/me/devices/{deviceId}:
-    parameters:
-      - $ref: '#/components/parameters/DeviceId'
-    delete:
-      operationId: revokeMyDevice
-      summary: Close the session on one of the user's own devices.
-      description: >-
-        Revokes the device and all its refresh tokens. The access token of that device stops working at the
-        next request. A device that is not the caller's answers 404.
-      tags: [Me]
-      x-permission: authenticated
-      x-planned: true
-      responses:
-        '204':
-          description: Device revoked.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # --------------------------------------------------------------- Users
   /v1/users:
     get:
       operationId: listUsers
       summary: List users.
-      description: Filtered by the caller's data scope on `users`. Inactive users are hidden unless status says otherwise.
-      tags: [Users]
+      description: Inactive users are hidden unless status says otherwise.
+      tags:
+        - Users
       x-permission: users.view
       x-planned: true
       parameters:
@@ -380,11 +245,6 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/UserType'
-        - name: department_id
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/Uuid'
         - name: role_id
           in: query
           required: false
@@ -408,13 +268,12 @@ paths:
     post:
       operationId: createUser
       summary: Create a user.
-      description: >-
-        An internal user needs a department and an `initial_password`; the account is created with
-        `must_change_password` true. An external user needs a `client_id`, only external roles and no
-        password: an invitation email is sent so the person sets their own. Email must be unique among
-        active users. Only an administrator can give the `admin` role. Role ids are checked against
-        existing roles of the right user type.
-      tags: [Users]
+      description:
+        Creates an internal user with a temporary `initial_password`; the account starts with `must_change_password`
+        true. Email must be unique among active users. Only an administrator can give the `admin` role. Role ids
+        are checked against existing internal roles. External users arrive with the client portal.
+      tags:
+        - Users
       x-permission: users.create
       x-planned: true
       requestBody:
@@ -444,8 +303,9 @@ paths:
     get:
       operationId: getUser
       summary: Get a user by id.
-      description: An id outside the caller's data scope answers 404, not 403.
-      tags: [Users]
+      description: Returns the user, active or not.
+      tags:
+        - Users
       x-permission: users.view
       x-planned: true
       responses:
@@ -466,12 +326,12 @@ paths:
     patch:
       operationId: updateUser
       summary: Update a user.
-      description: >-
-        Changes only the fields sent. `type` and `client_id` cannot change. `manager_id` cannot be the user
-        or create a cycle. Only an administrator can give or take the `admin` role or edit another
-        administrator. Nobody can change their own roles. Taking `admin` from the only active administrator
+      description:
+        Changes only the fields sent. Only an administrator can give or take the `admin` role or edit
+        another administrator. Nobody can change their own roles. Taking `admin` from the only active administrator
         answers 409 `last_admin`. A stale version answers 409 `conflict`.
-      tags: [Users]
+      tags:
+        - Users
       x-permission: users.edit
       x-planned: true
       requestBody:
@@ -505,10 +365,11 @@ paths:
     post:
       operationId: deactivateUser
       summary: Deactivate a user.
-      description: >-
+      description:
         Logical deactivation; revokes every session of the user. Nobody can deactivate themselves (403
         `forbidden`). The last active administrator cannot be deactivated (409 `last_admin`). Idempotent.
-      tags: [Users]
+      tags:
+        - Users
       x-permission: users.deactivate
       x-planned: true
       responses:
@@ -534,10 +395,11 @@ paths:
     post:
       operationId: reactivateUser
       summary: Reactivate a user.
-      description: >-
-        Fails with 422 `validation_failed` if the email is now used by an active user. The user must sign in
-        again. Idempotent.
-      tags: [Users]
+      description:
+        Fails with 422 `validation_failed` if the email is now used by an active user. The user must
+        sign in again. Idempotent.
+      tags:
+        - Users
       x-permission: users.deactivate
       x-planned: true
       responses:
@@ -557,64 +419,13 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
-  /v1/users/{userId}/invite:
-    parameters:
-      - $ref: '#/components/parameters/UserId'
-    post:
-      operationId: inviteUser
-      summary: Send or resend the invitation email.
-      description: >-
-        Only for a user who has not set a password yet. Invalidates earlier invitation links. The email goes
-        out after responding.
-      tags: [Users]
-      x-permission: users.edit
-      x-planned: true
-      responses:
-        '202':
-          description: Accepted; the email is on its way.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/users/{userId}/unlock:
-    parameters:
-      - $ref: '#/components/parameters/UserId'
-    post:
-      operationId: unlockUser
-      summary: Remove the lockout after failed login attempts.
-      description: Manual unlock; sets the failed-attempt counter to zero. Idempotent.
-      tags: [Users]
-      x-permission: users.edit
-      x-planned: true
-      responses:
-        '200':
-          description: The unlocked user.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # --------------------------------------------------------------- Roles
   /v1/roles:
     get:
       operationId: listRoles
       summary: List roles.
-      description: Returns a page of roles with their permission matrix, data scopes and widgets.
-      tags: [Roles]
+      description: Returns a page of roles with their permission matrix and data scopes.
+      tags:
+        - Roles
       x-permission: roles.view
       x-planned: true
       parameters:
@@ -645,13 +456,12 @@ paths:
     post:
       operationId: createRole
       summary: Create a role.
-      description: >-
-        Business roles (P5) are created here by an administrator; only `admin` and `external_client` are
-        seeded. The matrix is checked: permission and resource codes must exist, an external role only gets
-        `view` and the `client` scope, an internal role never gets `client`. Widget codes are validated
-        against the widget registry of `shared/`. Granting permissions on `users` and `roles` is close to
-        making someone an administrator.
-      tags: [Roles]
+      description:
+        'Business roles (P5) are created here by an administrator; only `admin` is seeded in this slice.
+        The matrix is checked: permission and resource codes must exist and an internal role never gets the `client`
+        scope. Granting permissions on `users` and `roles` is close to making someone an administrator.'
+      tags:
+        - Roles
       x-permission: roles.create
       x-planned: true
       requestBody:
@@ -682,7 +492,8 @@ paths:
       operationId: getRole
       summary: Get a role with its matrix.
       description: Returns the role with its full matrix, active or not.
-      tags: [Roles]
+      tags:
+        - Roles
       x-permission: roles.view
       x-planned: true
       responses:
@@ -703,11 +514,12 @@ paths:
     patch:
       operationId: updateRole
       summary: Update a role.
-      description: >-
-        `permissions`, `scopes` and `widgets`, when sent, replace the whole set. `user_type` cannot change.
-        System roles (`is_system`) cannot be edited: 409 `system_role_immutable`. A change applies to every
-        holder of the role at their next request. A stale version answers 409 `conflict`.
-      tags: [Roles]
+      description:
+        '`permissions` and `scopes`, when sent, replace the whole set. `user_type` cannot change. System
+        roles (`is_system`) cannot be edited: 409 `system_role_immutable`. A change applies to every holder of the
+        role at their next request. A stale version answers 409 `conflict`.'
+      tags:
+        - Roles
       x-permission: roles.edit
       x-planned: true
       requestBody:
@@ -741,10 +553,11 @@ paths:
     post:
       operationId: deactivateRole
       summary: Deactivate a role.
-      description: >-
+      description:
         System roles cannot be deactivated (409 `system_role_immutable`). A role still assigned to active
         users answers 409 `conflict`. Idempotent.
-      tags: [Roles]
+      tags:
+        - Roles
       x-permission: roles.deactivate
       x-planned: true
       responses:
@@ -771,7 +584,8 @@ paths:
       operationId: reactivateRole
       summary: Reactivate a role.
       description: Fails with 422 `validation_failed` if the name is now used by an active role. Idempotent.
-      tags: [Roles]
+      tags:
+        - Roles
       x-permission: roles.deactivate
       x-planned: true
       responses:
@@ -796,7 +610,8 @@ paths:
       operationId: listResources
       summary: List the protected resources (one per module).
       description: System table seeded by migrations; read-only.
-      tags: [Access catalogs]
+      tags:
+        - Access catalogs
       x-permission: roles.view
       x-planned: true
       responses:
@@ -817,7 +632,8 @@ paths:
       operationId: listPermissions
       summary: List the permission verbs (view, create, edit, deactivate, approve…).
       description: System table seeded by migrations; read-only.
-      tags: [Access catalogs]
+      tags:
+        - Access catalogs
       x-permission: roles.view
       x-planned: true
       responses:
@@ -833,715 +649,15 @@ paths:
           $ref: '#/components/responses/Forbidden'
         default:
           $ref: '#/components/responses/Unexpected'
-
-  # --------------------------------------------------------- Departments
-  /v1/departments:
-    get:
-      operationId: listDepartments
-      summary: List departments.
-      description: Returns a page of departments. Inactive ones are hidden unless status says otherwise.
-      tags: [Departments]
-      x-permission: departments.view
-      x-planned: true
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
-        - $ref: '#/components/parameters/Search'
-        - $ref: '#/components/parameters/StatusFilter'
-      responses:
-        '200':
-          description: A page of departments.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DepartmentPage'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    post:
-      operationId: createDepartment
-      summary: Create a department.
-      description: The name must be unique among active departments.
-      tags: [Departments]
-      x-permission: departments.create
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DepartmentCreate'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/departments/{departmentId}:
-    parameters:
-      - $ref: '#/components/parameters/DepartmentId'
-    get:
-      operationId: getDepartment
-      summary: Get a department by id.
-      description: Returns the department, active or not.
-      tags: [Departments]
-      x-permission: departments.view
-      x-planned: true
-      responses:
-        '200':
-          description: The department.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateDepartment
-      summary: Rename a department.
-      description: A stale version answers 409 `conflict`.
-      tags: [Departments]
-      x-permission: departments.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DepartmentUpdate'
-      responses:
-        '200':
-          description: The updated department.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/departments/{departmentId}/deactivate:
-    parameters:
-      - $ref: '#/components/parameters/DepartmentId'
-    post:
-      operationId: deactivateDepartment
-      summary: Deactivate a department.
-      description: A department with active users answers 409 `conflict`. Idempotent.
-      tags: [Departments]
-      x-permission: departments.deactivate
-      x-planned: true
-      responses:
-        '200':
-          description: The deactivated department.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/departments/{departmentId}/reactivate:
-    parameters:
-      - $ref: '#/components/parameters/DepartmentId'
-    post:
-      operationId: reactivateDepartment
-      summary: Reactivate a department.
-      description: Fails with 422 `validation_failed` if the name is now used by an active department. Idempotent.
-      tags: [Departments]
-      x-permission: departments.deactivate
-      x-planned: true
-      responses:
-        '200':
-          description: The reactivated department.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Department'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # ------------------------------------------------------------ Settings
-  /v1/company:
-    get:
-      operationId: getCompany
-      summary: Get the company data.
-      description: Single row. Name, tax data and logo of this instance; never hardcoded.
-      tags: [Settings]
-      x-permission: company.view
-      x-planned: true
-      responses:
-        '200':
-          description: The company.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Company'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateCompany
-      summary: Update the company data.
-      description: >-
-        Changes are audited. A stale version answers 409 `conflict`. `logo_path` is read-only until the
-        files module (Hito 3) can upload the logo.
-      tags: [Settings]
-      x-permission: company.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CompanyUpdate'
-      responses:
-        '200':
-          description: The updated company.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Company'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/financial-settings:
-    get:
-      operationId: getFinancialSettings
-      summary: Get the financial settings (currency, VAT, income tax, stale cost days, quote validity).
-      description: Single row. Rates are exact decimal strings; money never travels as a float.
-      tags: [Settings]
-      x-permission: financial_settings.view
-      x-planned: true
-      responses:
-        '200':
-          description: The settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FinancialSettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateFinancialSettings
-      summary: Update the financial settings.
-      description: >-
-        Changing VAT or income tax changes every catalog price at once and never alters issued quotes
-        (ADR-0011). Rates must satisfy 0 ≤ rate < 1. Audited. A stale version answers 409 `conflict`.
-      tags: [Settings]
-      x-permission: financial_settings.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FinancialSettingsUpdate'
-      responses:
-        '200':
-          description: The updated settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FinancialSettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/security-settings:
-    get:
-      operationId: getSecuritySettings
-      summary: Get the session, lockout and password settings.
-      description: Single row with the limits that drive login, lockout, session and password rules.
-      tags: [Settings]
-      x-permission: security_settings.view
-      x-planned: true
-      responses:
-        '200':
-          description: The settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SecuritySettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateSecuritySettings
-      summary: Update the session, lockout and password settings.
-      description: >-
-        The minimum password length can only be raised above 12. Other bounds are fixed in code and answer
-        422 when exceeded. Audited. A stale version answers 409 `conflict`.
-      tags: [Settings]
-      x-permission: security_settings.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SecuritySettingsUpdate'
-      responses:
-        '200':
-          description: The updated settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SecuritySettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/mail-settings:
-    get:
-      operationId: getMailSettings
-      summary: Get the email sender settings.
-      description: Only the sender. SMTP credentials live in the server's `.env` and are never exposed (ADR-0013).
-      tags: [Settings]
-      x-permission: mail_settings.view
-      x-planned: true
-      responses:
-        '200':
-          description: The settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MailSettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateMailSettings
-      summary: Update the email sender settings.
-      description: Audited. A stale version answers 409 `conflict`.
-      tags: [Settings]
-      x-permission: mail_settings.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MailSettingsUpdate'
-      responses:
-        '200':
-          description: The updated settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MailSettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # ----------------------------------------------------------- Sequences
-  /v1/sequences:
-    get:
-      operationId: listSequences
-      summary: List the numbering sequences.
-      description: Seeded by migrations (one per numbered document). Not paginated, there are few.
-      tags: [Sequences]
-      x-permission: sequences.view
-      x-planned: true
-      responses:
-        '200':
-          description: The sequences.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SequenceList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/sequences/{sequenceCode}:
-    parameters:
-      - $ref: '#/components/parameters/SequenceCode'
-    patch:
-      operationId: updateSequence
-      summary: Change the format of a sequence.
-      description: >-
-        Changes prefix, padding and whether the number carries the year. `next_value` is never edited here:
-        numbers are reserved atomically by the documents that use them. Audited.
-      tags: [Sequences]
-      x-permission: sequences.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SequenceUpdate'
-      responses:
-        '200':
-          description: The updated sequence.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Sequence'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # ------------------------------------------------------ Margin levels
-  /v1/margin-levels:
-    get:
-      operationId: listMarginLevels
-      summary: List margin levels.
-      description: Returns a page of margin levels ordered by sort_order. Inactive ones are hidden unless status says otherwise.
-      tags: [Margin levels]
-      x-permission: margin_levels.view
-      x-planned: true
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
-        - $ref: '#/components/parameters/Search'
-        - $ref: '#/components/parameters/StatusFilter'
-      responses:
-        '200':
-          description: A page of margin levels, ordered by `sort_order`.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevelPage'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    post:
-      operationId: createMarginLevel
-      summary: Create a margin level.
-      description: >-
-        `rate` must satisfy 0 ≤ rate < 1. The name is unique among active levels. Sending `is_default: true`
-        makes it the only default, atomically.
-      tags: [Margin levels]
-      x-permission: margin_levels.create
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MarginLevelCreate'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevel'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/margin-levels/{marginLevelId}:
-    parameters:
-      - $ref: '#/components/parameters/MarginLevelId'
-    get:
-      operationId: getMarginLevel
-      summary: Get a margin level by id.
-      description: Returns the margin level, active or not.
-      tags: [Margin levels]
-      x-permission: margin_levels.view
-      x-planned: true
-      responses:
-        '200':
-          description: The margin level.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevel'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        default:
-          $ref: '#/components/responses/Unexpected'
-    patch:
-      operationId: updateMarginLevel
-      summary: Update a margin level.
-      description: >-
-        Changing `rate` changes catalog prices at once and never alters issued quotes (ADR-0011). Setting
-        `is_default: true` moves the default to this level; the default cannot be unset directly, only by
-        choosing another one. A stale version answers 409 `conflict`.
-      tags: [Margin levels]
-      x-permission: margin_levels.edit
-      x-planned: true
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MarginLevelUpdate'
-      responses:
-        '200':
-          description: The updated margin level.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevel'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/margin-levels/{marginLevelId}/deactivate:
-    parameters:
-      - $ref: '#/components/parameters/MarginLevelId'
-    post:
-      operationId: deactivateMarginLevel
-      summary: Deactivate a margin level.
-      description: The default level cannot be deactivated while it is the default (409 `default_margin_level`). Idempotent.
-      tags: [Margin levels]
-      x-permission: margin_levels.deactivate
-      x-planned: true
-      responses:
-        '200':
-          description: The deactivated margin level.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevel'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        default:
-          $ref: '#/components/responses/Unexpected'
-  /v1/margin-levels/{marginLevelId}/reactivate:
-    parameters:
-      - $ref: '#/components/parameters/MarginLevelId'
-    post:
-      operationId: reactivateMarginLevel
-      summary: Reactivate a margin level.
-      description: Fails with 422 `validation_failed` if the name is now used by an active level. Idempotent.
-      tags: [Margin levels]
-      x-permission: margin_levels.deactivate
-      x-planned: true
-      responses:
-        '200':
-          description: The reactivated margin level.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarginLevel'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # --------------------------------------------------------------- Audit
-  /v1/audit-logs:
-    get:
-      operationId: listAuditLogs
-      summary: Search the audit log.
-      description: >-
-        Read-only and append-only: entries are never edited or deleted. Newest first. Values never include
-        passwords or tokens.
-      tags: [Audit]
-      x-permission: audit_logs.view
-      x-planned: true
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
-        - name: entity_type
-          in: query
-          required: false
-          description: Table name, for example `users`.
-          schema:
-            type: string
-            maxLength: 50
-        - name: entity_id
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/Uuid'
-        - name: user_id
-          in: query
-          required: false
-          description: The actor.
-          schema:
-            $ref: '#/components/schemas/Uuid'
-        - name: action
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 50
-        - name: from
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/Timestamp'
-        - name: to
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/Timestamp'
-      responses:
-        '200':
-          description: A page of entries.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuditLogPage'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationFailed'
-        default:
-          $ref: '#/components/responses/Unexpected'
-
-  # ----------------------------------------------------------- Dashboard
-  /v1/dashboard:
-    get:
-      operationId: getDashboard
-      summary: Get the widgets the signed-in user sees, in order.
-      description: >-
-        Union of the widgets of the user's roles, without duplicates. The widget catalog is code in
-        `shared/`; the API only says which codes apply.
-      tags: [Dashboard]
-      x-permission: dashboard.view
-      x-planned: true
-      responses:
-        '200':
-          description: The dashboard layout.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dashboard'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        default:
-          $ref: '#/components/responses/Unexpected'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Access token (about 15 minutes). Carries only the user id and the device id; permissions are read from the database.
+      description:
+        Access token (about 15 minutes). Carries only the user id and the device id; permissions are
+        read from the database.
   parameters:
     Page:
       name: page
@@ -1574,7 +690,10 @@ components:
       required: false
       schema:
         type: string
-        enum: [active, inactive, all]
+        enum:
+          - active
+          - inactive
+          - all
         default: active
     UserId:
       name: userId
@@ -1588,39 +707,7 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Uuid'
-    DepartmentId:
-      name: departmentId
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    DeviceId:
-      name: deviceId
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    MarginLevelId:
-      name: marginLevelId
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    SequenceCode:
-      name: sequenceCode
-      in: path
-      required: true
-      description: Natural key, for example `project`, `quote`, `purchase_order`.
-      schema:
-        type: string
-        maxLength: 50
   responses:
-    BadRequest:
-      description: The request cannot be processed (for example an invalid or expired one-time token).
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
     Unauthorized:
       description: No valid session (`token_invalid`, `token_expired`) or wrong credentials (`invalid_credentials`).
       content:
@@ -1628,9 +715,9 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Forbidden:
-      description: >-
-        The user lacks the permission (`forbidden`), or the session is restricted until the password is
-        changed (`password_change_required`).
+      description:
+        The user lacks the permission (`forbidden`), or the session is restricted until the password
+        is changed (`password_change_required`).
       content:
         application/problem+json:
           schema:
@@ -1642,9 +729,9 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: >-
-        A stale version (`conflict`) or a rule that blocks the change (`last_admin`,
-        `system_role_immutable`, `default_margin_level`).
+      description:
+        A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `system_role_immutable`,
+        `default_margin_level`).
       content:
         application/problem+json:
           schema:
@@ -1668,7 +755,6 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
-    # ---- Shared building blocks
     Uuid:
       type: string
       format: uuid
@@ -1677,7 +763,11 @@ components:
       format: date-time
     RecordMeta:
       type: object
-      required: [id, created_at, updated_at, version]
+      required:
+        - id
+        - created_at
+        - updated_at
+        - version
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
@@ -1691,7 +781,10 @@ components:
           description: Incremented on every change. Send it back when updating.
     PageMeta:
       type: object
-      required: [page, per_page, total]
+      required:
+        - page
+        - per_page
+        - total
       properties:
         page:
           type: integer
@@ -1701,7 +794,8 @@ components:
           type: integer
     Version:
       type: object
-      required: [version]
+      required:
+        - version
       properties:
         version:
           type: integer
@@ -1709,13 +803,19 @@ components:
           description: The version that was read.
     UserType:
       type: string
-      enum: [internal, external]
+      enum:
+        - internal
+        - external
     DataScope:
       type: string
-      description: >-
-        Which rows of a resource the user reaches. `client` is only for external roles, and the only scope
-        they can have.
-      enum: [own, team, all, client]
+      description:
+        Which rows of a resource the user reaches. `client` is only for external roles, and the only
+        scope they can have.
+      enum:
+        - own
+        - team
+        - all
+        - client
     PermissionMap:
       type: object
       description: Permission codes (view, create, edit, deactivate, approve…) by resource code.
@@ -1732,7 +832,9 @@ components:
         $ref: '#/components/schemas/DataScope'
     CatalogItem:
       type: object
-      required: [code, name]
+      required:
+        - code
+        - name
       properties:
         code:
           type: string
@@ -1740,7 +842,8 @@ components:
           type: string
     CatalogItemList:
       type: object
-      required: [data]
+      required:
+        - data
       properties:
         data:
           type: array
@@ -1748,20 +851,25 @@ components:
             $ref: '#/components/schemas/CatalogItem'
     Health:
       type: object
-      required: [status, checks]
+      required:
+        - status
+        - checks
       properties:
         status:
           type: string
-          enum: [ok, degraded]
+          enum:
+            - ok
+            - degraded
         checks:
           type: object
-          required: [database]
+          required:
+            - database
           properties:
             database:
               type: string
-              enum: [ok, error]
-
-    # ---- Errors
+              enum:
+                - ok
+                - error
     ErrorCode:
       type: string
       description: Stable identifier; the web app maps each one to Spanish text.
@@ -1776,12 +884,17 @@ components:
         - conflict
         - last_admin
         - system_role_immutable
-        - default_margin_level
         - auth_not_configured
     Problem:
       type: object
-      description: RFC 9457 problem details. "code" is a stable identifier in English; the web app maps it to Spanish text.
-      required: [type, title, status, code]
+      description:
+        RFC 9457 problem details. "code" is a stable identifier in English; the web app maps it to Spanish
+        text.
+      required:
+        - type
+        - title
+        - status
+        - code
       properties:
         type:
           type: string
@@ -1795,14 +908,16 @@ components:
           type: string
     FieldError:
       type: object
-      required: [field, code]
+      required:
+        - field
+        - code
       properties:
         field:
           type: string
           description: JSON path of the field, for example `role_ids` or `rate`.
         code:
           type: string
-          description: >-
+          description:
             Stable code such as `required`, `invalid`, `too_short`, `too_long`, `taken`, `not_found`,
             `out_of_range`, `current_password_incorrect`.
         message:
@@ -1811,17 +926,17 @@ components:
       allOf:
         - $ref: '#/components/schemas/Problem'
         - type: object
-          required: [errors]
+          required:
+            - errors
           properties:
             errors:
               type: array
               items:
                 $ref: '#/components/schemas/FieldError'
-
-    # ---- Auth
     DeviceInfo:
       type: object
-      required: [platform]
+      required:
+        - platform
       properties:
         id:
           allOf:
@@ -1829,14 +944,20 @@ components:
           description: Id returned by an earlier login on this device; omit on the first login.
         platform:
           type: string
-          enum: [web, android, ios]
+          enum:
+            - web
+            - android
+            - ios
         name:
           type: string
           maxLength: 100
           description: Text that helps the user recognize the device.
     LoginRequest:
       type: object
-      required: [email, password, device]
+      required:
+        - email
+        - password
+        - device
       properties:
         email:
           type: string
@@ -1857,13 +978,18 @@ components:
           writeOnly: true
     TokenResponse:
       type: object
-      required: [access_token, token_type, expires_in, password_change_required]
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - password_change_required
       properties:
         access_token:
           type: string
         token_type:
           type: string
-          enum: [Bearer]
+          enum:
+            - Bearer
         expires_in:
           type: integer
           description: Seconds until the access token expires.
@@ -1877,34 +1003,19 @@ components:
       allOf:
         - $ref: '#/components/schemas/TokenResponse'
         - type: object
-          required: [device_id, user]
+          required:
+            - device_id
+            - user
           properties:
             device_id:
               $ref: '#/components/schemas/Uuid'
             user:
               $ref: '#/components/schemas/Me'
-    ForgotPasswordRequest:
-      type: object
-      required: [email]
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 190
-    ResetPasswordRequest:
-      type: object
-      required: [token, new_password]
-      properties:
-        token:
-          type: string
-          writeOnly: true
-        new_password:
-          type: string
-          maxLength: 72
-          writeOnly: true
     ChangePasswordRequest:
       type: object
-      required: [current_password, new_password]
+      required:
+        - current_password
+        - new_password
       properties:
         current_password:
           type: string
@@ -1914,33 +1025,32 @@ components:
           type: string
           maxLength: 72
           writeOnly: true
-    AcceptInvitationRequest:
-      type: object
-      required: [token, password]
-      properties:
-        token:
-          type: string
-          writeOnly: true
-        password:
-          type: string
-          maxLength: 72
-          writeOnly: true
-
-    # ---- Me and devices
     RoleRef:
       type: object
-      required: [id, code, name]
+      required:
+        - id
+        - code
+        - name
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
         code:
-          type: [string, 'null']
+          type:
+            - string
+            - 'null'
           description: Only for system roles (`admin`, `external_client`).
         name:
           type: string
     Me:
       type: object
-      required: [id, type, name, email, department_id, client_id, roles, permissions, scopes]
+      required:
+        - id
+        - type
+        - name
+        - email
+        - roles
+        - permissions
+        - scopes
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
@@ -1951,14 +1061,6 @@ components:
         email:
           type: string
           format: email
-        department_id:
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        client_id:
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
         roles:
           type: array
           items:
@@ -1967,40 +1069,6 @@ components:
           $ref: '#/components/schemas/PermissionMap'
         scopes:
           $ref: '#/components/schemas/ScopeMap'
-    Device:
-      type: object
-      required: [id, platform, name, last_seen_at, last_sync_at, created_at, is_current]
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        platform:
-          type: string
-          enum: [web, android, ios]
-        name:
-          type: [string, 'null']
-        last_seen_at:
-          oneOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
-        last_sync_at:
-          oneOf:
-            - $ref: '#/components/schemas/Timestamp'
-            - type: 'null'
-        created_at:
-          $ref: '#/components/schemas/Timestamp'
-        is_current:
-          type: boolean
-          description: True for the device that made this request.
-    DeviceList:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Device'
-
-    # ---- Users
     User:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'
@@ -2009,10 +1077,6 @@ components:
             - type
             - name
             - email
-            - department_id
-            - manager_id
-            - client_id
-            - contact_id
             - roles
             - is_active
             - must_change_password
@@ -2027,24 +1091,6 @@ components:
             email:
               type: string
               format: email
-            department_id:
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            manager_id:
-              description: Direct manager (jefe directo).
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            client_id:
-              description: Assigned client; required for external users, null for internal ones.
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            contact_id:
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
             roles:
               type: array
               items:
@@ -2067,7 +1113,9 @@ components:
                 - type: 'null'
     UserPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -2075,9 +1123,13 @@ components:
             $ref: '#/components/schemas/User'
         meta:
           $ref: '#/components/schemas/PageMeta'
-    UserCreateBase:
+    UserCreate:
       type: object
-      required: [type, name, email, role_ids]
+      required:
+        - name
+        - email
+        - role_ids
+        - initial_password
       properties:
         name:
           type: string
@@ -2093,50 +1145,11 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Uuid'
-        contact_id:
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-    InternalUserCreate:
-      allOf:
-        - $ref: '#/components/schemas/UserCreateBase'
-        - type: object
-          required: [department_id, initial_password]
-          properties:
-            type:
-              type: string
-              enum: [internal]
-            department_id:
-              $ref: '#/components/schemas/Uuid'
-            manager_id:
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            initial_password:
-              type: string
-              maxLength: 72
-              writeOnly: true
-              description: The user must change it at first login.
-    ExternalUserCreate:
-      allOf:
-        - $ref: '#/components/schemas/UserCreateBase'
-        - type: object
-          required: [client_id]
-          properties:
-            type:
-              type: string
-              enum: [external]
-            client_id:
-              $ref: '#/components/schemas/Uuid'
-    UserCreate:
-      oneOf:
-        - $ref: '#/components/schemas/InternalUserCreate'
-        - $ref: '#/components/schemas/ExternalUserCreate'
-      discriminator:
-        propertyName: type
-        mapping:
-          internal: '#/components/schemas/InternalUserCreate'
-          external: '#/components/schemas/ExternalUserCreate'
+        initial_password:
+          type: string
+          maxLength: 72
+          writeOnly: true
+          description: Temporary password; the user must change it at first login.
     UserUpdate:
       allOf:
         - $ref: '#/components/schemas/Version'
@@ -2150,49 +1163,37 @@ components:
               type: string
               format: email
               maxLength: 190
-            department_id:
-              $ref: '#/components/schemas/Uuid'
-            manager_id:
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            contact_id:
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
             role_ids:
               type: array
               minItems: 1
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/Uuid'
-
-    # ---- Roles
-    WidgetPlacement:
-      type: object
-      required: [code, position]
-      properties:
-        code:
-          type: string
-          maxLength: 50
-          description: Widget code from the registry in `shared/`.
-        position:
-          type: integer
-          minimum: 0
     Role:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'
         - type: object
           required:
-            [code, name, description, user_type, is_system, is_active, permissions, scopes, widgets]
+            - code
+            - name
+            - description
+            - user_type
+            - is_system
+            - is_active
+            - permissions
+            - scopes
           properties:
             code:
-              type: [string, 'null']
+              type:
+                - string
+                - 'null'
               description: Only for system roles.
             name:
               type: string
             description:
-              type: [string, 'null']
+              type:
+                - string
+                - 'null'
             user_type:
               $ref: '#/components/schemas/UserType'
             is_system:
@@ -2203,13 +1204,11 @@ components:
               $ref: '#/components/schemas/PermissionMap'
             scopes:
               $ref: '#/components/schemas/ScopeMap'
-            widgets:
-              type: array
-              items:
-                $ref: '#/components/schemas/WidgetPlacement'
     RolePage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -2219,14 +1218,20 @@ components:
           $ref: '#/components/schemas/PageMeta'
     RoleCreate:
       type: object
-      required: [name, user_type, permissions, scopes]
+      required:
+        - name
+        - user_type
+        - permissions
+        - scopes
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
         description:
-          type: [string, 'null']
+          type:
+            - string
+            - 'null'
           maxLength: 255
         user_type:
           $ref: '#/components/schemas/UserType'
@@ -2234,10 +1239,6 @@ components:
           $ref: '#/components/schemas/PermissionMap'
         scopes:
           $ref: '#/components/schemas/ScopeMap'
-        widgets:
-          type: array
-          items:
-            $ref: '#/components/schemas/WidgetPlacement'
     RoleUpdate:
       allOf:
         - $ref: '#/components/schemas/Version'
@@ -2248,402 +1249,11 @@ components:
               minLength: 1
               maxLength: 100
             description:
-              type: [string, 'null']
+              type:
+                - string
+                - 'null'
               maxLength: 255
             permissions:
               $ref: '#/components/schemas/PermissionMap'
             scopes:
               $ref: '#/components/schemas/ScopeMap'
-            widgets:
-              type: array
-              items:
-                $ref: '#/components/schemas/WidgetPlacement'
-
-    # ---- Departments
-    Department:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - type: object
-          required: [name, is_active]
-          properties:
-            name:
-              type: string
-            is_active:
-              type: boolean
-    DepartmentPage:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Department'
-        meta:
-          $ref: '#/components/schemas/PageMeta'
-    DepartmentCreate:
-      type: object
-      required: [name]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-    DepartmentUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - type: object
-          properties:
-            name:
-              type: string
-              minLength: 1
-              maxLength: 100
-
-    # ---- Settings
-    Company:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - type: object
-          required:
-            [legal_name, trade_name, tax_id, tax_regime_id, address, phone, email, logo_path]
-          properties:
-            legal_name:
-              type: string
-            trade_name:
-              type: string
-            tax_id:
-              type: string
-              description: NIT of the company.
-            tax_regime_id:
-              description: Tax regime (Hito 2 catalog); null until that catalog exists.
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            address:
-              type: [string, 'null']
-            phone:
-              type: [string, 'null']
-            email:
-              type: [string, 'null']
-              format: email
-            logo_path:
-              type: [string, 'null']
-              readOnly: true
-    CompanyUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - type: object
-          properties:
-            legal_name:
-              type: string
-              minLength: 1
-              maxLength: 190
-            trade_name:
-              type: string
-              minLength: 1
-              maxLength: 190
-            tax_id:
-              type: string
-              minLength: 1
-              maxLength: 30
-            tax_regime_id:
-              description: Accepted once the tax regime catalog exists (Hito 2).
-              oneOf:
-                - $ref: '#/components/schemas/Uuid'
-                - type: 'null'
-            address:
-              type: [string, 'null']
-              maxLength: 255
-            phone:
-              type: [string, 'null']
-              maxLength: 40
-            email:
-              type: [string, 'null']
-              format: email
-              maxLength: 190
-    FinancialSettingsFields:
-      type: object
-      properties:
-        currency_code:
-          type: string
-          pattern: '^[A-Z]{3}$'
-          description: ISO 4217 code. GTQ by default.
-        vat_rate:
-          type: string
-          pattern: '^0(\.\d{1,5})?$'
-          description: >-
-            Decimal string with up to 5 decimals, 0 ≤ rate < 1 (0.12000 = 12 %). Strings keep the exact
-            decimal; money never travels as a float.
-        income_tax_rate:
-          type: string
-          pattern: '^0(\.\d{1,5})?$'
-          description: Same format as `vat_rate`.
-        stale_cost_days:
-          type: integer
-          minimum: 1
-          description: Days after which a product cost is flagged as stale.
-        quote_validity_days:
-          type: integer
-          minimum: 1
-    FinancialSettings:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - $ref: '#/components/schemas/FinancialSettingsFields'
-        - type: object
-          required: [currency_code, vat_rate, income_tax_rate, stale_cost_days, quote_validity_days]
-    FinancialSettingsUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - $ref: '#/components/schemas/FinancialSettingsFields'
-    SecuritySettingsFields:
-      type: object
-      properties:
-        web_idle_minutes:
-          type: integer
-          minimum: 1
-          description: Inactivity before the web session closes. Default 30.
-        mobile_refresh_days:
-          type: integer
-          minimum: 1
-          description: Lifetime of the mobile refresh token. Default 30.
-        max_failed_attempts:
-          type: integer
-          minimum: 1
-          description: Failed logins before the lockout. Default 3.
-        lockout_minutes:
-          type: integer
-          minimum: 1
-          description: Default 15.
-        password_expiry_days:
-          type: integer
-          minimum: 1
-          description: Default 90.
-        password_min_length:
-          type: integer
-          minimum: 12
-          maximum: 72
-          description: Default 12; it can only be raised.
-    SecuritySettings:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - $ref: '#/components/schemas/SecuritySettingsFields'
-        - type: object
-          required:
-            - web_idle_minutes
-            - mobile_refresh_days
-            - max_failed_attempts
-            - lockout_minutes
-            - password_expiry_days
-            - password_min_length
-    SecuritySettingsUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - $ref: '#/components/schemas/SecuritySettingsFields'
-    MailSettingsFields:
-      type: object
-      properties:
-        from_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        from_address:
-          type: string
-          format: email
-          maxLength: 190
-        reply_to_address:
-          type: [string, 'null']
-          format: email
-          maxLength: 190
-    MailSettings:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - $ref: '#/components/schemas/MailSettingsFields'
-        - type: object
-          required: [from_name, from_address, reply_to_address]
-    MailSettingsUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - $ref: '#/components/schemas/MailSettingsFields'
-
-    # ---- Sequences
-    Sequence:
-      type: object
-      required: [code, prefix, padding, include_year, year, next_value]
-      properties:
-        code:
-          type: string
-        prefix:
-          type: string
-          maxLength: 10
-        padding:
-          type: integer
-          minimum: 0
-          maximum: 12
-          description: Zeros to the left.
-        include_year:
-          type: boolean
-          description: When true the number carries the year and restarts every year.
-        year:
-          type: [integer, 'null']
-          description: Year of the current counter.
-        next_value:
-          type: integer
-          readOnly: true
-    SequenceList:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Sequence'
-    SequenceUpdate:
-      type: object
-      properties:
-        prefix:
-          type: string
-          maxLength: 10
-        padding:
-          type: integer
-          minimum: 0
-          maximum: 12
-        include_year:
-          type: boolean
-
-    # ---- Margin levels
-    MarginLevel:
-      allOf:
-        - $ref: '#/components/schemas/RecordMeta'
-        - type: object
-          required: [name, rate, is_default, sort_order, is_active]
-          properties:
-            name:
-              type: string
-            rate:
-              type: string
-              pattern: '^0(\.\d{1,5})?$'
-              description: Contribution margin on the sale price, 0 ≤ rate < 1 (0.33000 = 33 %), as an exact decimal string.
-            is_default:
-              type: boolean
-              description: Exactly one active level is the default.
-            sort_order:
-              type: integer
-              minimum: 0
-            is_active:
-              type: boolean
-    MarginLevelPage:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/MarginLevel'
-        meta:
-          $ref: '#/components/schemas/PageMeta'
-    MarginLevelCreate:
-      type: object
-      required: [name, rate]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 60
-        rate:
-          type: string
-          pattern: '^0(\.\d{1,5})?$'
-        is_default:
-          type: boolean
-          default: false
-        sort_order:
-          type: integer
-          minimum: 0
-          default: 0
-    MarginLevelUpdate:
-      allOf:
-        - $ref: '#/components/schemas/Version'
-        - type: object
-          properties:
-            name:
-              type: string
-              minLength: 1
-              maxLength: 60
-            rate:
-              type: string
-              pattern: '^0(\.\d{1,5})?$'
-            is_default:
-              type: boolean
-              enum: [true]
-              description: Only true is accepted; the default moves by choosing another level.
-            sort_order:
-              type: integer
-              minimum: 0
-
-    # ---- Audit
-    AuditLog:
-      type: object
-      required:
-        [
-          id,
-          occurred_at,
-          user_id,
-          device_id,
-          action,
-          entity_type,
-          entity_id,
-          before_data,
-          after_data,
-          ip_address,
-        ]
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        occurred_at:
-          $ref: '#/components/schemas/Timestamp'
-        user_id:
-          description: The actor; null when the system acted or a login failed.
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        device_id:
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        action:
-          type: string
-          description: For example `create`, `update`, `deactivate`, `login`.
-        entity_type:
-          type: string
-          description: Table name.
-        entity_id:
-          oneOf:
-            - $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-        before_data:
-          type: [object, 'null']
-          additionalProperties: true
-          description: Only the fields that changed; never passwords or tokens.
-        after_data:
-          type: [object, 'null']
-          additionalProperties: true
-        ip_address:
-          type: [string, 'null']
-    AuditLogPage:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AuditLog'
-        meta:
-          $ref: '#/components/schemas/PageMeta'
-
-    # ---- Dashboard
-    Dashboard:
-      type: object
-      required: [widgets]
-      properties:
-        widgets:
-          type: array
-          items:
-            $ref: '#/components/schemas/WidgetPlacement'

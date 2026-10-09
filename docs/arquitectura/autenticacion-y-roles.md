@@ -62,7 +62,7 @@ Todos bajo `/api/v1`. Errores en `application/problem+json` con un `code` establ
 | `GET/POST /roles`, `GET/PATCH /roles/{id}` | `roles.*` | Roles con su matriz de permisos y alcances |
 | `GET /resources`, `GET /permissions` | `roles.view` | Catálogos de solo lectura para armar la matriz |
 
-El contrato completo del Hito 1 está en [`contract/openapi.yaml`](../../contract/openapi.yaml); cada operación declara su permiso en `x-permission`. El resto de módulos agrega sus rutas con su recurso. La contraseña y los tokens nunca salen en respuestas ni en la auditoría.
+El contrato de las rutas ya construidas está en [`contract/openapi.yaml`](../../contract/openapi.yaml) (se amplía por rebanadas, ver `TODO.md`); cada operación declara su permiso en `x-permission`. El resto de módulos agrega sus rutas con su recurso. La contraseña y los tokens nunca salen en respuestas ni en la auditoría.
 
 ## 6. Contraseña vencida o inicial
 

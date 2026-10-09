@@ -23,7 +23,11 @@ final class ContractTest extends TestCase
     {
         $implementedAndPlanned = array_intersect($this->contractOperations(planned: true), $this->versionedRoutes());
 
-        self::assertSame([], array_values($implementedAndPlanned), 'Remove x-planned from operations that have a route.');
+        self::assertSame(
+            [],
+            array_values($implementedAndPlanned),
+            'Remove x-planned from operations that have a route.',
+        );
     }
 
     public function testEveryOperationDeclaresItsAccessRule(): void
