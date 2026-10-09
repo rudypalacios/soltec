@@ -15,11 +15,13 @@ use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ResponseFactory;
 use Soltec\Kernel\Auth\CurrentUserLoader;
 use Soltec\Kernel\Db\ConnectionFactory;
+use Soltec\Kernel\Deploy\Requirements\ModuleRequirements;
 use Soltec\Kernel\Http\ProblemDetailsErrorHandler;
 use Soltec\Kernel\Http\SecurityHeadersMiddleware;
 use Soltec\Kernel\Logging\LoggerFactory;
 use Soltec\Kernel\Mail\MailTransport;
 use Soltec\Kernel\Mail\PhpMailerTransport;
+use Soltec\Modules\Access\Deploy\AccessRequirements;
 use Soltec\Modules\Access\Persistence\PermissionLoader;
 
 use function DI\autowire;
@@ -74,6 +76,7 @@ final class Bootstrap
                 Config::class => $config,
                 Clock::class => autowire(SystemClock::class),
                 CurrentUserLoader::class => autowire(PermissionLoader::class),
+                ModuleRequirements::class => autowire(AccessRequirements::class),
                 ResponseFactoryInterface::class => new ResponseFactory(),
                 MailTransport::class => autowire(PhpMailerTransport::class),
                 Connection::class => factory(

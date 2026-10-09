@@ -1,6 +1,6 @@
 # Despliegue
 
-Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
+Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El orden resumido está en el [README](../README.md#poner-en-marcha-una-instancia). El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
 
 ## 1. Cómo funciona
 
@@ -49,6 +49,7 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    DB_PASS=<contraseña>
    DEPLOY_TOKEN=<ver 2.3>
    JWT_SECRET=<ver 2.5>
+   APP_URL=https://<dirección de la instancia>
    ```
 
    Si el entorno envía correo, agrega también las variables `MAIL_*` de la sección 2.4.
@@ -152,7 +153,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale 
 
 ### 4.1 Lista de requisitos (`/api/system/requirements`)
 
-Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS y el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada). Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
+Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env` (incluidos los secretos, que nunca se muestran, y la dirección pública), la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada) y que exista un administrador activo. Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
 
 - El workflow Deploy la imprime en el paso *Check server requirements* y marca cada problema como anotación; **no detiene** el despliegue.
 - Sin token: ábrela en el navegador en `https://<subdominio>/api/system/requirements`. No está en el contrato ni en buscadores (`X-Robots-Tag` y `robots.txt`).

@@ -26,12 +26,14 @@ final class Requirements
     private const MINIMUM_UPLOAD = '16M';
     private const MINIMUM_POST = '24M';
     private const MINIMUM_EXECUTION_SECONDS = 30;
+    private const MINIMUM_SECRET_LENGTH = 32;
     private const PROBE_TABLE = 'soltec_requirements_probe';
 
     public function __construct(
         private readonly Config $config,
         private readonly Paths $paths,
         private readonly MailRequirements $mail,
+        private readonly ModuleRequirements $modules,
     ) {
     }
 
@@ -47,6 +49,7 @@ final class Requirements
             ...$this->storage(),
             ...$this->database(),
             ...$this->mail->checks(),
+            ...$this->modules->checks(),
         ]);
     }
 
@@ -135,6 +138,22 @@ final class Requirements
                 'Use the full names cPanel shows (it prefixes the account name).',
             );
 
+        $checks[] = $this->secret(
+            'DEPLOY_TOKEN',
+            'config.deploy_token',
+            'The deployment endpoints stay disabled',
+            '2.3',
+            $deployed,
+        );
+        $checks[] = $this->secret(
+            'JWT_SECRET',
+            'config.jwt_secret',
+            'Nobody can sign in (503 auth_not_configured)',
+            '2.5',
+            $deployed,
+        );
+        $checks[] = $this->appUrl($deployed);
+
         $appEnv = $this->config->optionalString('APP_ENV');
         $checks[] = $appEnv === 'production' || !$deployed
             ? RequirementCheck::pass('config.app_env', 'config', 'APP_ENV ' . ($appEnv ?? 'unset'))
@@ -171,6 +190,77 @@ final class Requirements
             );
 
         return $checks;
+    }
+
+    /** A secret the .env must carry: present and at least 32 characters. Its value never appears in the report. */
+    private function secret(
+        string $key,
+        string $id,
+        string $consequence,
+        string $section,
+        bool $deployed,
+    ): RequirementCheck {
+        $value = $this->config->optionalString($key);
+        if ($value !== null && strlen($value) >= self::MINIMUM_SECRET_LENGTH) {
+            return RequirementCheck::pass($id, 'config', $key . ' is set');
+        }
+
+        return new RequirementCheck(
+            $id,
+            'config',
+            $deployed ? CheckStatus::Fail : CheckStatus::Warn,
+            sprintf(
+                '%s %s in the .env. %s.',
+                $key,
+                $value === null ? 'is missing' : 'is shorter than ' . self::MINIMUM_SECRET_LENGTH . ' characters',
+                $consequence,
+            ),
+            sprintf(
+                'Generate one with: php -r \'echo bin2hex(random_bytes(32)), PHP_EOL;\' (docs/despliegue.md, %s).',
+                $section,
+            ),
+        );
+    }
+
+    /** The public address of the instance, used to build the links in emails. Never taken from the request. */
+    private function appUrl(bool $deployed): RequirementCheck
+    {
+        $url = $this->config->optionalString('APP_URL');
+        if ($url === null) {
+            return new RequirementCheck(
+                'config.app_url',
+                'config',
+                CheckStatus::Warn,
+                'APP_URL is missing in the .env: emails cannot carry links to the application.',
+                'Set the public address of the instance, with no trailing slash (docs/despliegue.md, section 2.1).',
+            );
+        }
+
+        $parts = filter_var($url, FILTER_VALIDATE_URL) === false ? false : parse_url($url);
+        $valid = is_array($parts)
+            && in_array($parts['scheme'] ?? '', ['http', 'https'], true)
+            && !isset($parts['path']) && !isset($parts['query']) && !isset($parts['fragment'])
+            && !str_ends_with($url, '/');
+        if (!$valid) {
+            return new RequirementCheck(
+                'config.app_url',
+                'config',
+                CheckStatus::Warn,
+                'APP_URL is not a plain address such as https://host, with no path and no trailing slash.',
+                'Fix it in the .env: it is the start of every link sent by email.',
+            );
+        }
+        if ($deployed && $parts['scheme'] !== 'https') {
+            return new RequirementCheck(
+                'config.app_url',
+                'config',
+                CheckStatus::Warn,
+                'APP_URL does not use HTTPS.',
+                'Links to set a password would travel over an unprotected address: use https://.',
+            );
+        }
+
+        return RequirementCheck::pass('config.app_url', 'config', 'APP_URL ' . $url);
     }
 
     /** The document root must be public/: if it is the instance folder, .env and api/ are served by URL. */

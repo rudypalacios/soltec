@@ -48,6 +48,47 @@ describe('RequirementsPage', () => {
     expect(screen.getByRole('table', { name: 'Base de datos' })).toBeInTheDocument();
   });
 
+  it('names the settings an instance needs in Spanish, including the first administrator', async () => {
+    const setup = {
+      status: 'ready_with_warnings',
+      summary: { pass: 1, warn: 2, fail: 0 },
+      checks: [
+        {
+          id: 'config.jwt_secret',
+          group: 'config',
+          status: 'pass',
+          message: 'JWT_SECRET is set',
+          hint: null,
+        },
+        {
+          id: 'config.app_url',
+          group: 'config',
+          status: 'warn',
+          message: 'APP_URL is missing',
+          hint: 'Set it.',
+        },
+        {
+          id: 'access.first_admin',
+          group: 'access',
+          status: 'warn',
+          message: 'No admin',
+          hint: 'Create one.',
+        },
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(setup)),
+    );
+    renderPage();
+
+    const config = await screen.findByRole('table', { name: 'Configuración' });
+    expect(within(config).getByText('Secreto de sesiones (JWT_SECRET)')).toBeInTheDocument();
+    expect(within(config).getByText('Dirección pública (APP_URL)')).toBeInTheDocument();
+    const access = screen.getByRole('table', { name: 'Acceso' });
+    expect(within(access).getByText('Primer administrador')).toBeInTheDocument();
+  });
+
   it('shows the hint only for requirements that are not met', async () => {
     vi.stubGlobal(
       'fetch',
