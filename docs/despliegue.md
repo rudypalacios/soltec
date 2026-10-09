@@ -50,6 +50,8 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    DEPLOY_TOKEN=<ver 2.3>
    ```
 
+   Si el entorno envía correo, agrega también las variables `MAIL_*` de la sección 2.4.
+
 8. **`.htaccess`.** Copia el contenido de [`deploy/htaccess.sample`](../deploy/htaccess.sample) a `public/.htaccess`. Es de una sola vez: el despliegue nunca lo sube ni lo borra. Si cPanel generó en esa carpeta un bloque `# php -- BEGIN cPanel-generated handler` (al asignar PHP 8.3 en *MultiPHP Manager*), déjalo al final del archivo. Si cambiaste el *Document Root* después de asignar PHP, vuelve a asignar PHP 8.3 para que cPanel lo regenere.
 
 No se usa protección de directorio de cPanel: el acceso lo controla el login de la aplicación y los endpoints de despliegue exigen el token (2.3).
@@ -84,6 +86,28 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 - **Dónde va:** el mismo valor en el `.env` del servidor (`DEPLOY_TOKEN`) y en el secret `DEPLOY_TOKEN` del Environment de GitHub.
 - **Uno distinto por entorno.** No lo pegues en un chat.
 
+### 2.4 Correo (ADR-0013)
+
+1. En cPanel, *Email Accounts*: crea el buzón remitente (`noreply@musicos-catolicos.com`) con una contraseña larga y aleatoria.
+2. En *Email Deliverability*, comprueba que SPF y DKIM del dominio sean válidos y publica un registro DMARC (`p=none` basta al inicio).
+3. Agrega al `.env` del entorno (permisos `600`; las credenciales nunca van a la base de datos ni a GitHub):
+
+   ```
+   MAIL_DRIVER=smtp
+   MAIL_HOST=<servidor SMTP del buzón; su certificado debe coincidir con este nombre>
+   MAIL_PORT=465
+   MAIL_ENCRYPTION=ssl
+   MAIL_USERNAME=noreply@musicos-catolicos.com
+   MAIL_PASSWORD=<contraseña del buzón>
+   MAIL_FROM_ADDRESS=noreply@musicos-catolicos.com
+   MAIL_FROM_NAME=Soltec (staging)
+   MAIL_REPLY_TO=<correo de una persona>
+   ```
+
+   El remitente debe ser un buzón real del dominio autenticado. `MAIL_DRIVER=mail` es el plan B (sin credenciales, sin confirmación de entrega).
+4. **Verificar la entrega.** En GitHub: *Actions → Mail test → Run workflow*, con la dirección de un Gmail o un Outlook que puedas leer. Solo se ejecuta cuando lo lanzas a mano y solo contra `staging`. Si falla, el log muestra el motivo del servidor (por ejemplo `SMTP Error: Could not authenticate`). Repite con la otra dirección.
+5. En el mensaje recibido abre *Mostrar original* (Gmail) o *Ver origen del mensaje* (Outlook) y comprueba que SPF, DKIM y DMARC digan `PASS` y que no cayó en spam.
+
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.
@@ -105,7 +129,7 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 | `storage.writable` | `true` tras la primera escritura de logs; si es `false`, crea `storage/` en la carpeta de la instancia |
 | `php.memory_limit`, `max_execution_time`, `upload_max_filesize` | Anótalos: condicionan el procesamiento de imágenes y PDFs |
 
-La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) se verifica en un paso posterior, cuando se agregue el envío de correo.
+La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale en el diagnóstico: se verifica con el workflow *Mail test* (sección 2.4).
 
 ## 5. Si algo falla
 
@@ -117,5 +141,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) se verif
 | Migraciones: `500 migration_failed` | El mensaje dice la causa; casi siempre credenciales o un privilegio que falta (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`) |
 | Migraciones: responde 200 pero no es JSON | Falta el `.htaccess` o el API no llegó a `public/api/` |
 | Subida de la API: `Server sent FIN packet unexpectedly` | El hosting cortó una sesión FTP larga. El primer despliegue sube miles de archivos de `vendor/`; relanza con *Re-run failed jobs* (el workflow ya omite la documentación y las pruebas de `vendor/` para acortarlo) |
+| Mail test: `503 mail_not_configured` | Falta alguna variable `MAIL_*` en el `.env` (el detalle dice cuál) |
+| Mail test: `502 mail_send_failed` | El servidor de correo rechazó el envío; el detalle trae su motivo (credenciales, host o puerto, certificado) |
 | Smoke: `degraded` | La API responde pero la base de datos no: revisa `DB_*` en el `.env` |
 | Smoke: 404 en `/api/v1/health` | Falta `.htaccess` o `mod_rewrite` |
