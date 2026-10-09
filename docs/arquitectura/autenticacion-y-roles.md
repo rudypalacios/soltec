@@ -75,6 +75,14 @@ Si la contraseña venció o `must_change_password` es verdadero (cuenta creada o
 - **Equipo**: el usuario, sus subordinados directos e indirectos (`manager_id`) y los miembros de su departamento (definición por confirmar). Se calcula una vez por petición.
 - Para operaciones sobre un registro puntual, el alcance también se comprueba: un id fuera del alcance responde 404, no 403, para no revelar que existe.
 
+## 7.1 Protección contra quedarse fuera
+
+- **Nadie se desactiva a sí mismo**, sea administrador o no.
+- **El único administrador activo no puede quitarse a sí mismo el rol `admin`** ni cambiar sus propios roles. El rol `admin` es inmutable (todos los permisos y alcance `all`), así que tampoco hay forma de recortárselo desde el rol.
+- Con otro administrador activo, un administrador sí puede dejar de serlo; el sistema nunca queda sin uno.
+- Quitar o desactivar al último administrador se rechaza con `409 last_admin`. El administrador que necesite dejar el cargo primero asigna a otro.
+- Todos estos intentos quedan en la auditoría.
+
 ## 8. Usuarios externos
 
 Mismo mecanismo con `users.type = 'external'`: perfiles externos de solo lectura, alcance `client` obligatorio, `client_id` obligatorio. La cuenta la crea el personal y llega una **invitación** (`account_tokens`, propósito `invitation`, enlace desde `APP_URL`). Las pantallas son del Hito 9; en el Hito 1 queda el modelo, el flujo de invitación y las pruebas de aislamiento.
@@ -87,7 +95,7 @@ Mismo mecanismo con `users.type = 'external'`: perfiles externos de solo lectura
 
 ## 10. Errores
 
-Códigos estables en inglés: `invalid_credentials` (mismo para correo inexistente, contraseña errónea y cuenta bloqueada), `password_change_required`, `token_expired`, `token_invalid`, `forbidden`, `not_found`, `validation_failed`, `conflict` (versión desfasada), `auth_not_configured` (falta `JWT_SECRET`).
+Códigos estables en inglés: `invalid_credentials` (mismo para correo inexistente, contraseña errónea y cuenta bloqueada), `password_change_required`, `token_expired`, `token_invalid`, `forbidden`, `not_found`, `validation_failed`, `conflict` (versión desfasada), `last_admin`, `auth_not_configured` (falta `JWT_SECRET`).
 
 ## 11. Pruebas obligatorias
 
@@ -97,7 +105,8 @@ Unitarias y de integración, y mutaciones deliberadas del código para comprobar
 - Expiración de contraseña y token restringido; token de recuperación de un solo uso con peticiones simultáneas; revocación de todos los refresh al restablecer o desactivar.
 - Rotación del refresh y detección de reutilización.
 - Toda ruta declara permiso; un permiso ausente niega; un cambio de rol se aplica en la siguiente petición.
-- Escalada de privilegios: solo un admin da o quita `admin`; no se desactiva al último admin ni a uno mismo; los ids recibidos se filtran contra los existentes.
+- Escalada de privilegios: solo un admin da o quita `admin`; los ids recibidos se filtran contra los existentes.
+- Protección contra quedarse fuera (7.1): nadie se desactiva a sí mismo; el único admin no puede quitarse el rol ni cambiar sus propios roles; el último admin no se desactiva ni se degrada.
 - Aislamiento por cliente: un usuario externo nunca ve ni toca datos de otro cliente, en cada recurso con `client_id`.
 - Alcance: `own`, `team`, `all` y `client` por recurso, y un id fuera del alcance responde 404.
 
