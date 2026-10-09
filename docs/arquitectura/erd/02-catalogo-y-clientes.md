@@ -36,7 +36,6 @@ erDiagram
     TAX_REGIMES |o--o{ SUPPLIERS : ""
     PAYMENT_METHODS |o--o{ SUPPLIERS : ""
     UPDATE_CADENCES |o--o{ SUPPLIERS : ""
-    MARGIN_LEVELS |o--o{ SUPPLIERS : "margen por defecto"
     JOB_TITLES |o--o{ CONTACTS : "puesto"
     CLIENTS |o--o{ USERS : "usuarios externos (Hito 1)"
     CONTACTS |o--o{ USERS : ""
@@ -128,13 +127,13 @@ PK compuesta de las tres columnas. Sin campos comunes.
 | `code` | `VARCHAR(30)` | no | Automático (`supplier`). Único entre activos |
 | `trade_name` | `VARCHAR(190)` | no | Nombre comercial |
 | `legal_name` | `VARCHAR(190)` | sí | Razón social |
-| `tax_id` | `VARCHAR(30)` | sí | NIT normalizado (sin guiones, mayúsculas) |
+| `tax_id` | `VARCHAR(30)` | sí | NIT normalizado y validado ([ver validación](#validación-del-nit)) |
+| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`; índice único: un NIT identifica a un solo proveedor activo |
 | `tax_regime_id` | `BINARY(16)` | sí | FK `tax_regimes` |
 | `payment_method_id` | `BINARY(16)` | sí | FK `payment_methods` |
 | `credit_days` | `SMALLINT UNSIGNED` | sí | Términos de crédito |
 | `credit_limit` | `DECIMAL(14,2)` | sí | |
 | `update_cadence_id` | `BINARY(16)` | sí | FK `update_cadences`: cada cuánto actualiza sus precios |
-| `default_margin_level_id` | `BINARY(16)` | sí | FK `margin_levels`. Ver pregunta «MCP por proveedor» |
 
 ### `supplier_addresses`
 Un proveedor tiene varias direcciones.
@@ -147,6 +146,8 @@ Un proveedor tiene varias direcciones.
 | `zone` | `VARCHAR(100)` NULL | |
 | `country_code` | `CHAR(2)` NULL | |
 | `is_primary` | `TINYINT(1)` | Una principal por proveedor (regla en el código) |
+
+El proveedor no tiene margen: el MCP (nivel de margen) se aplica al producto cuando se vende a un cliente, no depende de quién lo vende a la empresa.
 
 **Cascada al desactivar** (regla en el código, auditada): al desactivar un proveedor se desactivan sus productos. Las ofertas cerradas conservan su histórico; si el producto estaba en una oferta vigente, se notifica al responsable (Hito 4).
 
@@ -217,8 +218,8 @@ Existe solo para clientes de venta (relación 1 a 1 con `clients`).
 |---|---|---|---|
 | `client_id` | `BINARY(16)` | no | FK `clients`. Único |
 | `legal_name` | `VARCHAR(190)` | no | Nombre fiscal |
-| `tax_id` | `VARCHAR(30)` | no | NIT normalizado |
-| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL AND tax_id <> 'CF', tax_id, NULL)`; índice único: **NIT sin duplicados entre activos**. «CF» (consumidor final) se exceptúa (por confirmar) |
+| `tax_id` | `VARCHAR(30)` | no | NIT normalizado y validado ([ver validación](#validación-del-nit)) |
+| `active_tax_id` | `VARCHAR(30)` | sí | Generada: `IF(deleted_at IS NULL, tax_id, NULL)`; índice único: **el NIT no se repite entre clientes activos** |
 | `tax_regime_id` | `BINARY(16)` | sí | FK `tax_regimes` |
 | `payment_method_id` | `BINARY(16)` | sí | FK `payment_methods` |
 | `credit_days` | `SMALLINT UNSIGNED` | sí | |
@@ -231,12 +232,26 @@ Misma forma que `supplier_addresses` (`client_id`, `label`, `line`, `zone`, `cou
 
 ---
 
+## Validación del NIT
+
+Un NIT identifica a una sola persona o entidad, así que no se repite. Se **normaliza** (sin guiones ni espacios, mayúsculas) y se **valida con el dígito verificador** de la SAT: módulo 11 ponderado. El último carácter es el verificador y puede ser un dígito o la letra `K`.
+
+1. Con los dígitos sin el verificador, de derecha a izquierda, se multiplican por 2, 3, 4, … y se suman.
+2. `verificador = (11 − suma mod 11) mod 11`; si da `10`, es `K`.
+
+| NIT | Resultado |
+|---|---|
+| `576937-K` | válido (suma 166, 166 mod 11 = 1, 11 − 1 = 10 → K) |
+| `8977112-0` | inválido (le corresponde 5) |
+
+El servidor valida (PHP) y `shared/` repite la regla solo para dar aviso en pantalla; ambos se prueban con los mismos vectores, como en el ADR-0014. La fórmula reproduce los dos ejemplos publicados por python-stdnum; **falta confirmarla contra la consulta oficial de la SAT** con NIT reales de la empresa.
+
 ## Reglas que el esquema no puede garantizar (van en el código y en tests)
 - Un cliente `customer` tiene siempre su `client_billing_profile`; uno `prospect`, no.
 - El grupo de un producto, y el de un paquete, deben estar activos; el área de un grupo también.
 - Cascada de desactivación de proveedor a productos, y notificación si el producto está en una oferta vigente.
 - Una dirección principal por cliente y por proveedor.
-- Al normalizar el NIT (quitar guiones y espacios, mayúsculas) antes de guardar y comparar.
+- Normalizar y validar el NIT antes de guardar y comparar ([validación](#validación-del-nit)).
 - Alcance `own` de clientes por `seller_id`; los usuarios externos solo ven su `client_id`.
 
 ## Preguntas abiertas de este hito
@@ -245,6 +260,6 @@ Misma forma que `supplier_addresses` (`client_id`, `label`, `line`, `zone`, `cou
 |---|---|---|
 | **P3** Estados reales del cliente | `client_statuses` sin valores fijos | Solo datos |
 | **P17 / P18** Descuento y anidación de paquetes | Sin descuento propio, sin anidados | Migración en `package_items` |
-| **MCP por proveedor**: los requisitos dicen «configurable por proveedor»; el ADR-0011 dice que el nivel se elige al consultar el producto | `suppliers.default_margin_level_id` opcional; el nivel efectivo es el elegido al consultar, o el del proveedor, o el nivel por defecto | Se quita la columna o se amplía a un porcentaje propio |
-| **NIT «CF»** (consumidor final) | Se exceptúa de la unicidad | Quitar la excepción de la columna generada |
+| **CUI como NIT**: desde 2023 los NIT de personas se derivan del CUI y la SAT acepta el CUI de 13 dígitos en las facturas | `tax_id` solo acepta NIT con dígito verificador | Se amplía la validación (con FEL, P1, Hito 6) |
+| **Consumidor final («CF»)** | No es un cliente: la factura a «CF» no necesita un registro de cliente | Se define con la facturación (Hito 6) |
 | Precisión de `cost` | `DECIMAL(14,4)` | Migración |
