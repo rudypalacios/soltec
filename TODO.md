@@ -32,6 +32,8 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] **Web** (`hito-1/acceso-web`, sobre la rama de la API): login, cambio de contraseña (obligatorio con contraseña temporal), lista y alta de usuarios con desactivar y reactivar, lista, alta y edición de perfiles con su matriz; desktop-first y responsive, verificada a 390 y 1280 px.
   - Fuera de 1.1: departamentos, equipo, configuración, márgenes, recuperar contraseña por correo, usuarios externos, dashboard
 - [ ] **1.1b Credenciales y edición de usuarios** (justo después de 1.1, sobre `main` ya fusionado): invitación por correo con enlace de un solo uso para fijar la contraseña (el alta deja de pedir contraseña temporal), reenviar invitación, recuperar contraseña por correo (`/recuperar-contrasena`, `/establecer-contrasena`), y la pantalla de edición de un usuario existente (nombre, correo y perfiles; la API ya existe). Depende de `APP_URL` en el `.env` y del correo (ADR-0013)
+  - Acordado: la invitación vale 72 h y la recuperación 1 h; ambos enlaces son de un solo uso. Sin contraseña de respaldo: si el correo no llega, el administrador reenvía y nunca ve ni la contraseña ni el enlace. El alta deja de recibir `initial_password` (cambio incompatible de `POST /v1/users`, aceptable antes de producción)
+  - Acordado: solo se recupera la contraseña de una cuenta activa que ya aceptó su invitación; con otra cuenta no se envía correo y la respuesta es idéntica. El estado se revisa al usar el enlace, no al emitirlo; un enlace nuevo invalida los anteriores
 - [ ] 1.2 Organización: departamentos, jefe directo y alcance `team`
 - [ ] 1.3 Configuración general y correlativos
 - [ ] 1.4 Niveles de margen y función de precio
