@@ -19,7 +19,7 @@ Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uu
 
 **Motor.** InnoDB, `utf8mb4` con `utf8mb4_unicode_ci`. MySQL 5.7 compatible con 8.0: sin `CHECK` (lo ignora), sin índices parciales ni funcionales; los límites se validan en el código.
 
-**Clave primaria.** `id BINARY(16)`, UUID v7 generado por la aplicación (ADR-0015). Tablas de unión: clave compuesta de sus dos llaves. Tablas de sistema sembradas por migración (`resources`, `permissions`, `number_sequences`): `code` como clave natural.
+**Clave primaria.** `id BINARY(16)`, UUID v7 generado por la aplicación (ADR-0015). Tablas de unión: clave compuesta de sus dos llaves. Tablas de sistema sembradas por migración (`resources`, `permissions`, `sequences`): `code` como clave natural.
 
 **Campos de toda tabla de negocio** (se omiten en las tablas de cada módulo):
 
@@ -31,7 +31,7 @@ Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uu
 | `version` | `INT UNSIGNED NOT NULL DEFAULT 1` | Se incrementa en cada cambio; detecta conflictos de edición, en web y en móvil |
 | `deleted_at` | `DATETIME(3) NULL` | **Desactivación lógica**: nada se elimina (CLAUDE.md, sección 4). Activo ⇔ `NULL` |
 
-Las tablas de unión, las de sistema, las de una sola fila de configuración con sus particularidades y los registros que solo se agregan (`audit_log`, `refresh_tokens`, …) indican en su ficha qué campos llevan.
+Las tablas de unión, las de sistema, las de una sola fila de configuración con sus particularidades y los registros que solo se agregan (`audit_logs`, `refresh_tokens`, …) indican en su ficha qué campos llevan.
 
 **Unicidad entre registros activos.** MySQL 5.7 no tiene índices parciales: se usa una columna generada `active_<campo> = IF(deleted_at IS NULL, <campo>, NULL)` con índice único (verificado en el servidor real con la lista de requisitos). Un valor desactivado se puede reutilizar.
 
@@ -45,7 +45,7 @@ Las tablas de unión, las de sistema, las de una sola fila de configuración con
 
 **Sincronización.** Toda tabla que pueda crearse sin conexión (parte 3 y siguientes) lleva `id`, `updated_at`, `version` y `deleted_at` y se expone en `GET /sync?since=`. El Hito 1 no tiene tablas creadas offline, pero ya sigue las mismas reglas.
 
-**Auditoría.** Todo cambio de datos de negocio escribe en `audit_log` (usuario, acción, entidad, antes y después).
+**Auditoría.** Todo cambio de datos de negocio escribe en `audit_logs` (usuario, acción, entidad, antes y después).
 
 **Una sola fila.** Las tablas de configuración tienen `singleton ENUM('1') NOT NULL DEFAULT '1'` con índice único: la base impide una segunda fila.
 
@@ -54,11 +54,11 @@ Las tablas de unión, las de sistema, las de una sola fila de configuración con
 ```mermaid
 flowchart LR
     subgraph H1[Parte 1 — Hito 1]
-        A[Acceso: users, profiles, permisos, devices, tokens]
+        A[Acceso: users, roles, permisos, devices, tokens]
         O[Organización: departments]
-        C[Configuración: company, financial, security, mail, number_sequences]
+        C[Configuración: company, financial, security, mail, sequences]
         M[margin_levels]
-        U[audit_log, profile_widgets]
+        U[audit_logs, role_widgets]
     end
     subgraph H2[Parte 2 — Hito 2]
         K[Catálogos PM1 a PM13]

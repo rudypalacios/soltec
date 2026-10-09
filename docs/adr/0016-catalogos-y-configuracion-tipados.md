@@ -8,7 +8,7 @@ Los requerimientos piden trece parámetros administrables (PM1 a PM13) y una con
 ## Decisión
 - **Cada catálogo tiene su propia tabla** (`contact_types`, `client_statuses`, `segments`, `tax_regimes`, `payment_methods`, …). Son pocas (trece) y cada una conserva su integridad referencial y puede tener columnas propias.
 - **El código sí es genérico:** un solo repositorio y un solo controlador parametrizados por tabla sirven el CRUD de todos los catálogos. No se repite código aunque se repitan tablas.
-- **La configuración general se divide por tema en tablas de una sola fila con columnas tipadas** (`company_profile`, `financial_settings`, `security_settings`, `mail_settings`); la numeración va en `number_sequences`. Una tabla de una sola fila se fuerza con una columna `singleton ENUM('1') NOT NULL UNIQUE`.
+- **La configuración general se divide por tema en tablas de una sola fila con columnas tipadas** (`company`, `financial_settings`, `security_settings`, `mail_settings`); la numeración va en `sequences`. Una tabla de una sola fila se fuerza con una columna `singleton ENUM('1') NOT NULL UNIQUE`.
 - Un ajuste nuevo es una migración (Phinx ya las automatiza en cada instancia).
 
 ## Alternativas descartadas

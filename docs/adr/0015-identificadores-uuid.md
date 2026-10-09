@@ -10,7 +10,7 @@ El móvil (Hito 8) creará registros sin conexión y los sincronizará después,
 - **UUID v7 y no v4:** su prefijo es el tiempo, así que las inserciones caen casi al final del índice agrupado de InnoDB, como un autoincremental. Un v4 aleatorio fragmentaría la tabla y sus índices.
 - **`BINARY(16)` y no `CHAR(36)`:** 16 bytes en vez de 36 en la tabla y en cada índice secundario, que en InnoDB repite la clave primaria.
 - Las llaves foráneas son del mismo tipo. Las tablas de unión usan clave compuesta de las llaves de las dos tablas que unen.
-- **Excepción:** las tablas de sistema que solo escriben las migraciones (`resources`, `permissions`, `number_sequences`) usan su `code` como clave natural, para sembrarlas sin inventar UUID y para que las llaves foráneas se lean solas.
+- **Excepción:** las tablas de sistema que solo escriben las migraciones (`resources`, `permissions`, `sequences`) usan su `code` como clave natural, para sembrarlas sin inventar UUID y para que las llaves foráneas se lean solas.
 - Un UUID generado por un cliente con el reloj mal puesto solo altera la localidad del índice, no la corrección: la unicidad no depende del reloj.
 
 ## Alternativas descartadas
@@ -22,4 +22,4 @@ El móvil (Hito 8) creará registros sin conexión y los sincronizará después,
 - Los índices pesan más que con enteros de 8 bytes; con el volumen esperado (decenas de miles de filas por tabla) no es un problema.
 - En el cliente MySQL los ids se ven en binario: para depurar se usa `HEX(id)`. MySQL 5.7 no trae `BIN_TO_UUID`; la conversión se hace en la aplicación.
 - Hace falta un generador de UUID v7 en PHP y otro en TypeScript (`shared/`); se elige la librería al implementar.
-- Los ids no son consecutivos ni legibles. Los códigos que ve el usuario (cliente, proyecto, OC) salen de `number_sequences`.
+- Los ids no son consecutivos ni legibles. Los códigos que ve el usuario (cliente, proyecto, OC) salen de `sequences`.
