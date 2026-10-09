@@ -15,9 +15,9 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [ ] 3.5 Verificación del correo: buzón de cPanel por SMTP y entrega a Gmail y Outlook (agrega PHPMailer y una prueba de envío)
 - **Pendientes del 0B** (no bloquean el ERD):
   - [ ] 3.5 Correo: crear el buzón en cPanel, agregar PHPMailer y probar entrega a Gmail y Outlook (P24: dominio remitente)
-  - [ ] Staging: rotar la contraseña de la base y el `DEPLOY_TOKEN` (el *Document Root* estuvo mal y `.env` pudo ser accesible) y comprobar que `/.env` no se sirve
-  - [ ] Production: comprobar `/.env`, el `.htaccess` y el diagnóstico; decidir si `production` lleva *Required reviewers*
-  - [ ] Dos usuarios de base de datos (aplicación sin privilegios de esquema y otro para migraciones), antes de producción real
+  - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
+  - [ ] Production: decidir si lleva *Required reviewers*
+  - [ ] Separar, dentro de cada entorno, el usuario de la aplicación (solo `SELECT/INSERT/UPDATE/DELETE`) del usuario de migraciones (privilegios de esquema), antes de producción real
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
   - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
