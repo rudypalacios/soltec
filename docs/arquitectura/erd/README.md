@@ -81,6 +81,6 @@ flowchart LR
 |---|---|---|
 | P5 Roles definitivos | Perfiles como datos: no hay roles fijos en el esquema | Solo cambian los datos sembrados |
 | P20 Contraseñas del legacy | No se conoce el hash: `must_change_password` obliga a cambiarla en el primer acceso | Ninguna |
-| P23 / P7 Esquema y datos del legacy | Columna `legacy_id` en las entidades importables (parte 2 y 3) | Migración que ajusta columnas |
+| P23 / P7 Esquema y datos del legacy | Se modela desde los requisitos; el usuario indica los campos que falten al revisar cada sección, y se agregan con una migración. El volcado del legacy es opcional. Columna `legacy_id` en las entidades importables (parte 2 y 3) | Migración que ajusta columnas |
 | P17 / P18 Paquetes | Sin descuento propio y sin paquetes anidados (parte 2) | Migración |
 | P2 Proyectos consolidados | Un proyecto puede tener subproyectos (parte 4) | Migración |
