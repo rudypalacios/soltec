@@ -12,6 +12,7 @@ const OTHER = {
   roles: [{ id: '0192f1c2-7d3a-7a11-8f2e-0000000000b1', code: null, name: 'Ventas' }],
   is_active: true,
   must_change_password: false,
+  invitation_pending: false,
   password_changed_at: '2026-10-01T10:00:00.000Z',
   last_login_at: null,
   locked_until: null,
@@ -109,10 +110,11 @@ describe('users list', () => {
     renderApp(session, '/usuarios');
 
     await screen.findByText('Luis Gómez');
-    expect(screen.getByRole('button', { name: 'Acciones de Luis Gómez' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: `Acciones de ${ME.name}` }),
-    ).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: `Acciones de ${ME.name}` }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Desactivar' })).not.toBeInTheDocument();
   });
 });
 
@@ -201,7 +203,7 @@ describe('deactivating and reactivating', () => {
     renderApp(session, '/usuarios');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Desactivar a Luis Gómez' }));
+    await user.click(await screen.findByRole('button', { name: 'Desactivar: Luis Gómez' }));
     await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
 
     await waitFor(() => expect(deactivated).toBe(true));
@@ -231,14 +233,20 @@ describe('creating a user', () => {
     await user.click(await screen.findByRole('option', { name: 'Ventas' }));
   }
 
-  it('sends the data, then shows the temporary password once', async () => {
+  it('sends the data, then says the invitation was emailed', async () => {
     let created: Call | undefined;
     const { session } = createTestSession({
       'GET /v1/roles': () => Response.json(page([ROLE])),
       'POST /v1/users': (call) => {
         created = call;
         return Response.json(
-          { ...OTHER, name: 'Nueva Persona', email: 'nueva@example.com' },
+          {
+            ...OTHER,
+            name: 'Nueva Persona',
+            email: 'nueva@example.com',
+            invitation_pending: true,
+            invitation_sent: true,
+          },
           { status: 201 },
         );
       },
@@ -247,23 +255,34 @@ describe('creating a user', () => {
     const user = userEvent.setup();
 
     await fillForm(user);
-    await user.click(screen.getByRole('button', { name: 'Crear usuario' }));
+    await user.click(screen.getByRole('button', { name: 'Crear y enviar invitación' }));
 
     expect(await screen.findByRole('heading', { name: 'Usuario creado' })).toBeInTheDocument();
-    const body = created?.body as {
-      initial_password: string;
-      role_ids: string[];
-      email: string;
-      name: string;
-    };
-    expect(body).toMatchObject({
+    expect(created?.body).toEqual({
       name: 'Nueva Persona',
       email: 'nueva@example.com',
       role_ids: [ROLE.id],
     });
-    expect(body.initial_password).toHaveLength(16);
-    expect(screen.getByText(body.initial_password)).toBeInTheDocument();
-    expect(screen.getByText(/no se vuelve a mostrar/)).toBeInTheDocument();
+    expect(screen.getByText(/Enviamos la invitación a nueva@example.com/)).toBeInTheDocument();
+    expect(screen.queryByText(/contraseña temporal/i)).not.toBeInTheDocument();
+  });
+
+  it('warns when the user exists but the email could not be sent', async () => {
+    const { session } = createTestSession({
+      'GET /v1/roles': () => Response.json(page([ROLE])),
+      'POST /v1/users': () =>
+        Response.json(
+          { ...OTHER, invitation_pending: true, invitation_sent: false },
+          { status: 201 },
+        ),
+    });
+    renderApp(session, '/usuarios/nuevo');
+    const user = userEvent.setup();
+
+    await fillForm(user);
+    await user.click(screen.getByRole('button', { name: 'Crear y enviar invitación' }));
+
+    expect(await screen.findByText(/el correo no pudo salir/)).toBeInTheDocument();
   });
 
   it('asks only for active internal profiles', async () => {
@@ -284,9 +303,10 @@ describe('creating a user', () => {
     renderApp(session, '/usuarios/nuevo');
     const user = userEvent.setup();
 
-    expect(await screen.findByRole('button', { name: 'Crear usuario' })).toBeDisabled();
+    const create = await screen.findByRole('button', { name: 'Crear y enviar invitación' });
+    expect(create).toBeDisabled();
     await fillForm(user);
-    expect(screen.getByRole('button', { name: 'Crear usuario' })).toBeEnabled();
+    expect(create).toBeEnabled();
   });
 
   it('shows what the server rejected next to each field', async () => {
@@ -295,37 +315,200 @@ describe('creating a user', () => {
       'POST /v1/users': () =>
         problem(422, 'validation_failed', [
           { field: 'email', code: 'taken' },
-          { field: 'initial_password', code: 'too_short' },
+          { field: 'role_ids', code: 'not_found' },
         ]),
     });
     renderApp(session, '/usuarios/nuevo');
     const user = userEvent.setup();
 
     await fillForm(user);
-    await user.click(screen.getByRole('button', { name: 'Crear usuario' }));
+    await user.click(screen.getByRole('button', { name: 'Crear y enviar invitación' }));
 
     expect(await screen.findByText('Ya está en uso.')).toBeInTheDocument();
-    expect(screen.getByText('Debe tener al menos 12 caracteres.')).toBeInTheDocument();
+    expect(screen.getByText('Algún perfil ya no existe o está inactivo.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Usuario creado' })).not.toBeInTheDocument();
-  });
-
-  it('generates another password on request', async () => {
-    const { session } = createTestSession({ 'GET /v1/roles': () => Response.json(page([ROLE])) });
-    renderApp(session, '/usuarios/nuevo');
-    const user = userEvent.setup();
-
-    const field = await screen.findByLabelText(/^Contraseña temporal/);
-    const first = (field as HTMLInputElement).value;
-    await user.click(screen.getByRole('button', { name: 'Generar' }));
-
-    expect((field as HTMLInputElement).value).not.toBe(first);
-    expect((field as HTMLInputElement).value).toHaveLength(16);
   });
 
   it('is closed to whoever may not create users', async () => {
     const reader = { ...ME, permissions: { users: ['view'] }, scopes: {} };
     const { session } = createTestSession({}, reader);
     renderApp(session, '/usuarios/nuevo');
+
+    expect(
+      await screen.findByText('No tienes permiso para ver esta pantalla.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('pending invitations', () => {
+  const PENDING = { ...OTHER, invitation_pending: true, password_changed_at: null };
+
+  it('marks a user who has not accepted yet and offers to resend', async () => {
+    let sent = false;
+    const { session } = createTestSession({
+      ...list(PENDING),
+      [`POST /v1/users/${PENDING.id}/invite`]: () => {
+        sent = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Invitación pendiente')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+
+    await waitFor(() => expect(sent).toBe(true));
+    expect(
+      await screen.findByText(/Enviamos la invitación a luis@example.com/),
+    ).toBeInTheDocument();
+  });
+
+  it('does not offer to resend to someone who already has a password', async () => {
+    const { session } = createTestSession(list(OTHER));
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Reenviar invitación' })).not.toBeInTheDocument();
+  });
+
+  it('explains when the mail server refused the message', async () => {
+    const { session } = createTestSession({
+      ...list(PENDING),
+      [`POST /v1/users/${PENDING.id}/invite`]: () => problem(502, 'mail_send_failed'),
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+
+    expect(await screen.findByText(/servidor de correo rechazó/)).toBeInTheDocument();
+  });
+
+  it('resends from the card on a phone', async () => {
+    setViewportWidth(390);
+    let sent = false;
+    const { session } = createTestSession({
+      ...list(PENDING),
+      [`POST /v1/users/${PENDING.id}/invite`]: () => {
+        sent = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Reenviar invitación: Luis Gómez' }),
+    );
+
+    await waitFor(() => expect(sent).toBe(true));
+  });
+});
+
+describe('editing a user', () => {
+  const ROLE = {
+    id: '0192f1c2-7d3a-7a11-8f2e-0000000000b1',
+    code: null,
+    name: 'Ventas',
+    description: null,
+    user_type: 'internal',
+    is_system: false,
+    is_active: true,
+    permissions: {},
+    scopes: {},
+    created_at: '2026-10-01T10:00:00.000Z',
+    updated_at: '2026-10-01T10:00:00.000Z',
+    version: 1,
+  };
+  const handlers = (extra: Record<string, (call: Call) => Response> = {}) => ({
+    ...list(OTHER),
+    'GET /v1/roles': () => Response.json(page([ROLE])),
+    [`GET /v1/users/${OTHER.id}`]: () => Response.json(OTHER),
+    ...extra,
+  });
+
+  it('loads the user, sends only what the form holds with the version, and returns to the list', async () => {
+    let patched: Call | undefined;
+    const { session } = createTestSession(
+      handlers({
+        [`PATCH /v1/users/${OTHER.id}`]: (call) => {
+          patched = call;
+          return Response.json({ ...OTHER, name: 'Luis G.', version: 2 });
+        },
+      }),
+    );
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+    const user = userEvent.setup();
+
+    const name = await screen.findByLabelText(/^Nombre/);
+    expect(name).toHaveValue('Luis Gómez');
+    await user.clear(name);
+    await user.type(name, 'Luis G.');
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/usuarios'));
+    expect(patched?.body).toEqual({
+      version: 1,
+      name: 'Luis G.',
+      email: 'luis@example.com',
+      role_ids: [ROLE.id],
+    });
+  });
+
+  it('warns that changing the email of a pending invitation breaks the old link', async () => {
+    const pending = { ...OTHER, invitation_pending: true };
+    const { session } = createTestSession(
+      handlers({ [`GET /v1/users/${OTHER.id}`]: () => Response.json(pending) }),
+    );
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+    const user = userEvent.setup();
+
+    const email = await screen.findByLabelText(/^Correo/);
+    expect(screen.queryByText(/deja de servir/)).not.toBeInTheDocument();
+    await user.type(email, 'x');
+
+    expect(await screen.findByText(/deja de servir/)).toBeInTheDocument();
+  });
+
+  it('shows what the server rejected and the reason of a refusal', async () => {
+    const { session } = createTestSession(
+      handlers({
+        [`PATCH /v1/users/${OTHER.id}`]: () =>
+          problem(422, 'validation_failed', [{ field: 'email', code: 'taken' }]),
+      }),
+    );
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+    const user = userEvent.setup();
+
+    await screen.findByLabelText(/^Nombre/);
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText('Ya está en uso.')).toBeInTheDocument();
+  });
+
+  it('explains a stale version', async () => {
+    const { session } = createTestSession(
+      handlers({ [`PATCH /v1/users/${OTHER.id}`]: () => problem(409, 'conflict') }),
+    );
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+    const user = userEvent.setup();
+
+    await screen.findByLabelText(/^Nombre/);
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText(/Otra persona cambió a este usuario/)).toBeInTheDocument();
+  });
+
+  it('is closed to whoever may not edit users', async () => {
+    const reader = { ...ME, permissions: { users: ['view'] }, scopes: {} };
+    const { session } = createTestSession({}, reader);
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
 
     expect(
       await screen.findByText('No tienes permiso para ver esta pantalla.'),

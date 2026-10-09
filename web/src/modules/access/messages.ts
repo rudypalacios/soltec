@@ -14,6 +14,13 @@ const PROBLEM_MESSAGES: Record<string, string> = {
   conflict: 'Otra persona cambió este registro. Recarga la página e inténtalo de nuevo.',
   last_admin: 'Debe quedar al menos un administrador activo.',
   system_role_immutable: 'Los perfiles de sistema no se pueden modificar.',
+  link_invalid:
+    'Este enlace ya no sirve: ya se usó o se envió uno más reciente. Pide que te lo envíen de nuevo.',
+  link_expired: 'Este enlace venció. Pide que te lo envíen de nuevo.',
+  invitation_not_pending: 'Esta persona ya eligió su contraseña.',
+  mail_send_failed: 'El servidor de correo rechazó el mensaje. Inténtalo de nuevo en unos minutos.',
+  mail_not_configured:
+    'El correo aún no está configurado en el servidor. Avisa a quien lo administra.',
   auth_not_configured:
     'El servidor aún no está listo para iniciar sesión. Avisa a quien lo administra.',
 };

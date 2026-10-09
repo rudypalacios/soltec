@@ -24,3 +24,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0014](0014-el-servidor-calcula-los-precios.md) | El servidor calcula los precios; `shared/` solo los previsualiza | Aceptada |
 | [0015](0015-identificadores-uuid.md) | UUID v7 como clave primaria en todas las tablas | Propuesta |
 | [0016](0016-catalogos-y-configuracion-tipados.md) | Catálogos y configuración en tablas tipadas | Propuesta |
+| [0017](0017-credenciales-por-enlace-de-correo.md) | Invitación y recuperación de contraseña por enlace de correo | Aceptada |

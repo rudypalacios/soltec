@@ -76,4 +76,26 @@ final class SchemaTest extends AccessTestCase
         self::assertSame(8, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(2, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
     }
+
+    public function testAccountTokensAreUniqueByHashAndKeepTheirUser(): void
+    {
+        $user = $this->createUser('tokens@example.com');
+        $insert = 'INSERT INTO account_tokens (id, user_id, purpose, token_hash, expires_at, created_at) '
+            . "VALUES (UNHEX(:id), UNHEX(:user), 'invitation', :hash, NOW(3), NOW(3))";
+        $row = ['id' => Uuid::toHex(Uuid::v7()), 'user' => Uuid::toHex($user['id']), 'hash' => str_repeat('a', 64)];
+        $this->connection->executeStatement($insert, $row);
+
+        try {
+            $this->connection->executeStatement($insert, ['id' => Uuid::toHex(Uuid::v7())] + $row);
+            self::fail('Two tokens cannot share a hash.');
+        } catch (UniqueConstraintViolationException) {
+            // Expected: a link maps to exactly one row.
+        }
+        try {
+            $this->connection->executeStatement('DELETE FROM users WHERE id = UNHEX(:id)', ['id' => $row['user']]);
+            self::fail('A user with tokens cannot be deleted.');
+        } catch (ForeignKeyConstraintViolationException) {
+            // Expected: nothing is deleted physically.
+        }
+    }
 }

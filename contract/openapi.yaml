@@ -35,7 +35,7 @@ tags:
   - name: System
     description: Service status.
   - name: Auth
-    description: Login, token refresh and password change.
+    description: Login, token refresh, password change, invitations and password recovery.
   - name: Me
     description: The signed-in user and their own devices.
   - name: Users
@@ -200,6 +200,86 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/auth/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      summary: Choose a password with the link of an invitation.
+      description:
+        The token comes from the email sent when the account was created. It works once and for 72 hours;
+        a weak password is rejected without spending it. 400 `link_invalid` (unknown, used, replaced by a newer
+        link, or the account is no longer waiting for an invitation) or `link_expired`. Does not sign the user in.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkPasswordRequest'
+      responses:
+        '204':
+          description: Password set; the user can sign in.
+        '400':
+          $ref: '#/components/responses/LinkRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/password/forgot:
+    post:
+      operationId: forgotPassword
+      summary: Ask for a password recovery email.
+      description:
+        Always answers 204, whether the account exists or not, and the work happens after the response, so
+        neither the body nor the timing reveals it. Only an active account that already accepted its invitation
+        gets an email, at most one per minute; its link works once and for one hour, and a new link invalidates
+        the previous ones.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '204':
+          description: Request accepted.
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/password/reset:
+    post:
+      operationId: resetPassword
+      summary: Choose a new password with the link of a recovery email.
+      description:
+        The account state is checked again when the link is used, so it must be active and have accepted its
+        invitation. Success removes the lock and signs the user out of every device. 400 `link_invalid` or
+        `link_expired`; a weak password is rejected without spending the link.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkPasswordRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '400':
+          $ref: '#/components/responses/LinkRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/me:
     get:
       operationId: getMe
@@ -267,9 +347,12 @@ paths:
       operationId: createUser
       summary: Create a user.
       description:
-        Creates an internal user with a temporary `initial_password`; the account starts with `must_change_password`
-        true. Email must be unique among active users. Only an administrator can give the `admin` role. Role ids
-        are checked against existing internal roles. External users arrive with the client portal.
+        Creates an internal user without a password and emails them a single-use invitation link (valid 72 hours)
+        to choose one; the administrator never sees a password or a link. Until the invitation is accepted the account
+        has `invitation_pending` true and cannot sign in. The user is created even when the email could not be sent
+        (`invitation_sent` false), so resend it with POST /v1/users/{userId}/invite. Email must be unique among active
+        users. Only an administrator can give the `admin` role. Role ids are checked against existing internal
+        roles. External users arrive with the client portal.
       tags:
         - Users
       x-permission: users.create
@@ -285,7 +368,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserCreated'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -353,6 +436,37 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/users/{userId}/invite:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: inviteUser
+      summary: Send the invitation email again.
+      description:
+        Issues a new single-use link (72 hours) and invalidates the previous ones. Only for a user with
+        `invitation_pending`; any other state answers 409 `invitation_not_pending`. Only an administrator can
+        resend to another administrator. 502 `mail_send_failed` when the mail server refuses the message; 503
+        `mail_not_configured` when the server has no mail settings.
+      tags:
+        - Users
+      x-permission: users.edit
+      responses:
+        '204':
+          description: Email sent.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/MailFailed'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
         default:
           $ref: '#/components/responses/Unexpected'
   /v1/users/{userId}/deactivate:
@@ -717,7 +831,7 @@ components:
             $ref: '#/components/schemas/Problem'
     Conflict:
       description:
-        A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `system_role_immutable`,
+        A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `invitation_not_pending`, `system_role_immutable`,
         `default_margin_level`).
       content:
         application/problem+json:
@@ -729,8 +843,20 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ValidationProblem'
+    LinkRejected:
+      description: The email link cannot be used (`link_invalid`, `link_expired`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    MailFailed:
+      description: The mail server refused the message (`mail_send_failed`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     ServiceUnavailable:
-      description: The service is not configured (`auth_not_configured`).
+      description: The service is not configured (`auth_not_configured`, `mail_not_configured`).
       content:
         application/problem+json:
           schema:
@@ -1067,6 +1193,7 @@ components:
             - roles
             - is_active
             - must_change_password
+            - invitation_pending
             - password_changed_at
             - last_login_at
             - locked_until
@@ -1086,6 +1213,9 @@ components:
               type: boolean
             must_change_password:
               type: boolean
+            invitation_pending:
+              type: boolean
+              description: Created by an administrator and not yet accepted; there is no password yet.
             password_changed_at:
               oneOf:
                 - $ref: '#/components/schemas/Timestamp'
@@ -1116,7 +1246,6 @@ components:
         - name
         - email
         - role_ids
-        - initial_password
       properties:
         name:
           type: string
@@ -1132,11 +1261,39 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Uuid'
-        initial_password:
+    UserCreated:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required:
+            - invitation_sent
+          properties:
+            invitation_sent:
+              type: boolean
+              description: Whether the invitation email was handed to the mail server.
+    LinkPasswordRequest:
+      type: object
+      required:
+        - token
+        - password
+      properties:
+        token:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: The token in the link of the email (after `#token=`).
+        password:
           type: string
           maxLength: 72
           writeOnly: true
-          description: Temporary password; the user must change it at first login.
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 190
     UserUpdate:
       allOf:
         - $ref: '#/components/schemas/Version'

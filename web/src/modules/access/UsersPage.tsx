@@ -32,11 +32,17 @@ import { useIsMobile } from '../../components/useIsMobile';
 import { formatMoment } from './formatting';
 import { problemMessage } from './messages';
 import { useCan, useCurrentUser } from './SessionContext';
-import { useSetUserActive, useUsers } from './useUsers';
+import { useResendInvitation, useSetUserActive, useUsers } from './useUsers';
 import { StatusFilter, type StatusValue } from './StatusFilter';
 
 type User = components['schemas']['User'];
 const PER_PAGE = 25;
+
+/** What a row can do. `edit` and `invite` act at once; `activate` and `deactivate` ask for confirmation first. */
+type RowAction =
+  | { kind: 'edit'; label: string; to: string }
+  | { kind: 'invite'; label: string }
+  | { kind: 'toggle'; label: string; activate: boolean };
 
 const ACTIVE_CONFLICTS = {
   last_admin: 'No se puede: debe quedar al menos un administrador activo.',
@@ -54,6 +60,7 @@ export function UsersPage() {
   const [page, setPage] = useState(0);
   const [pending, setPending] = useState<{ user: User; activate: boolean } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const users = useUsers({
     q: deferredText.trim() || undefined,
@@ -62,15 +69,39 @@ export function UsersPage() {
     per_page: PER_PAGE,
   });
   const setActive = useSetUserActive();
+  const resend = useResendInvitation();
 
-  const canDeactivate = can('users', 'deactivate');
-  const actionsFor = (user: User): { label: string; activate: boolean } | null => {
-    if (!canDeactivate || user.id === me?.id) {
-      return null;
+  const actionsFor = (user: User): RowAction[] => {
+    const actions: RowAction[] = [];
+    if (can('users', 'edit')) {
+      actions.push({ kind: 'edit', label: 'Editar', to: `/usuarios/${user.id}/editar` });
+      if (user.invitation_pending) {
+        actions.push({ kind: 'invite', label: 'Reenviar invitación' });
+      }
     }
-    return user.is_active
-      ? { label: 'Desactivar', activate: false }
-      : { label: 'Reactivar', activate: true };
+    if (can('users', 'deactivate') && user.id !== me?.id) {
+      actions.push(
+        user.is_active
+          ? { kind: 'toggle', label: 'Desactivar', activate: false }
+          : { kind: 'toggle', label: 'Reactivar', activate: true },
+      );
+    }
+    return actions;
+  };
+
+  const run = async (user: User, action: RowAction) => {
+    if (action.kind === 'toggle') {
+      setPending({ user, activate: action.activate });
+    } else if (action.kind === 'invite') {
+      setActionError(null);
+      setNotice(null);
+      try {
+        await resend.mutateAsync(user.id);
+        setNotice(`Enviamos la invitación a ${user.email}. El enlace anterior ya no sirve.`);
+      } catch (error) {
+        setActionError(problemMessage(error));
+      }
+    }
   };
 
   const confirm = async () => {
@@ -130,6 +161,11 @@ export function UsersPage() {
           {actionError}
         </Alert>
       ) : null}
+      {notice ? (
+        <Alert severity="success" onClose={() => setNotice(null)} sx={{ mb: 2 }}>
+          {notice}
+        </Alert>
+      ) : null}
 
       {users.isPending ? (
         <CircularProgress aria-label="Cargando usuarios" />
@@ -143,8 +179,8 @@ export function UsersPage() {
             <UserCard
               key={user.id}
               user={user}
-              action={actionsFor(user)}
-              onAction={(activate) => setPending({ user, activate })}
+              actions={actionsFor(user)}
+              onAction={(action) => void run(user, action)}
             />
           ))}
         </Stack>
@@ -152,7 +188,7 @@ export function UsersPage() {
         <UsersTable
           users={users.data.data}
           actionsFor={actionsFor}
-          onAction={(user, activate) => setPending({ user, activate })}
+          onAction={(user, action) => void run(user, action)}
         />
       )}
 
@@ -187,6 +223,9 @@ export function UsersPage() {
 }
 
 function StatusChip({ user }: { user: User }) {
+  if (user.is_active && user.invitation_pending) {
+    return <Chip size="small" color="warning" variant="outlined" label="Invitación pendiente" />;
+  }
   return user.is_active ? (
     <Chip size="small" color="success" variant="outlined" label="Activo" />
   ) : (
@@ -214,8 +253,8 @@ function UsersTable({
   onAction,
 }: {
   users: User[];
-  actionsFor: (user: User) => { label: string; activate: boolean } | null;
-  onAction: (user: User, activate: boolean) => void;
+  actionsFor: (user: User) => RowAction[];
+  onAction: (user: User, action: RowAction) => void;
 }) {
   return (
     <TableContainer component={Paper} variant="outlined">
@@ -234,7 +273,7 @@ function UsersTable({
         </TableHead>
         <TableBody>
           {users.map((user) => {
-            const action = actionsFor(user);
+            const actions = actionsFor(user);
             return (
               <TableRow key={user.id} hover>
                 <TableCell>{user.name}</TableCell>
@@ -247,11 +286,11 @@ function UsersTable({
                 </TableCell>
                 <TableCell>{formatMoment(user.last_login_at)}</TableCell>
                 <TableCell align="right">
-                  {action ? (
+                  {actions.length > 0 ? (
                     <RowMenu
                       label={`Acciones de ${user.name}`}
-                      action={action}
-                      onAction={() => onAction(user, action.activate)}
+                      actions={actions}
+                      onAction={(action) => onAction(user, action)}
                     />
                   ) : null}
                 </TableCell>
@@ -266,12 +305,12 @@ function UsersTable({
 
 function RowMenu({
   label,
-  action,
+  actions,
   onAction,
 }: {
   label: string;
-  action: { label: string };
-  onAction: () => void;
+  actions: RowAction[];
+  onAction: (action: RowAction) => void;
 }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   return (
@@ -280,14 +319,23 @@ function RowMenu({
         <MoreVertIcon />
       </IconButton>
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
-        <MenuItem
-          onClick={() => {
-            setAnchor(null);
-            onAction();
-          }}
-        >
-          {action.label}
-        </MenuItem>
+        {actions.map((action) =>
+          action.kind === 'edit' ? (
+            <MenuItem key={action.kind} component={RouterLink} to={action.to}>
+              {action.label}
+            </MenuItem>
+          ) : (
+            <MenuItem
+              key={action.kind}
+              onClick={() => {
+                setAnchor(null);
+                onAction(action);
+              }}
+            >
+              {action.label}
+            </MenuItem>
+          ),
+        )}
       </Menu>
     </>
   );
@@ -295,12 +343,12 @@ function RowMenu({
 
 function UserCard({
   user,
-  action,
+  actions,
   onAction,
 }: {
   user: User;
-  action: { label: string; activate: boolean } | null;
-  onAction: (activate: boolean) => void;
+  actions: RowAction[];
+  onAction: (action: RowAction) => void;
 }) {
   return (
     <Card variant="outlined">
@@ -324,16 +372,23 @@ function UserCard({
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
           Último acceso: {formatMoment(user.last_login_at)}
         </Typography>
-        {action ? (
-          <Button
-            size="small"
-            color={action.activate ? 'primary' : 'error'}
-            onClick={() => onAction(action.activate)}
-            aria-label={`${action.label} a ${user.name}`}
-            sx={{ mt: 1, ml: -1 }}
-          >
-            {action.label}
-          </Button>
+        {actions.length > 0 ? (
+          <Stack direction="row" sx={{ mt: 1, ml: -1, flexWrap: 'wrap' }}>
+            {actions.map((action) => (
+              <Button
+                key={action.kind}
+                size="small"
+                color={action.kind === 'toggle' && !action.activate ? 'error' : 'primary'}
+                {...(action.kind === 'edit'
+                  ? { component: RouterLink, to: action.to }
+                  : { onClick: () => onAction(action) })}
+                aria-label={`${action.label}: ${user.name}`}
+                sx={{ minHeight: 44 }}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </Stack>
         ) : null}
       </CardContent>
     </Card>

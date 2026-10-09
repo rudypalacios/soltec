@@ -11,6 +11,7 @@ use Soltec\Kernel\Http\Input;
 use Soltec\Kernel\Http\Json;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
+use Soltec\Modules\Access\Application\CredentialService;
 use Soltec\Modules\Access\Application\UserService;
 use Soltec\Modules\Access\Domain\UserRecord;
 
@@ -19,8 +20,11 @@ final class UserController
 {
     use CurrentUserAware;
 
-    public function __construct(private readonly UserService $users, private readonly Clock $clock)
-    {
+    public function __construct(
+        private readonly UserService $users,
+        private readonly CredentialService $credentials,
+        private readonly Clock $clock,
+    ) {
     }
 
     public function list(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -57,19 +61,33 @@ final class UserController
         $name = $input->text('name', 1, 150);
         $email = $input->email('email');
         $roleIds = $input->uuidList('role_ids');
-        $password = $input->secret('initial_password');
         $input->done();
 
-        $user = $this->users->create(
+        $created = $this->users->create(
             $this->caller($request),
             ActorContext::fromRequest($request),
             (string) $name,
             (string) $email,
             $roleIds ?? [],
-            (string) $password,
         );
 
-        return Json::write($response, $this->present($user), 201);
+        return Json::write(
+            $response,
+            $this->present($created['user']) + ['invitation_sent' => $created['invitationSent']],
+            201,
+        );
+    }
+
+    /** @param array<string, string> $args */
+    public function invite(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $this->credentials->resendInvitation(
+            $this->caller($request),
+            ActorContext::fromRequest($request),
+            $this->pathId($args, 'userId'),
+        );
+
+        return $response->withStatus(204);
     }
 
     /** @param array<string, string> $args */

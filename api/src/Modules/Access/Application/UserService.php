@@ -12,9 +12,8 @@ use Soltec\Kernel\Http\ApiException;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Http\ValidationException;
 use Soltec\Kernel\Uuid;
-use Soltec\Modules\Access\Domain\PasswordHasher;
-use Soltec\Modules\Access\Domain\PasswordPolicy;
 use Soltec\Modules\Access\Domain\UserRecord;
+use Soltec\Modules\Access\Persistence\AccountTokenRepository;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Access\Persistence\RoleRepository;
 use Soltec\Modules\Access\Persistence\SessionRepository;
@@ -31,7 +30,8 @@ final class UserService
         private readonly UserRepository $users,
         private readonly RoleRepository $roles,
         private readonly SessionRepository $sessions,
-        private readonly PasswordHasher $hasher,
+        private readonly CredentialService $credentials,
+        private readonly AccountTokenRepository $tokens,
         private readonly AdminGuard $adminGuard,
         private readonly AuditLogger $audit,
     ) {
@@ -54,20 +54,21 @@ final class UserService
         return $this->users->find($id, $caller) ?? throw ApiException::notFound();
     }
 
-    /** @param list<string> $roleIds */
+    /**
+     * Creates the account without a password and emails the invitation to set one. The account exists even when the
+     * email could not be sent: the administrator can resend it.
+     *
+     * @param list<string> $roleIds
+     * @return array{user: UserRecord, invitationSent: bool}
+     */
     public function create(
         CurrentUser $caller,
         ActorContext $actor,
         string $name,
         string $email,
         array $roleIds,
-        string $initialPassword,
-    ): UserRecord {
+    ): array {
         $errors = [];
-        $violation = PasswordPolicy::violation($initialPassword, $email);
-        if ($violation !== null) {
-            $errors[] = ['field' => 'initial_password', 'code' => $violation];
-        }
         $roles = $this->roles->findAssignable($roleIds, 'internal');
         if (count($roles) !== count($roleIds)) {
             $errors[] = ['field' => 'role_ids', 'code' => 'not_found'];
@@ -85,9 +86,9 @@ final class UserService
         $id = Uuid::v7();
         $now = $this->clock->now();
         try {
-            $save = function () use ($id, $name, $email, $initialPassword, $roleIds, $actor, $now): void {
-                // The account starts with a temporary password: the person must choose their own at first login.
-                $this->users->insert($id, 'internal', $name, $email, $this->hasher->hash($initialPassword), true, $now);
+            $save = function () use ($id, $name, $email, $roleIds, $actor, $now): void {
+                // No password yet: the person chooses it when they accept the invitation (ADR-0017).
+                $this->users->insert($id, 'internal', $name, $email, null, false, $now);
                 $this->users->replaceRoles($id, $roleIds);
                 $this->audit->record($actor, 'create', self::ENTITY, $id, null, [
                     'type' => 'internal',
@@ -102,7 +103,9 @@ final class UserService
             throw ValidationException::field('email', 'taken');
         }
 
-        return $this->get($caller, $id);
+        $user = $this->get($caller, $id);
+
+        return ['user' => $user, 'invitationSent' => $this->credentials->sendInvitation($user, $actor)];
     }
 
     /**
@@ -156,6 +159,10 @@ final class UserService
                     $this->users->replaceRoles($id, $roleIds);
                     $before['role_ids'] = $target->roleIds();
                     $after['role_ids'] = $roleIds;
+                }
+                if ($emailChanged) {
+                    // A link sent to the old address must not work any more; the invitation has to be sent again.
+                    $this->tokens->invalidate($id, $this->clock->now());
                 }
                 $this->audit->record($actor, 'update', self::ENTITY, $id, $before, $after);
             };

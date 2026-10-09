@@ -6,6 +6,9 @@ import { useCan, useSessionState } from './SessionContext';
 
 export const LOGIN_PATH = '/ingresar';
 export const CHANGE_PASSWORD_PATH = '/cambiar-contrasena';
+export const FORGOT_PASSWORD_PATH = '/recuperar-contrasena';
+export const ACCEPT_INVITATION_PATH = '/aceptar-invitacion';
+export const RESET_PASSWORD_PATH = '/restablecer-contrasena';
 
 /**
  * Everything behind the sign-in. It waits while the session is recovered, sends anonymous visitors to the login

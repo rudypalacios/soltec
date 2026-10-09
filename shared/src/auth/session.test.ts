@@ -239,7 +239,7 @@ describe('AuthSession', () => {
       });
 
       const { response } = await session.client.POST('/v1/users', {
-        body: { name: 'N', email: 'n@example.com', role_ids: [], initial_password: 'p'.repeat(12) },
+        body: { name: 'N', email: 'n@example.com', role_ids: [] },
       });
 
       expect(response.status).toBe(201);

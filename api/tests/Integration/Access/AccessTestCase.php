@@ -9,6 +9,10 @@ use Doctrine\DBAL\Exception\TableNotFoundException;
 use Psr\Http\Message\ResponseInterface;
 use Soltec\Kernel\Auth\JwtService;
 use Soltec\Kernel\Clock;
+use Soltec\Kernel\Config;
+use Soltec\Kernel\DeferredTasks;
+use Soltec\Kernel\ImmediateTasks;
+use Soltec\Kernel\Mail\MailTransport;
 use Soltec\Kernel\Db\ConnectionFactory;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Deploy\MigrationRunner;
@@ -20,6 +24,7 @@ use Soltec\Modules\Access\Persistence\SessionRepository;
 use Soltec\Modules\Access\Persistence\UserRepository;
 use Soltec\Tests\Integration\IntegrationTestCase;
 use Soltec\Tests\Support\FixedClock;
+use Soltec\Tests\Unit\Kernel\Mail\FakeMailTransport;
 
 /**
  * Base for the tests of the Access module: a migrated database (migrated once, then only data is cleared between
@@ -31,14 +36,26 @@ abstract class AccessTestCase extends IntegrationTestCase
     protected const PASSWORD = 'correct horse battery staple';
 
     protected FixedClock $clock;
+    protected FakeMailTransport $mail;
     private static ?string $passwordHash = null;
 
     /** @return array<string, mixed> */
     protected function containerDefinitions(): array
     {
         $this->clock = new FixedClock();
+        $this->mail = new FakeMailTransport();
 
-        return [Clock::class => $this->clock];
+        // Mail is recorded, not sent, and "after the response" work runs at once so a test can assert on it.
+        return [
+            Clock::class => $this->clock,
+            MailTransport::class => $this->mail,
+            DeferredTasks::class => new ImmediateTasks(),
+        ];
+    }
+
+    protected function configWith(array $overrides): Config
+    {
+        return parent::configWith($overrides + ['APP_URL' => 'https://app.example.test', 'MAIL_FROM_NAME' => 'Acme']);
     }
 
     protected function prepareDatabase(): void
@@ -83,10 +100,12 @@ abstract class AccessTestCase extends IntegrationTestCase
         bool $mustChangePassword = false,
         ?DateTimeImmutable $passwordChangedAt = null,
         string $name = 'Test User',
+        bool $invitationPending = false,
     ): array {
         $id = Uuid::v7();
         $users = $this->service(UserRepository::class);
-        $users->insert($id, 'internal', $name, $email, $this->passwordHash(), $mustChangePassword, $this->clock->now());
+        $hash = $invitationPending ? null : $this->passwordHash();
+        $users->insert($id, 'internal', $name, $email, $hash, $mustChangePassword, $this->clock->now());
         $users->replaceRoles($id, $roleIds);
         if ($passwordChangedAt !== null) {
             $this->connection->executeStatement(
@@ -96,6 +115,22 @@ abstract class AccessTestCase extends IntegrationTestCase
         }
 
         return ['id' => $id, 'email' => $email];
+    }
+
+    /**
+     * The token inside the link of the last email sent to an address.
+     */
+    protected function lastLinkToken(string $to): string
+    {
+        foreach (array_reverse($this->mail->sent) as $message) {
+            if ($message->to === $to) {
+                self::assertSame(1, preg_match('/#token=([0-9a-f]{64})/', $message->body, $match));
+
+                return $match[1] ?? self::fail('No token in the email.');
+            }
+        }
+
+        self::fail('No email was sent to ' . $to);
     }
 
     /**
@@ -269,7 +304,7 @@ abstract class AccessTestCase extends IntegrationTestCase
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
     private function clearData(): void
     {
-        foreach (['audit_logs', 'refresh_tokens', 'devices', 'user_roles', 'users'] as $table) {
+        foreach (['audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'users'] as $table) {
             $this->connection->executeStatement('DELETE FROM ' . $table);
         }
         $custom = 'role_id IN (SELECT id FROM roles WHERE is_system = 0)';

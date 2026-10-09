@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Soltec\Tests\Integration\Access;
 
 use Psr\Http\Message\ResponseInterface;
+use Soltec\Kernel\Mail\MailException;
 use Soltec\Kernel\Uuid;
 
 final class UsersTest extends AccessTestCase
@@ -29,7 +30,7 @@ final class UsersTest extends AccessTestCase
 
     // --- create ---------------------------------------------------------------------------------------------
 
-    public function testCreatesAnInternalUserWithATemporaryPassword(): void
+    public function testCreatesAnInternalUserWithoutPasswordAndEmailsTheInvitation(): void
     {
         $response = $this->createUserVia($this->adminToken, ['email' => 'New.Person@Example.com']);
 
@@ -38,23 +39,37 @@ final class UsersTest extends AccessTestCase
         self::assertSame('new.person@example.com', $user['email']);
         self::assertSame('internal', $user['type']);
         self::assertTrue($user['is_active']);
-        self::assertTrue($user['must_change_password']);
+        self::assertFalse($user['must_change_password']);
+        self::assertTrue($user['invitation_pending']);
+        self::assertTrue($user['invitation_sent']);
         self::assertSame(1, $user['version']);
         self::assertSame([$this->managerRole], $this->columnAt($user, 'id', 'roles'));
         self::assertStringNotContainsString('password_hash', (string) $response->getBody());
-        self::assertStringNotContainsString('temporary password', (string) $response->getBody());
+        self::assertStringNotContainsString('#token', (string) $response->getBody());
+        self::assertCount(1, $this->mail->sent);
+        self::assertSame('new.person@example.com', $this->mail->sent[0]->to);
+        self::assertStringContainsString(
+            'https://app.example.test/aceptar-invitacion#token=',
+            $this->mail->sent[0]->body,
+        );
     }
 
-    public function testTheNewUserMustChangeThePasswordAtFirstLogin(): void
+    public function testTheNewUserCannotSignInUntilTheInvitationIsAccepted(): void
     {
-        $this->createUserVia(
-            $this->adminToken,
-            ['email' => 'new@example.com', 'initial_password' => 'temporary password 1'],
-        );
+        $this->createUserVia($this->adminToken, ['email' => 'new@example.com']);
 
-        $login = $this->json($this->login('new@example.com', 'temporary password 1'));
+        self::assertSame(401, $this->login('new@example.com', 'any password at all')->getStatusCode());
+    }
 
-        self::assertTrue($login['password_change_required']);
+    public function testTheUserIsCreatedEvenWhenTheEmailCannotBeSent(): void
+    {
+        $this->mail->failWith(new MailException('SMTP down'));
+
+        $response = $this->createUserVia($this->adminToken);
+
+        self::assertSame(201, $response->getStatusCode());
+        self::assertFalse($this->json($response)['invitation_sent']);
+        self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM users WHERE email = 'new@example.com'"));
     }
 
     public function testValidatesEveryFieldAtOnce(): void
@@ -63,7 +78,6 @@ final class UsersTest extends AccessTestCase
             'name' => '',
             'email' => 'not-an-email',
             'role_ids' => [],
-            'initial_password' => 'short',
         ]);
 
         self::assertSame(422, $response->getStatusCode());
@@ -73,12 +87,11 @@ final class UsersTest extends AccessTestCase
         );
     }
 
-    public function testRejectsAWeakInitialPassword(): void
+    public function testAPasswordSentByAnOutdatedClientIsIgnored(): void
     {
-        $response = $this->createUserVia($this->adminToken, ['initial_password' => 'short']);
+        $this->createUserVia($this->adminToken, ['initial_password' => 'temporary password 1']);
 
-        self::assertSame(422, $response->getStatusCode());
-        self::assertSame([['field' => 'initial_password', 'code' => 'too_short']], $this->json($response)['errors']);
+        self::assertSame(401, $this->login('new@example.com', 'temporary password 1')->getStatusCode());
     }
 
     public function testAnEmailAlreadyInUseByAnActiveUserIsAFieldError(): void
@@ -134,14 +147,14 @@ final class UsersTest extends AccessTestCase
 
         $entries = $this->auditEntries('users', $id);
 
-        self::assertCount(1, $entries);
-        self::assertSame('create', $entries[0]['action']);
+        self::assertSame(['create', 'invite'], array_column($entries, 'action'));
         $after = $entries[0]['after'];
         self::assertIsArray($after);
         self::assertSame('new@example.com', $after['email']);
         self::assertSame([$this->managerRole], $after['role_ids']);
         self::assertStringNotContainsString('password', (string) json_encode($after));
         self::assertSame($this->admin['id'], $entries[0]['userId']);
+        self::assertNull($entries[1]['after']);
     }
 
     // --- read -----------------------------------------------------------------------------------------------
@@ -567,7 +580,6 @@ final class UsersTest extends AccessTestCase
             'name' => 'New Person',
             'email' => 'new@example.com',
             'role_ids' => [$this->managerRole],
-            'initial_password' => 'temporary password 1',
         ]);
     }
 

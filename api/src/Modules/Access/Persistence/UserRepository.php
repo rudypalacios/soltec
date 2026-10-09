@@ -95,28 +95,39 @@ final class UserRepository
         ];
     }
 
+    /** @param string|null $passwordHash null creates an account that waits for its invitation to be accepted */
     public function insert(
         string $id,
         string $type,
         string $name,
         string $email,
-        string $passwordHash,
+        ?string $passwordHash,
         bool $mustChangePassword,
         DateTimeImmutable $now,
     ): void {
         $this->connection->executeStatement(
             'INSERT INTO users (id, type, name, email, password_hash, password_changed_at, must_change_password, '
             . 'created_at, updated_at) '
-            . 'VALUES (UNHEX(:id), :type, :name, :email, :hash, :now, :must_change, :now, :now)',
+            . 'VALUES (UNHEX(:id), :type, :name, :email, :hash, :changed_at, :must_change, :now, :now)',
             [
                 'id' => Uuid::toHex($id),
                 'type' => $type,
                 'name' => $name,
                 'email' => $email,
                 'hash' => $passwordHash,
+                'changed_at' => $passwordHash === null ? null : Timestamps::toDb($now),
                 'now' => Timestamps::toDb($now),
                 'must_change' => $mustChangePassword ? 1 : 0,
             ],
+        );
+    }
+
+    /** Removes the failed-attempt counter and the lock, as a password reset does. */
+    public function clearLock(string $id): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = UNHEX(:id)',
+            ['id' => Uuid::toHex($id)],
         );
     }
 
