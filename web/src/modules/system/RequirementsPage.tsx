@@ -2,6 +2,7 @@ import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import CodeOutlined from '@mui/icons-material/CodeOutlined';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
+import LockOutlined from '@mui/icons-material/LockOutlined';
 import MailOutline from '@mui/icons-material/MailOutline';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import StorageOutlined from '@mui/icons-material/StorageOutlined';
@@ -38,6 +39,7 @@ const groupIcons: Record<string, ReactElement> = {
   storage: <FolderOutlined />,
   database: <StorageOutlined />,
   mail: <MailOutline />,
+  access: <LockOutlined />,
 };
 
 const verdictSeverity = {

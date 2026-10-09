@@ -2,6 +2,16 @@
 
 Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
 
+## Resumen: poner en marcha una instancia
+
+Es el orden a seguir en cualquier instancia nueva (entorno, hosting u otra empresa); cada paso remite a la sección que lo detalla.
+
+1. **`.env`.** Copia `api/.env.example` a la carpeta de la instancia, al lado de `public/`, con permisos `600`, y completa cada variable (2.1, 2.3, 2.4 y 2.5).
+2. **`.htaccess`.** Copia `deploy/htaccess.sample` a `public/.htaccess` (2.1).
+3. **Despliega** (sección 3).
+4. **Revisa los requisitos.** Abre `https://<dirección de la instancia>/api/system/requirements`: cada punto sale como correcto, aviso o falla. Corrige todas las fallas, entiende cada aviso y repite hasta que el veredicto sea «Todo listo» o «Listo, con avisos» que aceptas (4.1).
+5. **Primer administrador** (2.6).
+
 ## 1. Cómo funciona
 
 El workflow **Deploy** se dispara solo con cada `push`:
@@ -49,6 +59,7 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    DB_PASS=<contraseña>
    DEPLOY_TOKEN=<ver 2.3>
    JWT_SECRET=<ver 2.5>
+   APP_URL=https://<dirección de la instancia>
    ```
 
    Si el entorno envía correo, agrega también las variables `MAIL_*` de la sección 2.4.
@@ -152,7 +163,7 @@ La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale 
 
 ### 4.1 Lista de requisitos (`/api/system/requirements`)
 
-Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS y el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada). Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
+Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env` (incluidos los secretos, que nunca se muestran, y la dirección pública), la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones, HTTPS el correo (variables `MAIL_*` válidas y login SMTP aceptado, sin enviar nada) y que exista un administrador activo. Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
 
 - El workflow Deploy la imprime en el paso *Check server requirements* y marca cada problema como anotación; **no detiene** el despliegue.
 - Sin token: ábrela en el navegador en `https://<subdominio>/api/system/requirements`. No está en el contrato ni en buscadores (`X-Robots-Tag` y `robots.txt`).

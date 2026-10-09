@@ -7,6 +7,7 @@ export const groupTitles: Record<string, string> = {
   storage: 'Carpetas',
   database: 'Base de datos',
   mail: 'Correo',
+  access: 'Acceso',
 };
 
 export const statusLabels: Record<CheckStatus, string> = {
@@ -31,6 +32,9 @@ const checkTitles: Record<string, string> = {
   'config.env_file': 'Archivo .env',
   'config.database_settings': 'Datos de la base en el .env',
   'config.app_env': 'Entorno (APP_ENV)',
+  'config.deploy_token': 'Token de despliegue (DEPLOY_TOKEN)',
+  'config.jwt_secret': 'Secreto de sesiones (JWT_SECRET)',
+  'config.app_url': 'Dirección pública (APP_URL)',
   'config.layout': 'Estructura de carpetas',
   'config.document_root': 'Carpeta pública (Document Root)',
   'config.https': 'HTTPS',
@@ -43,6 +47,7 @@ const checkTitles: Record<string, string> = {
   'db.migrations': 'Migraciones aplicadas',
   'mail.settings': 'Configuración del correo',
   'mail.smtp': 'Servidor SMTP',
+  'access.first_admin': 'Primer administrador',
 };
 
 const extensionPrefix = 'php.ext.';
