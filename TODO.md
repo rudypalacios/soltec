@@ -17,7 +17,6 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [ ] 3.5 Correo: crear el buzón en cPanel, agregar PHPMailer y probar entrega a Gmail y Outlook (P24: dominio remitente)
   - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
   - [ ] Production: decidir si lleva *Required reviewers*
-  - [ ] Separar, dentro de cada entorno, el usuario de la aplicación (solo `SELECT/INSERT/UPDATE/DELETE`) del usuario de migraciones (privilegios de esquema), antes de producción real
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
   - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
@@ -88,3 +87,6 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 ## Hito 9 — Portal de cliente
 - [ ] Portal con aislamiento estricto por cliente
 - **Fuera:** nada más; cierre del plan original.
+
+## Al cerrar el proyecto (antes de datos reales en producción)
+- [ ] Separar, dentro de cada entorno, el usuario de la aplicación (solo `SELECT/INSERT/UPDATE/DELETE`) del usuario de migraciones (privilegios de esquema). Hoy se usa un solo usuario por entorno a propósito, para no multiplicar cuentas; el cambio es una variable más en el `.env` y en el endpoint de migraciones.
