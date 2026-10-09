@@ -44,6 +44,12 @@ Las pruebas de integración de la API borran todas las tablas de la base de dato
 
 `contract/openapi.yaml` es la fuente única. Los tipos y el cliente de `shared/` se generan con `npm run generate` (no se versionan) y una prueba de la API falla si una ruta `/v1` no está en el contrato o al revés. Los endpoints de despliegue (`/api/system/*`) quedan fuera del contrato público.
 
-## Despliegue
+## Poner en marcha una instancia
 
-Ver [ADR-0003](docs/adr/0003-migraciones-phinx-por-endpoint.md) y [ADR-0004](docs/adr/0004-despliegue-ftps-github-actions.md). La guía paso a paso llega con el flujo de despliegue.
+El orden para cualquier instancia nueva (entorno, hosting u otra empresa). El detalle de cada paso está en [`docs/despliegue.md`](docs/despliegue.md); el flujo en [ADR-0003](docs/adr/0003-migraciones-phinx-por-endpoint.md) y [ADR-0004](docs/adr/0004-despliegue-ftps-github-actions.md).
+
+1. **`.htaccess`:** copia `deploy/htaccess.sample` a `public/.htaccess`.
+2. **`.env`:** copia `api/.env.example` a la carpeta de la instancia, al lado de `public/`, con permisos `600`, y completa cada variable.
+3. **Despliega** (un push, ver la guía): sube el código y aplica las migraciones.
+4. **Revisa los requisitos:** abre `https://<dirección de la instancia>/api/system/requirements`. Corrige todas las fallas y entiende cada aviso; repite hasta que el veredicto sea «Todo listo» o «Listo, con avisos» que aceptas.
+5. **Primer administrador:** `php api/bin/console user:create-admin` en la carpeta de la instancia.

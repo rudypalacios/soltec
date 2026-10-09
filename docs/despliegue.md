@@ -1,16 +1,6 @@
 # Despliegue
 
-Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
-
-## Resumen: poner en marcha una instancia
-
-Es el orden a seguir en cualquier instancia nueva (entorno, hosting u otra empresa); cada paso remite a la sección que lo detalla.
-
-1. **`.env`.** Copia `api/.env.example` a la carpeta de la instancia, al lado de `public/`, con permisos `600`, y completa cada variable (2.1, 2.3, 2.4 y 2.5).
-2. **`.htaccess`.** Copia `deploy/htaccess.sample` a `public/.htaccess` (2.1).
-3. **Despliega** (sección 3).
-4. **Revisa los requisitos.** Abre `https://<dirección de la instancia>/api/system/requirements`: cada punto sale como correcto, aviso o falla. Corrige todas las fallas, entiende cada aviso y repite hasta que el veredicto sea «Todo listo» o «Listo, con avisos» que aceptas (4.1).
-5. **Primer administrador** (2.6).
+Guía para configurar un entorno (`staging` o `production`) y hacer el primer despliegue. El orden resumido está en el [README](../README.md#poner-en-marcha-una-instancia). El flujo es el de los ADR [0003](adr/0003-migraciones-phinx-por-endpoint.md) y [0004](adr/0004-despliegue-ftps-github-actions.md). Los valores de ejemplo usan el servidor `test.musicos-catolicos.com` (entorno `staging`); para `production` (`soltec.musicos-catolicos.com`) se repite todo cambiando los valores.
 
 ## 1. Cómo funciona
 
