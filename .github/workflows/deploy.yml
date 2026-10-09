@@ -1,20 +1,32 @@
 name: Deploy
 
-# Branch-to-environment rule (ADR-0004): a push to any branch deploys to "staging"; a push to main (the squash
-# merge of a PR) deploys to production ("production"). "Run workflow" applies the same rule to the chosen branch,
-# so running it on main redeploys production.
+# What runs and what deploys (ADR-0004):
+# - Every pull request runs the tests, on every push to it. The tests are the only ones of the CI, shown on the PR.
+# - A pull request deploys to "staging" only while it carries the label "pre-deploy", so the person reviewing chooses
+#   what is tested there (a change of text alone does not need to be deployed). Adding the label deploys at once.
+# - A push to main (the squash merge of a PR) tests and deploys to production ("production"), as always.
+# - "Run workflow" applies the main/other-branch rule to the chosen branch: on main it redeploys production.
+# A branch with no pull request runs nothing: open the PR (the work is only reviewed through one anyway).
 on:
   push:
-    branches: ['**']
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 jobs:
   tests:
+    # Putting an unrelated label on a pull request must not run the tests again.
+    if: github.event.action != 'labeled' || github.event.label.name == 'pre-deploy'
     uses: ./.github/workflows/tests.yml
 
   deploy:
     name: Deploy to ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     needs: tests
+    if: >-
+      github.event_name != 'pull_request'
+      || (contains(github.event.pull_request.labels.*.name, 'pre-deploy')
+      && (github.event.action != 'labeled' || github.event.label.name == 'pre-deploy'))
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     # One deployment per environment at a time. A waiting run is replaced by the newer one; a run already

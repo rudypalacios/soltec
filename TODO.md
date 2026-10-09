@@ -103,5 +103,6 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - **Fuera:** nada más; cierre del plan original.
 
 ## Al cerrar el proyecto (antes de datos reales en producción)
+- [ ] Verificaciones de seguridad en el CI: `composer audit` y `npm audit` (hoy solo se corrió `composer audit` a mano) y una revisión de seguridad dirigida a OWASP sobre el código de acceso. Un escaneo dinámico contra `staging` (por ejemplo OWASP ZAP) queda a evaluar
 - [ ] Separar, dentro de cada entorno, el usuario de la aplicación (solo `SELECT/INSERT/UPDATE/DELETE`) del usuario de migraciones (privilegios de esquema). Hoy se usa un solo usuario por entorno a propósito, para no multiplicar cuentas; el cambio es una variable más en el `.env` y en el endpoint de migraciones.
 - [ ] Proteger `/api/system/requirements` (hoy abierto, a pedido del usuario): expone versiones, estado de la base de datos y del SMTP, y cada petición crea y borra una tabla de prueba y abre un login SMTP.
