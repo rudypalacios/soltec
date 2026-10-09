@@ -8,15 +8,21 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] 1. Mapa de módulos y matriz de dependencias
 - [x] 2. Estructura del repositorio
 - [ ] 3. Scaffolding (0B), en etapas:
-  - [ ] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
-  - [ ] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
-  - [ ] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía
-  - [ ] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
+  - [x] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
+  - [x] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
+  - [x] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía (`production` también desplegó)
+  - [x] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
   - [ ] 3.5 Verificación del correo: buzón de cPanel por SMTP y entrega a Gmail y Outlook (agrega PHPMailer y una prueba de envío)
+- **Pendientes del 0B** (no bloquean el ERD):
+  - [ ] 3.5 Correo: crear el buzón en cPanel, agregar PHPMailer y probar entrega a Gmail y Outlook (P24: dominio remitente)
+  - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
+  - [ ] Production: decidir si lleva *Required reviewers*
+  - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
+  - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
 - [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3
-- [ ] Confirmar ADR-0004 (despliegue) y ADR-0006 (OpenAPI), hoy en `Propuesta`
+- [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
 
 ## Hito 1 — Fundaciones
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
@@ -81,3 +87,6 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 ## Hito 9 — Portal de cliente
 - [ ] Portal con aislamiento estricto por cliente
 - **Fuera:** nada más; cierre del plan original.
+
+## Al cerrar el proyecto (antes de datos reales en producción)
+- [ ] Separar, dentro de cada entorno, el usuario de la aplicación (solo `SELECT/INSERT/UPDATE/DELETE`) del usuario de migraciones (privilegios de esquema). Hoy se usa un solo usuario por entorno a propósito, para no multiplicar cuentas; el cambio es una variable más en el `.env` y en el endpoint de migraciones.
