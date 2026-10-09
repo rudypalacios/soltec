@@ -27,7 +27,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 
 ## Hito 1 — Fundaciones
 **Se construye por rebanadas verticales:** cada una incluye migraciones, API con tests, contrato OpenAPI de sus rutas y lo mínimo en la web para probarla en `staging`. No se pasa a la siguiente sin la anterior desplegada y probada.
-- [ ] **1.1 Acceso:** primer administrador por consola; login, refresh y logout; cambio de contraseña; `/me`; usuarios internos; perfiles, permisos y alcance `own`/`all`; auditoría de esos cambios. Web: login, cambio de contraseña, lista y alta de usuarios y de perfiles
+- [ ] **1.1 Acceso:** primer administrador por consola; login, refresh y logout; cambio de contraseña; `/me`; usuarios internos; perfiles, permisos y alcance `own`/`all`; auditoría de esos cambios. Web (responsive, verificada a 390 y 1280 px): login, cambio de contraseña, lista y alta de usuarios y de perfiles
 - [ ] 1.2 Organización: departamentos, jefe directo y alcance `team`
 - [ ] 1.3 Configuración general y correlativos
 - [ ] 1.4 Niveles de margen y función de precio
