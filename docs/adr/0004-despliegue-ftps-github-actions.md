@@ -7,7 +7,7 @@ Dos entornos ya existen: `test.musicos-catolicos.com` y `soltec.musicos-catolico
 
 ## Decisión
 - **GitHub Actions** con `SamKirkland/FTP-Deploy-Action` por FTPS, que sube solo lo que cambió.
-- Un push a una rama de trabajo despliega al entorno **staging** (`test.musicos-catolicos.com`); el merge a la rama de producción despliega a **production** (`soltec.musicos-catolicos.com`). La rama de producción es `main`. El entorno `production` de GitHub solo admite `main`. El workflow Deploy se dispara con cada push; también puede lanzarse a mano con la misma regla.
+- Un PR con la etiqueta `pre-deploy` despliega al entorno **staging** (`test.musicos-catolicos.com`) *(cambio del 2026-10-09: antes lo hacía cada push a una rama; ahora lo decide quien revisa, porque no todo cambio, por ejemplo uno solo de texto, necesita probarse allí)*; las pruebas corren en todo PR. El merge a la rama de producción despliega a **production** (`soltec.musicos-catolicos.com`). La rama de producción es `main`. El entorno `production` de GitHub solo admite `main`. El workflow Deploy se dispara con cada push; también puede lanzarse a mano con la misma regla.
 - CI instala dependencias (`composer --no-dev`), compila `web/` y sube `api/` (con `vendor/`) y el build del frontend. Nunca sube `.env`, `.htaccess`, logs ni archivos de desarrollo.
 - Secretos y URL por entorno (GitHub Environments). `concurrency` por entorno para no desplegar dos veces a la vez.
 - Los tests corren contra un servicio MySQL 5.7 antes de desplegar.

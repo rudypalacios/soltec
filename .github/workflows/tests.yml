@@ -1,7 +1,7 @@
 name: Tests
 
-# Runs only as part of the Deploy workflow (every push), whose checks also show up on the pull request.
-# A separate pull_request/push trigger would run the same tests twice.
+# Runs only as part of the Deploy workflow (every pull request and every push to main), whose checks also show up on
+# the pull request. A separate pull_request/push trigger would run the same tests twice.
 on:
   workflow_call:
 
@@ -17,12 +17,15 @@ jobs:
 
       # MySQL runs from a step instead of a service container: GitHub dumps the whole service log at the
       # end of the job, which buries the output of the checks that matter.
+      # The image comes from Google's mirror of Docker Hub, pinned by digest: Docker Hub refuses anonymous pulls from
+      # the shared GitHub runners once their quota runs out ("toomanyrequests"). The digest is the one of the official
+      # mysql:5.7 image, so Docker verifies the content whatever the registry that serves it.
       - name: Start MySQL 5.7
         run: |
           docker run -d --name mysql57 -p 3306:3306 \
             -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=soltec_test \
             -e MYSQL_USER=soltec -e MYSQL_PASSWORD=soltec_local \
-            mysql:5.7 > /dev/null
+            mirror.gcr.io/library/mysql:5.7@sha256:4bc6bc963e6d8443453676cae56536f4b8156d78bae03c0145cbe47c2aad73bb > /dev/null
           for attempt in $(seq 1 40); do
             if docker exec mysql57 mysqladmin ping -h 127.0.0.1 -proot --silent; then
               exit 0
