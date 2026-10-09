@@ -3,12 +3,13 @@
 declare(strict_types=1);
 
 use Phinx\Migration\AbstractMigration;
-use Soltec\Kernel\Uuid;
 
 /**
  * Slice 1.1 seed: the `users` and `roles` resources, the four permission verbs and the immutable `admin` role with
  * every permission and the `all` scope. A later module adds its own resource in its own migration and grants it to
  * `admin` the same way (ADR-0012). Idempotent, so a half-applied run can continue.
+ *
+ * It uses no application class: the deployment applies migrations before it uploads the new code.
  */
 final class SeedAccessCatalogsAndAdminRole extends AbstractMigration
 {
@@ -35,7 +36,7 @@ final class SeedAccessCatalogsAndAdminRole extends AbstractMigration
             . "'Acceso total. Perfil de sistema, no se puede modificar.', "
             . "'internal', 1, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3) FROM DUAL "
             . "WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code = 'admin')",
-            Uuid::toHex(Uuid::v7()),
+            $this->newUuidV7Hex(),
         ));
 
         $this->execute(
@@ -48,6 +49,16 @@ final class SeedAccessCatalogsAndAdminRole extends AbstractMigration
             . "SELECT r.id, res.code, 'all' FROM roles r CROSS JOIN resources res "
             . "WHERE r.code = 'admin' AND res.code IN ('users', 'roles')",
         );
+    }
+
+    /** A UUID v7 as 32 hexadecimal characters, the same format as the application's Uuid class. */
+    private function newUuidV7Hex(): string
+    {
+        $bytes = substr(pack('J', (int) floor(microtime(true) * 1000)), 2) . random_bytes(10);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x70);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return bin2hex($bytes);
     }
 
     public function down(): void
