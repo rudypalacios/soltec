@@ -49,6 +49,31 @@ final class ContractTest extends TestCase
         self::assertSame([], $missing, 'Operations without a valid x-permission.');
     }
 
+    public function testEveryRouteDeclaresTheAccessRuleOfItsContractOperation(): void
+    {
+        $app = Bootstrap::createApp(dirname(__DIR__, 2), new Config(['APP_ENV' => 'testing']));
+        $paths = $this->contractPaths();
+
+        $mismatches = [];
+        foreach ($app->getRouteCollector()->getRoutes() as $route) {
+            if (!str_starts_with($route->getPattern(), '/v1/')) {
+                continue;
+            }
+            foreach ($route->getMethods() as $method) {
+                $operation = $paths[$route->getPattern()][strtolower($method)] ?? null;
+                self::assertIsArray($operation);
+                $declared = [$route->getArgument('permission'), $route->getArgument('restricted') === 'allowed'];
+                $restricted = ($operation['x-allows-restricted-token'] ?? false) === true;
+                $documented = [$operation['x-permission'] ?? null, $restricted];
+                if ($declared !== $documented) {
+                    $mismatches[] = sprintf('%s %s', $method, $route->getPattern());
+                }
+            }
+        }
+
+        self::assertSame([], $mismatches, 'The route and the contract disagree on the access rule.');
+    }
+
     /** @return list<string> operations such as "GET /v1/health" */
     private function versionedRoutes(): array
     {

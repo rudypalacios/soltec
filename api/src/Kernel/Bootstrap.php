@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Soltec\Kernel;
 
+use DI\Container;
 use DI\ContainerBuilder;
 use Doctrine\DBAL\Connection;
 use Psr\Container\ContainerInterface;
@@ -12,12 +13,14 @@ use Psr\Log\LoggerInterface;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ResponseFactory;
+use Soltec\Kernel\Auth\CurrentUserLoader;
 use Soltec\Kernel\Db\ConnectionFactory;
 use Soltec\Kernel\Http\ProblemDetailsErrorHandler;
 use Soltec\Kernel\Http\SecurityHeadersMiddleware;
 use Soltec\Kernel\Logging\LoggerFactory;
 use Soltec\Kernel\Mail\MailTransport;
 use Soltec\Kernel\Mail\PhpMailerTransport;
+use Soltec\Modules\Access\Persistence\PermissionLoader;
 
 use function DI\autowire;
 use function DI\factory;
@@ -27,30 +30,13 @@ final class Bootstrap
 {
     /**
      * @param Config|null $config settings to use; null reads the .env file and the environment
+     * @param array<string, mixed> $definitions container entries that replace the defaults (tests inject a clock)
      * @return App<ContainerInterface|null>
      */
-    public static function createApp(string $appRoot, ?Config $config = null): App
+    public static function createApp(string $appRoot, ?Config $config = null, array $definitions = []): App
     {
-        $paths = new Paths($appRoot);
-        $config ??= Config::fromEnvironment($paths);
-
-        $container = (new ContainerBuilder())
-            ->addDefinitions([
-                Paths::class => $paths,
-                Config::class => $config,
-                ResponseFactoryInterface::class => new ResponseFactory(),
-                MailTransport::class => autowire(PhpMailerTransport::class),
-                Connection::class => factory(
-                    static fn (Config $settings): Connection => ConnectionFactory::create($settings),
-                ),
-                LoggerInterface::class => factory(
-                    static fn (Config $settings, Paths $locations): LoggerInterface => LoggerFactory::create(
-                        $settings,
-                        $locations,
-                    ),
-                ),
-            ])
-            ->build();
+        $config ??= Config::fromEnvironment(new Paths($appRoot));
+        $container = self::createContainer($appRoot, $config, $definitions);
 
         AppFactory::setContainer($container);
         $app = AppFactory::create();
@@ -70,5 +56,37 @@ final class Bootstrap
         $routes($app);
 
         return $app;
+    }
+
+    /**
+     * The services without the HTTP layer, for the console commands.
+     *
+     * @param array<string, mixed> $definitions
+     */
+    public static function createContainer(string $appRoot, ?Config $config = null, array $definitions = []): Container
+    {
+        $paths = new Paths($appRoot);
+        $config ??= Config::fromEnvironment($paths);
+
+        return (new ContainerBuilder())
+            ->addDefinitions([
+                Paths::class => $paths,
+                Config::class => $config,
+                Clock::class => autowire(SystemClock::class),
+                CurrentUserLoader::class => autowire(PermissionLoader::class),
+                ResponseFactoryInterface::class => new ResponseFactory(),
+                MailTransport::class => autowire(PhpMailerTransport::class),
+                Connection::class => factory(
+                    static fn (Config $settings): Connection => ConnectionFactory::create($settings),
+                ),
+                LoggerInterface::class => factory(
+                    static fn (Config $settings, Paths $locations): LoggerInterface => LoggerFactory::create(
+                        $settings,
+                        $locations,
+                    ),
+                ),
+            ])
+            ->addDefinitions($definitions)
+            ->build();
     }
 }

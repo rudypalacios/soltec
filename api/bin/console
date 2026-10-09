@@ -1,0 +1,34 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Soltec\Kernel\Bootstrap;
+use Soltec\Modules\Access\Console\CreateAdminCommand;
+use Soltec\Modules\Access\Console\StdioConsole;
+
+// Console entry point, uploaded with the API: php api/bin/console <command>
+if (PHP_SAPI !== 'cli') {
+    exit(1);
+}
+
+$appRoot = dirname(__DIR__);
+require $appRoot . '/vendor/autoload.php';
+
+$command = $argv[1] ?? '';
+if ($command !== CreateAdminCommand::NAME) {
+    fwrite(STDERR, sprintf("Usage: php bin/console %s\n", CreateAdminCommand::NAME));
+    exit(1);
+}
+
+$container = Bootstrap::createContainer($appRoot);
+$io = new StdioConsole();
+
+try {
+    $code = $container->get(CreateAdminCommand::class)->run($io);
+} catch (Throwable $error) {
+    fwrite(STDERR, sprintf("Failed: %s\n", $error->getMessage()));
+    $code = 1;
+}
+
+exit($code);

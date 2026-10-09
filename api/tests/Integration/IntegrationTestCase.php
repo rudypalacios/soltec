@@ -22,6 +22,7 @@ use Soltec\Kernel\Http\DeployTokenMiddleware;
 abstract class IntegrationTestCase extends TestCase
 {
     protected const DEPLOY_TOKEN = 'integration-deploy-token-with-more-than-32-chars';
+    protected const JWT_SECRET = 'integration-jwt-secret-with-more-than-32-chars';
 
     protected Config $config;
     protected Connection $connection;
@@ -31,14 +32,30 @@ abstract class IntegrationTestCase extends TestCase
     protected function setUp(): void
     {
         $this->config = $this->configWith([]);
+        $this->prepareDatabase();
+        $this->app = Bootstrap::createApp(dirname(__DIR__, 2), $this->config, $this->containerDefinitions());
+    }
+
+    /**
+     * Container entries that replace the defaults, such as a fixed clock.
+     *
+     * @return array<string, mixed>
+     */
+    protected function containerDefinitions(): array
+    {
+        return [];
+    }
+
+    /** Leaves an empty database; subclasses that need a schema override it. */
+    protected function prepareDatabase(): void
+    {
         $this->resetDatabase();
-        $this->app = Bootstrap::createApp(dirname(__DIR__, 2), $this->config);
     }
 
     /** @param array<string, string> $overrides */
     protected function configWith(array $overrides): Config
     {
-        $values = ['APP_ENV' => 'testing', 'DEPLOY_TOKEN' => self::DEPLOY_TOKEN];
+        $values = ['APP_ENV' => 'testing', 'DEPLOY_TOKEN' => self::DEPLOY_TOKEN, 'JWT_SECRET' => self::JWT_SECRET];
         foreach (['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS'] as $key) {
             $value = getenv($key);
             if ($value !== false) {
@@ -49,10 +66,18 @@ abstract class IntegrationTestCase extends TestCase
         return new Config($overrides + $values);
     }
 
-    /** @param array<string, string> $headers */
-    protected function call(string $method, string $uri, array $headers = [], ?string $body = null): ResponseInterface
-    {
-        $request = (new ServerRequestFactory())->createServerRequest($method, $uri);
+    /**
+     * @param array<string, string> $headers
+     * @param array<string, string> $cookies
+     */
+    protected function call(
+        string $method,
+        string $uri,
+        array $headers = [],
+        ?string $body = null,
+        array $cookies = [],
+    ): ResponseInterface {
+        $request = (new ServerRequestFactory())->createServerRequest($method, $uri)->withCookieParams($cookies);
         if ($body !== null) {
             $request->getBody()->write($body);
         }
@@ -71,6 +96,78 @@ abstract class IntegrationTestCase extends TestCase
 
         /** @var array<string, mixed> $body */
         return $body;
+    }
+
+    /**
+     * A string inside a decoded JSON body; the test fails when it is missing or not a string.
+     *
+     * @param array<array-key, mixed> $data
+     */
+    protected function text(array $data, string ...$keys): string
+    {
+        $value = $this->valueAt($data, ...$keys);
+        self::assertIsString($value, 'Not a string at ' . implode('.', $keys));
+
+        return $value;
+    }
+
+    /**
+     * The rows of a list inside a decoded JSON body.
+     *
+     * @param array<array-key, mixed> $data
+     * @return list<array<string, mixed>>
+     */
+    protected function rowsAt(array $data, string ...$keys): array
+    {
+        $value = $this->valueAt($data, ...$keys);
+        self::assertIsArray($value, 'Not a list at ' . implode('.', $keys));
+
+        $rows = [];
+        foreach ($value as $row) {
+            self::assertIsArray($row);
+            /** @var array<string, mixed> $row */
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One column of the rows of a list, as strings.
+     *
+     * @param array<array-key, mixed> $data
+     * @return list<string>
+     */
+    protected function columnAt(array $data, string $column, string ...$keys): array
+    {
+        return array_map(
+            fn (array $row): string => $this->text($row, $column),
+            $this->rowsAt($data, ...$keys),
+        );
+    }
+
+    /**
+     * The `errors` of a validation problem as field => code.
+     *
+     * @return array<string, string>
+     */
+    protected function errorCodes(ResponseInterface $response): array
+    {
+        $codes = [];
+        foreach ($this->rowsAt($this->json($response), 'errors') as $error) {
+            $codes[$this->text($error, 'field')] = $this->text($error, 'code');
+        }
+
+        return $codes;
+    }
+
+    /** @param array<string, mixed> $params */
+    protected function countRows(string $sql, array $params = []): int
+    {
+        $value = $this->connection->fetchOne($sql, $params);
+        self::assertTrue(is_int($value) || is_string($value), 'The query did not return a number.');
+
+        return (int) $value;
     }
 
     /**
@@ -97,7 +194,7 @@ abstract class IntegrationTestCase extends TestCase
         return [DeployTokenMiddleware::HEADER => self::DEPLOY_TOKEN];
     }
 
-    private function resetDatabase(): void
+    protected function resetDatabase(): void
     {
         $database = $this->config->string('DB_NAME');
         if (!str_ends_with($database, '_test')) {

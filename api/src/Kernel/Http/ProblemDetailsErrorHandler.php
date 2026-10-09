@@ -38,6 +38,9 @@ final class ProblemDetailsErrorHandler implements ErrorHandlerInterface
         bool $logErrors,
         bool $logErrorDetails,
     ): ResponseInterface {
+        if ($exception instanceof ApiException) {
+            return $this->apiError($exception);
+        }
         if ($exception instanceof HttpException) {
             return $this->httpError($exception);
         }
@@ -50,6 +53,19 @@ final class ProblemDetailsErrorHandler implements ErrorHandlerInterface
             'Internal server error',
             $this->config->isDebug() ? $exception->getMessage() : null,
         );
+    }
+
+    private function apiError(ApiException $exception): ResponseInterface
+    {
+        $response = $this->problems->respond(
+            $exception->status,
+            $exception->errorCode,
+            $exception->title,
+            $exception->detail,
+            $exception instanceof ValidationException ? $exception->errors : null,
+        );
+
+        return $exception->status === 401 ? $response->withHeader('WWW-Authenticate', 'Bearer') : $response;
     }
 
     private function httpError(HttpException $exception): ResponseInterface

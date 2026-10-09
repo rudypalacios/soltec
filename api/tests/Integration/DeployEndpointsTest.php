@@ -21,8 +21,9 @@ final class DeployEndpointsTest extends IntegrationTestCase
 
         self::assertSame(200, $first->getStatusCode());
         $body = $this->json($first);
-        self::assertSame(1, $body['count']);
-        self::assertSame(['20261008000001 CreateScaffoldProbeTable'], $body['applied']);
+        $files = glob(dirname(__DIR__, 3) . '/db/migrations/*.php') ?: [];
+        self::assertSame(count($files), $body['count']);
+        self::assertSame('20261008000001 CreateScaffoldProbeTable', $this->valueAt($body, 'applied', '0'));
         self::assertContains('scaffold_probe', $this->connection->fetchFirstColumn('SHOW TABLES'));
 
         $second = $this->json($this->call('POST', '/api/system/migrations/apply', $this->deployHeaders()));
