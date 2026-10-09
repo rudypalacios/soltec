@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from './apiClient';
+import { useApiClient } from '../access/SessionContext';
 
 /** Reads the API status; both the healthy and the degraded answers carry the same body. */
 export function useHealth() {
+  const apiClient = useApiClient();
   return useQuery({
     queryKey: ['health'],
     queryFn: async () => {

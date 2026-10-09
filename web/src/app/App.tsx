@@ -1,29 +1,93 @@
-import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material';
-import { HealthStatus } from '../modules/system/HealthStatus';
+import { Alert, Box, Button, Container, Typography } from '@mui/material';
+import { Link as RouterLink, Route, Routes } from 'react-router-dom';
+import { ChangePasswordPage } from '../modules/access/ChangePasswordPage';
+import {
+  CHANGE_PASSWORD_PATH,
+  LOGIN_PATH,
+  RequireAuth,
+  RequirePermission,
+} from '../modules/access/guards';
+import { LoginPage } from '../modules/access/LoginPage';
+import { RoleFormPage } from '../modules/access/RoleFormPage';
+import { RolesPage } from '../modules/access/RolesPage';
+import { UserCreatePage } from '../modules/access/UserCreatePage';
+import { UsersPage } from '../modules/access/UsersPage';
+import { HomePage } from '../modules/home/HomePage';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
 
-/** The only screen besides the status one; a real router arrives with the first milestone. */
-const isRequirementsRoute = () => window.location.pathname.replace(/\/+$/, '') === '/requisitos';
-
-/** Empty application shell: the real navigation and screens arrive with the first milestone. */
+/** Route table. The paths are in Spanish because the user sees them (docs/arquitectura/glosario.md). */
 export function App() {
   return (
-    <Box>
-      <AppBar
-        position="static"
-        color="inherit"
-        elevation={0}
-        sx={{ borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Toolbar>
-          <Typography variant="h6" component="h1">
-            Soltec
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Container sx={{ py: 3 }}>
-        {isRequirementsRoute() ? <RequirementsPage /> : <HealthStatus />}
-      </Container>
+    <Routes>
+      <Route path={LOGIN_PATH} element={<LoginPage />} />
+      {/* Server diagnostics, open on purpose (see TODO.md): it carries no session. */}
+      <Route
+        path="/requisitos"
+        element={
+          <Container sx={{ py: 3 }}>
+            <RequirementsPage />
+          </Container>
+        }
+      />
+      <Route element={<RequireAuth />}>
+        <Route index element={<HomePage />} />
+        <Route path={CHANGE_PASSWORD_PATH.slice(1)} element={<ChangePasswordPage />} />
+        <Route
+          path="usuarios"
+          element={
+            <RequirePermission resource="users" action="view">
+              <UsersPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="usuarios/nuevo"
+          element={
+            <RequirePermission resource="users" action="create">
+              <UserCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="perfiles"
+          element={
+            <RequirePermission resource="roles" action="view">
+              <RolesPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="perfiles/nuevo"
+          element={
+            <RequirePermission resource="roles" action="create">
+              <RoleFormPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="perfiles/:roleId"
+          element={
+            <RequirePermission resource="roles" action="view">
+              <RoleFormPage />
+            </RequirePermission>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+function NotFound() {
+  return (
+    <Box sx={{ p: 2 }}>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography>Esa pantalla no existe.</Typography>
+      </Alert>
+      <Button component={RouterLink} to="/">
+        Ir al inicio
+      </Button>
     </Box>
   );
 }
