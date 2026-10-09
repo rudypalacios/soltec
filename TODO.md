@@ -20,7 +20,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
   - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
-- [ ] 4. ERD (alcance por confirmar: hitos 1 a 3 detallados, el resto esbozado; incluye usuarios externos y campos de sync)
+- [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
 - [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3
 - [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)

@@ -1,15 +1,13 @@
 # ERD — convenciones y mapa
 
-**Entregable 4 del Hito 0** · Estado: borrador para revisión (parte 1 de 4) · Fecha: 2026-10-09
+**Entregable 4 del Hito 0** · Estado: Hito 1 detallado; hitos 2 a 9 esbozados · Fecha: 2026-10-09
 
-El modelo de datos se entrega en cuatro PR, para revisarlo con calma:
+El modelo se detalla **hito por hito**: el Hito 1 ya está detallado; de los hitos 2 a 9 hay un esbozo de entidades y relaciones, y las columnas de cada uno se definen al planearlo.
 
-| Parte | Contenido | Nivel |
+| Documento | Contenido | Nivel |
 |---|---|---|
-| 1 | Convenciones y **Hito 1**: acceso, organización, configuración, márgenes, auditoría, dashboard → [`01-fundaciones.md`](01-fundaciones.md) | Detallado |
-| 2 | **Hito 2**: catálogos, contactos, proveedores, productos y paquetes, clientes | Detallado |
-| 3 | **Hito 3**: motor de estados, hilo, notificaciones, archivos, tareas, tickets, importación del legacy | Detallado |
-| 4 | **Hitos 4 a 9**: cotizaciones, proyectos, compras, inventarios, facturación, finanzas, móvil | Esbozo |
+| [`01-fundaciones.md`](01-fundaciones.md) | Hito 1: acceso, organización, configuración, márgenes, auditoría, dashboard | Detallado |
+| [`02-esbozo-hitos-2-a-9.md`](02-esbozo-hitos-2-a-9.md) | Hitos 2 a 9: entidades, relaciones y las decisiones ya tomadas | Esbozo |
 
 Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uuid.md) (identificadores) y [ADR-0016](../../adr/0016-catalogos-y-configuracion-tipados.md) (catálogos y configuración). Autenticación y permisos: [ADR-0012](../../adr/0012-autenticacion-y-autorizacion.md).
 
@@ -37,39 +35,39 @@ Las tablas de unión, las de sistema, las de una sola fila de configuración con
 
 **Llaves foráneas.** Siempre `ON DELETE RESTRICT` y `ON UPDATE RESTRICT`: como nada se borra, la base no debe permitirlo tampoco.
 
-**Dinero y tasas.** Dinero `DECIMAL(14,2)`; costos y precios unitarios con la precisión que se defina en la parte 2. Tasas y márgenes `DECIMAL(6,5)` (0.12000 = 12 %). Moneda en una columna `currency_code CHAR(3)` de los documentos monetarios (por defecto `GTQ`, P1).
+**Dinero y tasas.** Dinero `DECIMAL(14,2)`; costos y precios unitarios con la precisión que se defina en el Hito 2. Tasas y márgenes `DECIMAL(6,5)` (0.12000 = 12 %). Moneda en una columna `currency_code CHAR(3)` de los documentos monetarios (por defecto `GTQ`, P1).
 
 **ENUM.** Solo para conjuntos cerrados que pertenecen al código (tipo de usuario, plataforma, alcance de datos). Lo que el administrador pueda ampliar (estados, catálogos) es una tabla.
 
 **JSON.** Solo para datos sin estructura fija ni consultas por campo: valores antes/después de la auditoría y metadatos de archivos.
 
-**Sincronización.** Toda tabla que pueda crearse sin conexión (parte 3 y siguientes) lleva `id`, `updated_at`, `version` y `deleted_at` y se expone en `GET /sync?since=`. El Hito 1 no tiene tablas creadas offline, pero ya sigue las mismas reglas.
+**Sincronización.** Toda tabla que pueda crearse sin conexión (Hito 3 y siguientes) lleva `id`, `updated_at`, `version` y `deleted_at` y se expone en `GET /sync?since=`. El Hito 1 no tiene tablas creadas offline, pero ya sigue las mismas reglas.
 
 **Auditoría.** Todo cambio de datos de negocio escribe en `audit_logs` (usuario, acción, entidad, antes y después).
 
 **Una sola fila.** Las tablas de configuración tienen `singleton ENUM('1') NOT NULL DEFAULT '1'` con índice único: la base impide una segunda fila.
 
-## Mapa de entidades por parte
+## Mapa de entidades por hito
 
 ```mermaid
 flowchart LR
-    subgraph H1[Parte 1 — Hito 1]
+    subgraph H1[Hito 1 — detallado]
         A[Acceso: users, roles, permisos, devices, tokens]
         O[Organización: departments]
         C[Configuración: company, financial, security, mail, sequences]
         M[margin_levels]
         U[audit_logs, role_widgets]
     end
-    subgraph H2[Parte 2 — Hito 2]
+    subgraph H2[Hito 2 — esbozo]
         K[Catálogos PM1 a PM13]
-        P[contacts, suppliers, products, packages]
+        P[contacts, suppliers, products, bundles]
         L[clients]
     end
-    subgraph H3[Parte 3 — Hito 3]
+    subgraph H3[Hito 3 — esbozo]
         S[Motor de estados, hilo, notificaciones, archivos]
         T[tasks, tickets, importación legacy]
     end
-    subgraph H49[Parte 4 — Hitos 4 a 9, esbozo]
+    subgraph H49[Hitos 4 a 9 — esbozo]
         Q[Cotizador, proyectos, compras, inventarios, finanzas, móvil]
     end
     H1 --> H2 --> H3 --> H49
@@ -81,6 +79,6 @@ flowchart LR
 |---|---|---|
 | P5 Roles definitivos | Perfiles como datos: no hay roles fijos en el esquema | Solo cambian los datos sembrados |
 | P20 Contraseñas del legacy | No se conoce el hash: `must_change_password` obliga a cambiarla en el primer acceso | Ninguna |
-| P23 / P7 Esquema y datos del legacy | Se modela desde los requisitos; el usuario indica los campos que falten al revisar cada sección, y se agregan con una migración. El volcado del legacy es opcional. Columna `legacy_id` en las entidades importables (parte 2 y 3) | Migración que ajusta columnas |
-| P17 / P18 Paquetes | Sin descuento propio y sin paquetes anidados (parte 2) | Migración |
-| P2 Proyectos consolidados | Un proyecto puede tener subproyectos (parte 4) | Migración |
+| P23 / P7 Esquema y datos del legacy | Se modela desde los requisitos; el usuario indica los campos que falten al revisar cada sección, y se agregan con una migración. El volcado del legacy es opcional. Columna `legacy_id` en las entidades importables (hitos 2 y 3) | Migración que ajusta columnas |
+| P17 / P18 Paquetes | Sin descuento propio y sin paquetes anidados (Hito 2) | Migración |
+| P2 Proyectos consolidados | Un proyecto puede tener subproyectos (Hito 5) | Migración |
