@@ -7,14 +7,14 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] ADR 0001 a 0014 (`docs/adr/`)
 - [x] 1. Mapa de módulos y matriz de dependencias
 - [x] 2. Estructura del repositorio
-- [ ] 3. Scaffolding (0B), en etapas:
+- [x] 3. Scaffolding (0B), en etapas:
   - [x] 3.1 Esqueleto de código y CI: API (Slim), web (React + MUI), contrato OpenAPI, `shared/` (PR de código)
   - [x] 3.2 Flujo de despliegue y guía de configuración (`docs/despliegue.md`, workflow Deploy)
   - [x] 3.3 **Configuración del usuario y primer despliegue a `staging`**: cPanel, GitHub Environments y `.env` según la guía (`production` también desplegó)
   - [x] 3.4 Verificación en el servidor con el diagnóstico: MySQL 5.7, columna generada con índice único, WebP en GD, límites de PHP
-  - [ ] 3.5 Verificación del correo: PHPMailer, endpoint de prueba y workflow *Mail test* listos (PR de correo); falta crear el `.env` `MAIL_*` de staging y comprobar la entrega a Gmail y Outlook
+  - [x] 3.5 Verificación del correo: entrega a Gmail comprobada; Outlook sin probar (decisión del usuario: no hay dónde)
 - **Pendientes del 0B** (no bloquean el ERD):
-  - [ ] 3.5 Correo: remitente `noreply@musicos-catolicos.com` (buzón ya creado); falta correr *Mail test* hacia Gmail y Outlook (P24 completa sigue abierta hasta antes de producción)
+  - [x] Correo: remitente `noreply@musicos-catolicos.com`; P24 (dominio de la organización) sigue abierta hasta antes de producción
   - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
   - [x] Production: sin *Required reviewers* (decisión del usuario: único revisor, repo privado)
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
