@@ -16,7 +16,10 @@ use Soltec\Kernel\Db\ConnectionFactory;
 use Soltec\Kernel\Http\ProblemDetailsErrorHandler;
 use Soltec\Kernel\Http\SecurityHeadersMiddleware;
 use Soltec\Kernel\Logging\LoggerFactory;
+use Soltec\Kernel\Mail\MailTransport;
+use Soltec\Kernel\Mail\PhpMailerTransport;
 
+use function DI\autowire;
 use function DI\factory;
 
 /** Builds the Slim application: container, middleware and routes. */
@@ -36,6 +39,7 @@ final class Bootstrap
                 Paths::class => $paths,
                 Config::class => $config,
                 ResponseFactoryInterface::class => new ResponseFactory(),
+                MailTransport::class => autowire(PhpMailerTransport::class),
                 Connection::class => factory(
                     static fn (Config $settings): Connection => ConnectionFactory::create($settings),
                 ),

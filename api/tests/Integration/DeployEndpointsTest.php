@@ -59,4 +59,19 @@ final class DeployEndpointsTest extends IntegrationTestCase
     {
         self::assertSame(401, $this->call('GET', '/api/system/diagnostics')->getStatusCode());
     }
+
+    public function testMailTestRequiresTheDeployToken(): void
+    {
+        self::assertSame(401, $this->call('POST', '/api/system/mail/test')->getStatusCode());
+    }
+
+    public function testMailTestExplainsWhatIsMissingWhenMailIsNotConfigured(): void
+    {
+        $response = $this->call('POST', '/api/system/mail/test', $this->deployHeaders() + [
+            'Content-Type' => 'application/json',
+        ], '{"to":"person@example.com"}');
+
+        self::assertSame(503, $response->getStatusCode());
+        self::assertSame('mail_not_configured', $this->json($response)['code']);
+    }
 }

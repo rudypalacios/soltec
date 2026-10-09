@@ -1,0 +1,40 @@
+name: Mail test
+
+# Manual only (Actions -> Mail test -> Run workflow). Asks the deployed staging API to send one test message,
+# to verify delivery to Gmail and Outlook. Nothing here runs on push, so no mail is sent unless you ask for it.
+on:
+  workflow_dispatch:
+    inputs:
+      to:
+        description: Recipient address (a Gmail or Outlook mailbox you can read)
+        required: true
+        type: string
+
+jobs:
+  send:
+    name: Send a test message from staging
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+      # Passed through the environment, never interpolated into the script, so the input cannot inject shell.
+      RECIPIENT: ${{ inputs.to }}
+    steps:
+      - name: Request the test message
+        run: |
+          : "${APP_URL:?APP_URL is required}"
+          log=$(mktemp)
+          payload=$(jq --null-input --arg to "$RECIPIENT" '{to: $to}')
+          status=$(curl --silent --show-error --max-time 60 --output "$log" --write-out '%{http_code}' \
+            --request POST \
+            --header "X-Deploy-Token: $DEPLOY_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$APP_URL/api/system/mail/test")
+          echo "Target: $APP_URL"
+          cat "$log"; echo
+          if [ "$status" != "200" ]; then
+            echo "::error::Test mail failed (HTTP $status)"
+            exit 1
+          fi

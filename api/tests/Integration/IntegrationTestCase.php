@@ -50,9 +50,12 @@ abstract class IntegrationTestCase extends TestCase
     }
 
     /** @param array<string, string> $headers */
-    protected function call(string $method, string $uri, array $headers = []): ResponseInterface
+    protected function call(string $method, string $uri, array $headers = [], ?string $body = null): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest($method, $uri);
+        if ($body !== null) {
+            $request->getBody()->write($body);
+        }
         foreach ($headers as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
