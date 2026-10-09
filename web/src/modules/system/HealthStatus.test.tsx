@@ -1,14 +1,23 @@
+import { AuthSession } from '@soltec/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SessionContext } from '../access/SessionContext';
 import { HealthStatus } from './HealthStatus';
 
 function renderWithQuery() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const session = new AuthSession({
+    baseUrl: 'http://app.test/api',
+    platform: 'web',
+    deviceStore: { read: () => null, write: () => undefined },
+  });
   render(
-    <QueryClientProvider client={client}>
-      <HealthStatus />
-    </QueryClientProvider>,
+    <SessionContext.Provider value={session}>
+      <QueryClientProvider client={client}>
+        <HealthStatus />
+      </QueryClientProvider>
+    </SessionContext.Provider>,
   );
 }
 

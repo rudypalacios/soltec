@@ -32,6 +32,8 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 | evento de ubicación | `LocationEvent` · `location_events` | |
 | token de refresco | `RefreshToken` · `refresh_tokens` | |
 | auditoría | `AuditLog` · `audit_logs` | `/auditoria` |
+| iniciar sesión | `login` | `/ingresar` |
+| cambiar contraseña | `changePassword` | `/cambiar-contrasena` |
 | token de acceso (el «pase» de 15 minutos) | `access_token` (JWT) | |
 | token restringido (solo sirve para cambiar la contraseña) | claim `scp: password_change` · `x-allows-restricted-token` (contrato) | |
 | contraseña temporal / obligación de cambiarla | `initial_password` · `users.must_change_password` | |
