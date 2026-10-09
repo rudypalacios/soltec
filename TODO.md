@@ -29,12 +29,13 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 **Se construye por rebanadas verticales:** cada una incluye migraciones, API con tests, contrato OpenAPI de sus rutas y lo mínimo en la web para probarla en `staging`. No se pasa a la siguiente sin la anterior desplegada y probada.
 - [ ] **1.1 Acceso**, en dos PR:
   - [x] **API** (`hito-1/acceso-api`): migraciones, siembra del perfil `admin`, `php api/bin/console user:create-admin`, login, refresh con rotación, logout, cambio de contraseña, `/me`, usuarios internos, perfiles, `/resources` y `/permissions`, alcance `own`/`all`, auditoría y las reglas de ADR-0012 (último administrador, nadie se desactiva a sí mismo, solo un administrador da o quita `admin`). Las 19 operaciones del contrato ya no están `x-planned`
-  - [x] **Web** (`hito-1/acceso-web`, sobre la rama de la API): login, cambio de contraseña (obligatorio con contraseña temporal), lista y alta de usuarios con desactivar y reactivar, lista, alta y edición de perfiles con su matriz; desktop-first y responsive, verificada a 390 y 1280 px. Sin pantalla de edición de un usuario: cambiar sus perfiles queda para una rebanada siguiente
+  - [x] **Web** (`hito-1/acceso-web`, sobre la rama de la API): login, cambio de contraseña (obligatorio con contraseña temporal), lista y alta de usuarios con desactivar y reactivar, lista, alta y edición de perfiles con su matriz; desktop-first y responsive, verificada a 390 y 1280 px.
   - Fuera de 1.1: departamentos, equipo, configuración, márgenes, recuperar contraseña por correo, usuarios externos, dashboard
+- [ ] **1.1b Credenciales y edición de usuarios** (justo después de 1.1, sobre `main` ya fusionado): invitación por correo con enlace de un solo uso para fijar la contraseña (el alta deja de pedir contraseña temporal), reenviar invitación, recuperar contraseña por correo (`/recuperar-contrasena`, `/establecer-contrasena`), y la pantalla de edición de un usuario existente (nombre, correo y perfiles; la API ya existe). Depende de `APP_URL` en el `.env` y del correo (ADR-0013)
 - [ ] 1.2 Organización: departamentos, jefe directo y alcance `team`
 - [ ] 1.3 Configuración general y correlativos
 - [ ] 1.4 Niveles de margen y función de precio
-- [ ] 1.5 Recuperar contraseña por correo, dispositivos, desbloqueo, auditoría consultable y dashboard base
+- [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable y dashboard base
 Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
 - [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
