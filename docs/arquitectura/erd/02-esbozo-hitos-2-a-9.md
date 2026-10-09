@@ -23,7 +23,7 @@ Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito
 | `contacts` | Personas | Vinculadas a clientes y proveedores con rol |
 | `suppliers` (+ direcciones) | A quién se le compra | Sus productos se desactivan en cascada |
 | `products` | Producto simple con costo | Proveedor, grupo, marca, unidad |
-| `packages`, `package_items` | Ítem compuesto | Contiene productos simples con cantidad |
+| `bundles`, `bundle_items` | Ítem compuesto | Contiene productos simples con cantidad |
 | `clients` (+ perfil de facturación, direcciones) | Prospectos y clientes de venta | Vendedor asignado (`users`), contactos con rol |
 
 ## Hito 3 — Tareas, tickets y cierre del legacy

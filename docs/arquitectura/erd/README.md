@@ -60,7 +60,7 @@ flowchart LR
     end
     subgraph H2[Hito 2 — esbozo]
         K[Catálogos PM1 a PM13]
-        P[contacts, suppliers, products, packages]
+        P[contacts, suppliers, products, bundles]
         L[clients]
     end
     subgraph H3[Hito 3 — esbozo]
