@@ -37,8 +37,8 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 | Español | Inglés | Ruta web |
 |---|---|---|
-| configuración general | `Setting` · `settings` (`setting_key`) | `/configuracion` |
-| datos de la empresa | `company` (grupo de ajustes) | |
+| configuración general | Tablas de una sola fila por tema (ADR-0016): `financial_settings`, `security_settings`, `mail_settings` | `/configuracion` |
+| datos de la empresa | `Company` · `company` (una sola fila) | |
 | IVA | `vat_rate` | |
 | ISR | `income_tax_rate` | |
 | nivel de margen (MC) | `MarginLevel` · `margin_levels` | `/niveles-de-margen` |
@@ -52,12 +52,17 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 | Español | Inglés | Ruta web |
 |---|---|---|
-| parámetro de catálogo | `CatalogParameter` · `catalog_parameters` (campo `type`) | `/parametros` |
-| tipo de contacto (PM1) | `contact_type` | |
-| estado de cliente (PM2) | `client_status` | |
-| segmento (PM5) | `segment` | |
-| régimen fiscal (PM6) | `tax_regime` | |
-| forma de pago (PM7) | `payment_method` | |
+| parámetro de catálogo | Una tabla por parámetro, con un CRUD genérico en el código (ADR-0016) | `/parametros` |
+| tipo de contacto (PM1) | `contact_types` | |
+| estado de cliente (PM2) | `client_statuses` | |
+| cadencia de contacto (PM3) | `contact_cadences` | |
+| tipo de cliente A-B-C (PM4) | `client_types` | |
+| segmento (PM5) | `segments` | |
+| régimen fiscal (PM6) | `tax_regimes` | |
+| forma de pago (PM7) | `payment_methods` | |
+| cadencia de actualización (PM8) | `update_cadences` | |
+| puesto (PM13) | `job_titles` | |
+| unidad de medida | `units_of_measure` | |
 | marca | `Brand` · `brands` | `/marcas` |
 | área (línea de producto o servicio) | `Area` · `areas` | `/areas` |
 | grupo (subcategoría de un área) | `ProductGroup` · `product_groups` | `/grupos` |
@@ -71,7 +76,8 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 |---|---|---|
 | cliente | `Client` · `clients` | `/clientes` |
 | prospecto / cliente de venta | `clients.type`: `prospect` / `customer` | |
-| NIT | `tax_id` | |
+| identificación: NIT, CUI o sin identificación | `tax_id_type` (`nit`, `cui`, `none`) y `tax_id` | |
+| datos fiscales y de crédito del cliente de venta | `client_billing_profiles` | |
 | vendedor asignado | `seller_id` | |
 | contacto | `Contact` · `contacts` | `/contactos` |
 | proveedor | `Supplier` · `suppliers` | `/proveedores` |
