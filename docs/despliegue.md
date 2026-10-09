@@ -131,6 +131,14 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 
 La entrega del correo (buzón de cPanel por SMTP hacia Gmail y Outlook) no sale en el diagnóstico: se verifica con el workflow *Mail test* (sección 2.4).
 
+### 4.1 Lista de requisitos (`/api/system/requirements`)
+
+Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.env`, la base de datos (versión, columna generada, y privilegios de esquema probados de verdad con una tabla temporal que se borra en la misma petición), el *Document Root*, `storage/`, las migraciones y HTTPS. Cada punto sale como `pass`, `warn` o `fail`, con una pista de qué hacer, y el veredicto es `ready`, `ready_with_warnings` o `blocked`.
+
+- El workflow Deploy la imprime en el paso *Check server requirements* y marca cada problema como anotación; **no detiene** el despliegue.
+- A mano: `curl -H "X-Deploy-Token: <token>" https://<subdominio>/api/system/requirements | jq`.
+- Solo responde si la API arranca. Si no hay respuesta, la causa está en el `error_log` de PHP de la instancia.
+
 ## 5. Si algo falla
 
 | Síntoma en el log | Causa probable |

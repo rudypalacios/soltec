@@ -124,6 +124,10 @@ jobs:
             .htaccess
             api/**
 
+      # Informational: lists what the server still has to provide (PHP, .env, database privileges, folders, HTTPS).
+      - name: Check server requirements
+        run: .github/scripts/requirements.sh
+
       - name: Apply migrations (no-op unless this is the first deployment)
         run: .github/scripts/migrate.sh
 

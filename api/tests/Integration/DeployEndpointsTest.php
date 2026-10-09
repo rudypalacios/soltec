@@ -74,4 +74,58 @@ final class DeployEndpointsTest extends IntegrationTestCase
         self::assertSame(503, $response->getStatusCode());
         self::assertSame('mail_not_configured', $this->json($response)['code']);
     }
+
+    public function testRequirementsRequireTheDeployToken(): void
+    {
+        self::assertSame(401, $this->call('GET', '/api/system/requirements')->getStatusCode());
+    }
+
+    public function testRequirementsReportTheDatabaseChecksAndLeaveNoProbeTableBehind(): void
+    {
+        $response = $this->call('GET', '/api/system/requirements', $this->deployHeaders());
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->json($response);
+        self::assertContains($body['status'], ['ready', 'ready_with_warnings', 'blocked']);
+
+        $statuses = $this->statusesById($body);
+        foreach (['db.connection', 'db.version', 'db.generated_column', 'db.privileges'] as $id) {
+            self::assertSame('pass', $statuses[$id] ?? null, $id);
+        }
+        self::assertNotContains('soltec_requirements_probe', $this->connection->fetchFirstColumn('SHOW TABLES'));
+        self::assertStringNotContainsString((string) getenv('DB_PASS'), (string) $response->getBody());
+    }
+
+    public function testRequirementsExplainADatabaseThatCannotBeReached(): void
+    {
+        $this->app = \Soltec\Kernel\Bootstrap::createApp(
+            dirname(__DIR__, 2),
+            $this->configWith(['DB_PASS' => 'definitely-the-wrong-password']),
+        );
+
+        $body = $this->json($this->call('GET', '/api/system/requirements', $this->deployHeaders()));
+
+        self::assertSame('blocked', $body['status']);
+        $statuses = $this->statusesById($body);
+        self::assertSame('fail', $statuses['db.connection'] ?? null);
+        self::assertArrayNotHasKey('db.privileges', $statuses);
+    }
+
+    /**
+     * @param array<string, mixed> $report
+     * @return array<string, mixed> the status of every check, keyed by its id
+     */
+    private function statusesById(array $report): array
+    {
+        $checks = $report['checks'] ?? null;
+        self::assertIsArray($checks);
+
+        $statuses = [];
+        foreach ($checks as $check) {
+            self::assertIsArray($check);
+            $statuses[(string) $check['id']] = $check['status'];
+        }
+
+        return $statuses;
+    }
 }
