@@ -83,7 +83,6 @@ paths:
       tags:
         - Auth
       x-permission: public
-      x-planned: true
       security: []
       requestBody:
         required: true
@@ -123,7 +122,6 @@ paths:
       tags:
         - Auth
       x-permission: public
-      x-planned: true
       security: []
       parameters:
         - name: refresh_token
@@ -160,11 +158,13 @@ paths:
     post:
       operationId: logout
       summary: Sign out of the current device.
-      description: Revokes the current device and all its refresh tokens, and clears the cookie.
+      description:
+        Revokes the current device and all its refresh tokens, and clears the cookie. Works with a restricted
+        token, so a user who must change the password can still leave.
       tags:
         - Auth
       x-permission: authenticated
-      x-planned: true
+      x-allows-restricted-token: true
       responses:
         '204':
           description: Signed out.
@@ -179,11 +179,11 @@ paths:
       description:
         Requires the current password. Works with a restricted token, which is how an initial password
         gets replaced. The new password must follow the policy (at least 12 characters, at most 72 bytes, different
-        from the email). A wrong current password answers 422 with the field error `current_password_incorrect`.
+        from the email) and different from the current one. A wrong current password answers 422 with the field error
+        `current_password_incorrect`. Every other device of the user is signed out.
       tags:
         - Auth
       x-permission: authenticated
-      x-planned: true
       x-allows-restricted-token: true
       requestBody:
         required: true
@@ -212,7 +212,6 @@ paths:
       tags:
         - Me
       x-permission: authenticated
-      x-planned: true
       responses:
         '200':
           description: The user.
@@ -234,7 +233,6 @@ paths:
       tags:
         - Users
       x-permission: users.view
-      x-planned: true
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
@@ -275,7 +273,6 @@ paths:
       tags:
         - Users
       x-permission: users.create
-      x-planned: true
       requestBody:
         required: true
         content:
@@ -307,7 +304,6 @@ paths:
       tags:
         - Users
       x-permission: users.view
-      x-planned: true
       responses:
         '200':
           description: The user.
@@ -328,12 +324,12 @@ paths:
       summary: Update a user.
       description:
         Changes only the fields sent. Only an administrator can give or take the `admin` role or edit
-        another administrator. Nobody can change their own roles. Taking `admin` from the only active administrator
-        answers 409 `last_admin`. A stale version answers 409 `conflict`.
+        another administrator. Only an administrator can change their own roles, and only when another active
+        administrator remains; the only active administrator cannot (409 `last_admin`). A stale version answers
+        409 `conflict`.
       tags:
         - Users
       x-permission: users.edit
-      x-planned: true
       requestBody:
         required: true
         content:
@@ -371,7 +367,6 @@ paths:
       tags:
         - Users
       x-permission: users.deactivate
-      x-planned: true
       responses:
         '200':
           description: The deactivated user.
@@ -401,7 +396,6 @@ paths:
       tags:
         - Users
       x-permission: users.deactivate
-      x-planned: true
       responses:
         '200':
           description: The reactivated user.
@@ -427,7 +421,6 @@ paths:
       tags:
         - Roles
       x-permission: roles.view
-      x-planned: true
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
@@ -458,12 +451,12 @@ paths:
       summary: Create a role.
       description:
         'Business roles (P5) are created here by an administrator; only `admin` is seeded in this slice.
-        The matrix is checked: permission and resource codes must exist and an internal role never gets the `client`
-        scope. Granting permissions on `users` and `roles` is close to making someone an administrator.'
+        The matrix is checked: permission and resource codes must exist. In this slice only internal roles can be
+        created and only the `own` and `all` scopes are accepted (`team` arrives with departments, `client` with the
+        client portal). Granting permissions on `users` and `roles` is close to making someone an administrator.'
       tags:
         - Roles
       x-permission: roles.create
-      x-planned: true
       requestBody:
         required: true
         content:
@@ -495,7 +488,6 @@ paths:
       tags:
         - Roles
       x-permission: roles.view
-      x-planned: true
       responses:
         '200':
           description: The role.
@@ -521,7 +513,6 @@ paths:
       tags:
         - Roles
       x-permission: roles.edit
-      x-planned: true
       requestBody:
         required: true
         content:
@@ -559,7 +550,6 @@ paths:
       tags:
         - Roles
       x-permission: roles.deactivate
-      x-planned: true
       responses:
         '200':
           description: The deactivated role.
@@ -587,7 +577,6 @@ paths:
       tags:
         - Roles
       x-permission: roles.deactivate
-      x-planned: true
       responses:
         '200':
           description: The reactivated role.
@@ -613,7 +602,6 @@ paths:
       tags:
         - Access catalogs
       x-permission: roles.view
-      x-planned: true
       responses:
         '200':
           description: The resources.
@@ -635,7 +623,6 @@ paths:
       tags:
         - Access catalogs
       x-permission: roles.view
-      x-planned: true
       responses:
         '200':
           description: The permissions.

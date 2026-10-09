@@ -12,10 +12,10 @@ Convierte el [ADR-0012](../adr/0012-autenticacion-y-autorizacion.md) en un dise�
 | `JwtService` | `Kernel/Auth` | Emite y valida el token de acceso |
 | `AuthenticationMiddleware` | `Kernel/Auth` | Lee `Authorization: Bearer`, valida y deja un `CurrentUser` en la petición |
 | `PermissionMiddleware` | `Kernel/Auth` | Lee el permiso que declara la ruta y consulta al `PermissionChecker` |
-| `PermissionChecker` | `Kernel/Auth` | `can(user, recurso, acción): bool`. Niega por defecto |
+| `CurrentUser::can` | `Kernel/Auth` | `can(recurso, acción): bool`. Niega por defecto. Reemplaza al `PermissionChecker` previsto: el usuario ya trae sus permisos cargados, y una clase aparte solo los reenviaría |
 | `DataScope` | `Kernel/Auth` | Alcance efectivo del usuario sobre un recurso: `own`, `team`, `all`, `client` |
 | `ScopedQuery` | `Kernel/Db` | Aplica el alcance a una consulta; único punto donde se filtra por alcance |
-| Módulo `Access` | `Modules/Access` | Casos de uso: login, refresh, logout, recuperar y cambiar contraseña, invitaciones, usuarios, roles, dispositivos |
+| Módulo `Access` | `Modules/Access` | Casos de uso: login, refresh, logout, recuperar y cambiar contraseña, invitaciones, usuarios, roles, dispositivos. Incluye `AdminGuard` (regla del último administrador, 7.1) y `AuditLogger` |
 
 `Kernel` no conoce al módulo `Access`: el módulo implementa las interfaces que el `Kernel` define (`UserRepository`, `PermissionRepository`).
 
@@ -39,7 +39,7 @@ Convierte el [ADR-0012](../adr/0012-autenticacion-y-autorizacion.md) en un dise�
 - Opaco, 32 bytes aleatorios; en `refresh_tokens` solo se guarda su SHA-256.
 - **Rotación**: cada refresco emite uno nuevo y revoca el anterior. Si llega uno ya revocado, se revocan todos los de ese dispositivo (señal de robo).
 - Web: cookie `httpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`. El mismo origen evita CORS, y `SameSite=Strict` junto a un cuerpo JSON cubre el CSRF. Móvil: el token viaja en el cuerpo y en un puerto de almacenamiento seguro.
-- Dos pestañas pueden refrescar a la vez: una ventana de gracia de unos segundos tras la rotación evita que la segunda se tome por robo (valor por confirmar).
+- Dos pestañas pueden refrescar a la vez: una ventana de gracia de **10 segundos** tras la rotación evita que la segunda se tome por robo. Solo vale para el token que llega por cookie (la web, donde el navegador comparte la cookie ya renovada); un token enviado en el cuerpo (móvil) que se reusa se trata siempre como robo. La web se mantiene abierta mientras haya actividad: cada refresco extiende 30 minutos de inactividad; el móvil dura 30 días. *Constantes en `SecurityPolicy` hasta la rebanada 1.3, que las lee de `security_settings`.*
 
 ## 5. Endpoints (insumo del contrato OpenAPI)
 
@@ -49,10 +49,10 @@ Todos bajo `/api/v1`. Errores en `application/problem+json` con un `code` establ
 |---|---|---|
 | `POST /auth/login` | pública | Correo, contraseña y datos del dispositivo → token de acceso, usuario y permisos efectivos; fija la cookie de refresco |
 | `POST /auth/refresh` | pública (la cookie o el cuerpo) | Rota el refresh y emite un token de acceso nuevo |
-| `POST /auth/logout` | autenticada | Revoca el dispositivo actual |
+| `POST /auth/logout` | autenticada, incluso con token restringido | Revoca el dispositivo actual |
 | `POST /auth/password/forgot` | pública | Siempre responde igual; envía el correo si la cuenta existe |
 | `POST /auth/password/reset` | pública (token de un solo uso) | Fija la contraseña, quita el bloqueo y revoca todos los refresh |
-| `POST /auth/password/change` | autenticada, incluso con token restringido | Cambia la contraseña conociendo la actual |
+| `POST /auth/password/change` | autenticada, incluso con token restringido | Cambia la contraseña conociendo la actual y cierra la sesión de los demás dispositivos |
 | `POST /auth/invitations/accept` | pública (token de un solo uso) | Un usuario externo fija su contraseña |
 | `GET /me` | autenticada | Usuario, roles, permisos efectivos y alcances |
 | `GET /me/devices`, `DELETE /me/devices/{id}` | autenticada | Ver y cerrar sesión en un dispositivo propio |
@@ -71,7 +71,7 @@ Si la contraseña venció o `must_change_password` es verdadero (cuenta creada o
 ## 7. Permisos y alcance
 
 - **Permiso**: par (recurso, acción) en `role_permissions`. Acciones: `view`, `create`, `edit`, `deactivate` y las que haga falta (`approve`…), como datos. Un usuario con varios roles tiene la unión de sus permisos.
-- **Alcance** por (rol, recurso) en `role_scopes`; sin fila, `own`. Con varios roles gana el más amplio: `all` > `team` > `own`. `client` solo existe para roles externos y es el único alcance que pueden tener.
+- **Alcance** por (rol, recurso) en `role_scopes`; sin fila, `own`. *Rebanada 1.1: solo se aceptan `own` y `all`; `team` llega con los departamentos (1.2) y `client` con el portal. Un alcance guardado que aún no se implementa no abre datos: no coincide con nada.* Con varios roles gana el más amplio: `all` > `team` > `own`. `client` solo existe para roles externos y es el único alcance que pueden tener.
 - **Aplicación**: cada repositorio declara la columna que indica a quién pertenece cada fila (`clients.seller_id`, `tasks.assignee_id`, `tickets.client_id`…). `ScopedQuery` agrega el filtro: `own` → esa columna = usuario; `team` → pertenece a alguien del equipo; `all` → sin filtro; `client` → la columna de cliente = `users.client_id`. Nadie escribe ese filtro a mano.
 - **Equipo**: el usuario, sus subordinados directos e indirectos (`manager_id`) y los miembros de su departamento (definición por confirmar). Se calcula una vez por petición.
 - Para operaciones sobre un registro puntual, el alcance también se comprueba: un id fuera del alcance responde 404, no 403, para no revelar que existe.
@@ -90,7 +90,7 @@ Mismo mecanismo con `users.type = 'external'`: perfiles externos de solo lectura
 
 ## 9. Datos iniciales y primer administrador
 
-- Una migración siembra `resources`, `permissions` y dos roles de sistema: **`admin`** (inmutable, todos los permisos y alcance `all`) y **`external_client`** (solo lectura, alcance `client`). Los demás roles (P5) los crea el administrador desde la interfaz.
+- Una migración siembra `resources`, `permissions` y los roles de sistema: **`admin`** (inmutable, todos los permisos y alcance `all`) y, con el portal (Hito 9), **`external_client`** (solo lectura, alcance `client`). Los demás roles (P5) los crea el administrador desde la interfaz. *Rebanada 1.1: se siembra `admin` y solo los recursos `users` y `roles`; cada rebanada o módulo agrega su recurso con su migración y se lo concede a `admin`.*
 - Recursos del Hito 1: `users`, `roles`, `departments`, `company`, `financial_settings`, `security_settings`, `mail_settings`, `margin_levels`, `sequences`, `audit_logs`, `dashboard`. Cada módulo posterior agrega los suyos en su migración.
 - **Primer administrador**: `php api/bin/console user:create-admin`, ejecutado en el terminal de cPanel. Pide correo y contraseña sin eco, cumple la misma política de contraseña y **se niega si ya existe un administrador**. No expone ninguna ruta.
 
@@ -121,7 +121,7 @@ Unitarias y de integración, y mutaciones deliberadas del código para comprobar
 6. Recuperar contraseña, cambio de contraseña e invitaciones.
 7. Comando del primer administrador.
 
-Cada paso con sus pruebas y su parte del contrato OpenAPI.
+Cada paso con sus pruebas y su parte del contrato OpenAPI. La rebanada 1.1 (acceso) cubre los pasos 1 a 5 en lo que usa (alcance `own`/`all`) y el comando del paso 7; recuperar contraseña e invitaciones (paso 6), `team` y `client` llegan con las rebanadas siguientes.
 
 ## 13. Por confirmar
 
@@ -129,6 +129,6 @@ Cada paso con sus pruebas y su parte del contrato OpenAPI.
 |---|---|
 | Definición de **equipo** | El usuario, sus subordinados por jefe directo y su departamento |
 | **Roles de negocio** (P5) | Los crea el administrador; solo se siembran `admin` y `external_client` |
-| **Ventana de gracia** del refresh entre pestañas | Unos segundos |
+| **Ventana de gracia** del refresh entre pestañas | 10 segundos (confirmada en la rebanada 1.1) |
 | **Límite por IP** en el login | Solo bloqueo por cuenta en esta etapa; el límite por IP se evalúa si hace falta |
-| Biblioteca JWT | `firebase/php-jwt`, a confirmar al implementar |
+| Biblioteca JWT | `firebase/php-jwt` 7.x (confirmada en la rebanada 1.1; la 6.x tiene un aviso de seguridad de claves cortas) |

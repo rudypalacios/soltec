@@ -19,11 +19,20 @@ final class ProblemResponder
     {
     }
 
-    public function respond(int $status, string $code, string $title, ?string $detail = null): ResponseInterface
-    {
+    /** @param list<array{field: string, code: string}>|null $errors the wrong fields of a validation failure */
+    public function respond(
+        int $status,
+        string $code,
+        string $title,
+        ?string $detail = null,
+        ?array $errors = null,
+    ): ResponseInterface {
         $payload = ['type' => 'about:blank', 'title' => $title, 'status' => $status, 'code' => $code];
         if ($detail !== null) {
             $payload['detail'] = $detail;
+        }
+        if ($errors !== null) {
+            $payload['errors'] = $errors;
         }
 
         return Json::write($this->responses->createResponse($status), $payload, $status, 'application/problem+json');

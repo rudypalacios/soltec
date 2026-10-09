@@ -48,6 +48,7 @@ El FTP no es atómico: durante la subida el sitio puede estar a medias unos segu
    DB_USER=<usuario completo>
    DB_PASS=<contraseña>
    DEPLOY_TOKEN=<ver 2.3>
+   JWT_SECRET=<ver 2.5>
    ```
 
    Si el entorno envía correo, agrega también las variables `MAIL_*` de la sección 2.4.
@@ -108,6 +109,24 @@ No lo emite nadie: lo inventas tú. Es una contraseña compartida entre el servi
 4. **Verificar la entrega.** En GitHub: *Actions → Mail test → Run workflow*, con la dirección de un Gmail o un Outlook que puedas leer. Solo se ejecuta cuando lo lanzas a mano y solo contra `staging`. Si falla, el log muestra el motivo del servidor (por ejemplo `SMTP Error: Could not authenticate`). Repite con la otra dirección.
 5. En el mensaje recibido abre *Mostrar original* (Gmail) o *Ver origen del mensaje* (Outlook) y comprueba que SPF, DKIM y DMARC digan `PASS` y que no cayó en spam.
 
+### 2.5 El secreto de las sesiones (`JWT_SECRET`)
+
+Firma los tokens de acceso (el «pase» de 15 minutos con el que el navegador demuestra que inició sesión). Quien lo conozca puede fabricar un pase de administrador, así que no sale del servidor.
+
+- **Formato:** 64 caracteres aleatorios, como el token de despliegue (2.3). Sin él, o con menos de 32 caracteres, el inicio de sesión responde `503 auth_not_configured`.
+- **Solo en el `.env`** de cada entorno, **distinto en cada uno**. No va en GitHub ni en el repositorio.
+- Cambiarlo cierra todas las sesiones abiertas: la gente vuelve a iniciar sesión, sin más consecuencias.
+
+### 2.6 El primer administrador
+
+Tras el primer despliegue con migraciones, en el terminal de cPanel (carpeta de la instancia):
+
+```
+php api/bin/console user:create-admin
+```
+
+Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). Se niega si ya existe un administrador activo y no expone ninguna ruta. Ese usuario crea después a los demás desde la aplicación.
+
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.
@@ -151,5 +170,6 @@ Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.e
 | Subida de la API: `Server sent FIN packet unexpectedly` | El hosting cortó una sesión FTP larga. El primer despliegue sube miles de archivos de `vendor/`; relanza con *Re-run failed jobs* (el workflow ya omite la documentación y las pruebas de `vendor/` para acortarlo) |
 | Mail test: `503 mail_not_configured` | Falta alguna variable `MAIL_*` en el `.env` (el detalle dice cuál) |
 | Mail test: `502 mail_send_failed` | El servidor de correo rechazó el envío; el detalle trae su motivo (credenciales, host o puerto, certificado) |
+| Inicio de sesión: `503 auth_not_configured` | Falta `JWT_SECRET` en el `.env` o tiene menos de 32 caracteres (2.5) |
 | Smoke: `degraded` | La API responde pero la base de datos no: revisa `DB_*` en el `.env` |
 | Smoke: 404 en `/api/v1/health` | Falta `.htaccess` o `mod_rewrite` |

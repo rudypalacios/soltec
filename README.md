@@ -16,12 +16,15 @@ PHP 8.3 con `pdo_mysql`, `mbstring`, `intl` y `gd`; Composer; Node 22; MySQL 5.7
 # API
 cd api
 composer install
-cp .env.example .env            # y completa DB_NAME, DB_USER, DB_PASS y DEPLOY_TOKEN
+cp .env.example .env            # y completa DB_NAME, DB_USER, DB_PASS, DEPLOY_TOKEN y JWT_SECRET
 cd ..
 php -S 127.0.0.1:8080 -t api/public api/public/index.php
 
 # Migraciones (con el servidor anterior encendido)
 curl -X POST -H "X-Deploy-Token: $DEPLOY_TOKEN" http://127.0.0.1:8080/api/system/migrations/apply
+
+# Primer administrador (pide correo y contraseña)
+php api/bin/console user:create-admin
 
 # Web (en otra terminal; reenvía /api al puerto 8080)
 npm install
