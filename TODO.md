@@ -4,7 +4,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 
 ## Hito 0 — Planeación y scaffolding
 - [x] Resumen de entendimiento, riesgos y contradicciones
-- [x] ADR 0001 a 0014 (`docs/adr/`)
+- [x] ADR 0001 a 0016 (`docs/adr/`); 0015 (UUID v7) y 0016 (catálogos y configuración tipados) siguen en `Propuesta`
 - [x] 1. Mapa de módulos y matriz de dependencias
 - [x] 2. Estructura del repositorio
 - [x] 3. Scaffolding (0B), en etapas:
@@ -21,7 +21,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
-- [ ] 5. Esqueleto de autenticación y roles (ADR-0012)
+- [x] 5. Esqueleto de autenticación y roles (`docs/arquitectura/autenticacion-y-roles.md`)
 - [ ] 6. Especificación OpenAPI de los hitos 1 a 3
 - [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
 
