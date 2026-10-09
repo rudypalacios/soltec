@@ -18,10 +18,13 @@ return static function (App $app): void {
         $group->get('/health', HealthController::class);
     });
 
+    // Open on purpose while the project starts (decision of the user): it is only reachable by URL, it is not in
+    // the contract and it asks crawlers to stay away. TODO.md lists protecting it before real data arrives.
+    $app->get('/system/requirements', [RequirementsController::class, 'check']);
+
     $app->group('/system', function (RouteCollectorProxy $group): void {
         $group->post('/migrations/apply', [DeployController::class, 'applyMigrations']);
         $group->get('/diagnostics', [DeployController::class, 'diagnostics']);
         $group->post('/mail/test', [MailTestController::class, 'send']);
-        $group->get('/requirements', [RequirementsController::class, 'check']);
     })->add(DeployTokenMiddleware::class);
 };

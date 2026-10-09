@@ -75,14 +75,17 @@ final class DeployEndpointsTest extends IntegrationTestCase
         self::assertSame('mail_not_configured', $this->json($response)['code']);
     }
 
-    public function testRequirementsRequireTheDeployToken(): void
+    public function testRequirementsAreOpenButAskSearchEnginesToStayAway(): void
     {
-        self::assertSame(401, $this->call('GET', '/api/system/requirements')->getStatusCode());
+        $response = $this->call('GET', '/api/system/requirements');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('noindex, nofollow', $response->getHeaderLine('X-Robots-Tag'));
     }
 
     public function testRequirementsReportTheDatabaseChecksAndLeaveNoProbeTableBehind(): void
     {
-        $response = $this->call('GET', '/api/system/requirements', $this->deployHeaders());
+        $response = $this->call('GET', '/api/system/requirements');
 
         self::assertSame(200, $response->getStatusCode());
         $body = $this->json($response);
@@ -103,7 +106,7 @@ final class DeployEndpointsTest extends IntegrationTestCase
             $this->configWith(['DB_PASS' => 'definitely-the-wrong-password']),
         );
 
-        $body = $this->json($this->call('GET', '/api/system/requirements', $this->deployHeaders()));
+        $body = $this->json($this->call('GET', '/api/system/requirements'));
 
         self::assertSame('blocked', $body['status']);
         $statuses = $this->statusesById($body);
