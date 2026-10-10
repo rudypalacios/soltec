@@ -31,7 +31,7 @@ final class AccessRequirements implements ModuleRequirements
             return [];
         }
 
-        return [
+        $checks = [
             $hasAdministrator
                 ? RequirementCheck::pass('access.first_admin', 'access', 'An active administrator exists')
                 : new RequirementCheck(
@@ -39,8 +39,21 @@ final class AccessRequirements implements ModuleRequirements
                     'access',
                     CheckStatus::Warn,
                     'There is no active administrator: nobody can sign in.',
-                    'Run "php api/bin/console user:create-admin" in the instance folder (docs/despliegue.md, 2.6).',
+                    'Set ADMIN_EMAIL and ADMIN_PASSWORD in the .env and deploy again, or run "php api/bin/console '
+                    . 'user:create-admin" with PHP 8.3 in the instance folder (docs/despliegue.md, 2.6).',
                 ),
         ];
+        if ($hasAdministrator && $this->config->optionalString('ADMIN_PASSWORD') !== null) {
+            // A plain-text password on disk has no reason to stay once the account exists.
+            $checks[] = new RequirementCheck(
+                'access.admin_password_in_env',
+                'access',
+                CheckStatus::Warn,
+                'ADMIN_PASSWORD is still in the .env although an administrator exists.',
+                'Remove ADMIN_PASSWORD (and ADMIN_EMAIL, ADMIN_NAME) from the .env.',
+            );
+        }
+
+        return $checks;
     }
 }

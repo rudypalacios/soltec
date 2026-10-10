@@ -123,13 +123,16 @@ Firma los tokens de acceso (el «pase» de 15 minutos con el que el navegador de
 
 ### 2.6 El primer administrador
 
-Tras el primer despliegue con migraciones, en el terminal de cPanel (carpeta de la instancia):
+Dos formas; ambas se niegan si ya existe un administrador.
+
+- **Desde el `.env` (no necesita terminal).** Agrega `ADMIN_EMAIL`, `ADMIN_PASSWORD` (12 a 72 caracteres) y, si quieres, `ADMIN_NAME`, y despliega. El paso final del despliegue crea la cuenta con el PHP del servidor web y lo anota en el log (`first_admin: created`; con una contraseña inválida dice por qué, p. ej. `password_too_short`). **Luego quita las tres variables:** la contraseña queda en texto plano en el `.env`, y `/api/system/requirements` avisa mientras siga ahí. Usa estos nombres y no `USER`/`PASS`: `USER` es también la variable estándar del sistema operativo.
+- **Desde el terminal de cPanel**, en la carpeta de la instancia, **con PHP 8.3**. El terminal puede traer otro `php` por defecto (el PHP de *MultiPHP Manager* solo afecta a la web); verifícalo con `php -v` y, si hace falta, llama al binario de 8.3, por ejemplo `/opt/cpanel/ea-php83/root/usr/bin/php`:
 
 ```
 php api/bin/console user:create-admin
 ```
 
-Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). Se niega si ya existe un administrador activo y no expone ninguna ruta. Ese usuario crea después a los demás desde la aplicación.
+Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). No expone ninguna ruta. Ese usuario crea después a los demás desde la aplicación.
 
 ## 3. Primer despliegue
 

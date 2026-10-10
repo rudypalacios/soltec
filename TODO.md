@@ -42,7 +42,7 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
 - [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
 - [ ] Modelo de usuarios externos (tipo y cliente asignado); las pantallas llegan en el Hito 9
-- [ ] Primer administrador por comando de consola
+- [x] Primer administrador por comando de consola o desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` en el despliegue
 - [ ] Departamentos y jerarquía (jefe directo)
 - [ ] Auditoría y desactivación lógica
 - [ ] Configuración general (empresa, IVA, ISR, días de costo, validez de cotización, correlativos, remitente de correo, parámetros de sesión y bloqueo)
