@@ -57,7 +57,7 @@ describe('margin levels', () => {
     expect(within(table).getByText('Margen 33 %')).toBeInTheDocument();
     expect(within(table).getByText('33 %')).toBeInTheDocument();
     expect(within(table).getByText('35 %')).toBeInTheDocument();
-    expect(within(table).getByText('Por defecto')).toBeInTheDocument();
+    expect(within(table).getByText('● Por defecto')).toBeInTheDocument();
   });
 
   it('offers the default level only to be edited, and the others to become the default or go', async () => {
@@ -229,68 +229,69 @@ describe('margin levels', () => {
   });
 });
 
-describe('price simulator', () => {
-  const handlers = (calls: Call[]) => ({
+describe('test cost in the list', () => {
+  const handlers = (calls: Call[], extra: Record<string, (call: Call) => Response> = {}) => ({
     'GET /v1/margin-levels': () => Response.json({ data: [STANDARD, HIGHER] }),
     'POST /v1/price/calculate': (call: Call) => {
       calls.push(call);
       return Response.json(PRICE_33);
     },
+    ...extra,
   });
 
-  it('asks the server and shows the price it answers', async () => {
+  it('adds both prices to every level once a cost is typed, and asks the server only once', async () => {
     const calls: Call[] = [];
     const { session } = createTestSession(handlers(calls), READER_ME);
     renderApp(session, '/configuracion/margenes');
     const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText('Costo'), '525,01');
+    const table = await screen.findByRole('table', { name: 'Lista de niveles de margen' });
+    expect(within(table).queryByText('Precio con IVA')).toBeNull();
 
-    expect(await screen.findByText('Q 807.83')).toBeInTheDocument();
-    expect(screen.getByText('Q 721.28')).toBeInTheDocument();
-    expect(await screen.findByText(/Calculado por el servidor/)).toBeInTheDocument();
-    expect(calls.at(-1)?.body).toEqual({ cost: '525.01', margin_level_id: null });
-    // Typing is not one request per key.
+    await user.type(screen.getByLabelText('Costo de prueba (con IVA)'), '525,01');
+
+    // The default level shows what the server said; the other one is priced here with the same function.
+    expect(await within(table).findByText('Q 807.83')).toBeInTheDocument();
+    expect(within(table).getByText('Q 721.28')).toBeInTheDocument();
+    expect(within(table).getByText('Q 832.69')).toBeInTheDocument();
+    expect(within(table).getByText('Q 743.47')).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Precio sin IVA' })).toBeInTheDocument();
+    expect(await screen.findByText(/Precios calculados por el servidor/)).toBeInTheDocument();
     expect(calls).toHaveLength(1);
+    expect(calls[0]?.body).toEqual({ cost: '525.01' });
   });
 
-  it('previews another level at once with the rates of the last answer, then confirms it', async () => {
+  it('prices a changed cost at once with the taxes of the last answer, then confirms it', async () => {
     const calls: Call[] = [];
     const { session } = createTestSession(
-      {
-        ...handlers(calls),
+      handlers(calls, {
         'POST /v1/price/calculate': (call) => {
           calls.push(call);
-          const body = call.body as { margin_level_id: string | null };
+          const cost = (call.body as { cost: string }).cost;
           return Response.json(
-            body.margin_level_id === HIGHER.id
-              ? {
-                  ...PRICE_33,
-                  margin_level: { id: HIGHER.id, name: HIGHER.name, rate: HIGHER.rate },
-                  without_vat: '743.47',
-                  with_vat: '832.69',
-                }
-              : PRICE_33,
+            cost === '525.01'
+              ? PRICE_33
+              : { ...PRICE_33, without_vat: '137.00', with_vat: '154.00' },
           );
         },
-      },
+      }),
       READER_ME,
     );
     renderApp(session, '/configuracion/margenes');
     const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText('Costo'), '525.01');
+    const cost = await screen.findByLabelText('Costo de prueba (con IVA)');
+    await user.type(cost, '525.01');
     await screen.findByText('Q 807.83');
 
-    await user.click(screen.getByRole('combobox', { name: 'Nivel de margen' }));
-    await user.click(await screen.findByRole('option', { name: /Margen 35 %/ }));
+    await user.clear(cost);
+    await user.type(cost, '100');
 
-    // The preview (same function as the server's) shows the new figure without waiting for the answer.
-    expect(await screen.findByText('Q 832.69')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(calls.at(-1)?.body).toEqual({ cost: '525.01', margin_level_id: HIGHER.id }),
-    );
-    expect(await screen.findByText(/Calculado por el servidor/)).toBeInTheDocument();
+    // 100 at 35 % is 158.60 con IVA: the preview does not wait for the server. The default level first shows
+    // its own preview (153.87) and then what the server says, which wins (the fake answers 154.00).
+    expect(await screen.findByText('Q 158.60')).toBeInTheDocument();
+    await waitFor(() => expect(calls.at(-1)?.body).toEqual({ cost: '100' }));
+    expect(await screen.findByText('Q 154.00')).toBeInTheDocument();
   });
 
   it('does not ask for a cost that is not a valid amount', async () => {
@@ -299,9 +300,68 @@ describe('price simulator', () => {
     renderApp(session, '/configuracion/margenes');
     const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText('Costo'), '12.34567');
+    await user.type(await screen.findByLabelText('Costo de prueba (con IVA)'), '12.34567');
 
     expect(await screen.findByText(/hasta 4 decimales/)).toBeInTheDocument();
     expect(calls).toHaveLength(0);
+  });
+
+  it('gives deactivated levels no price', async () => {
+    const calls: Call[] = [];
+    const gone = { ...HIGHER, is_active: false };
+    const { session } = createTestSession(
+      handlers(calls, { 'GET /v1/margin-levels': () => Response.json({ data: [STANDARD, gone] }) }),
+      READER_ME,
+    );
+    renderApp(session, '/configuracion/margenes');
+    const user = userEvent.setup();
+
+    const table = await screen.findByRole('table', { name: 'Lista de niveles de margen' });
+    await user.type(screen.getByLabelText('Costo de prueba (con IVA)'), '525.01');
+    await within(table).findByText('Q 807.83');
+
+    expect(within(table).queryByText('Q 832.69')).toBeNull();
+    expect(within(table).getAllByText('—')).toHaveLength(2);
+  });
+
+  it('shows the state column only when inactive levels can be on the list', async () => {
+    const { session } = createTestSession(
+      { 'GET /v1/margin-levels': () => Response.json({ data: [STANDARD, HIGHER] }) },
+      READER_ME,
+    );
+    renderApp(session, '/configuracion/margenes');
+    const user = userEvent.setup();
+
+    const table = await screen.findByRole('table', { name: 'Lista de niveles de margen' });
+    expect(within(table).queryByRole('columnheader', { name: 'Estado' })).toBeNull();
+    expect(within(table).getByText('● Por defecto')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: 'Estado' }));
+    await user.click(await screen.findByRole('option', { name: 'Todos' }));
+
+    expect(await screen.findByRole('columnheader', { name: 'Estado' })).toBeInTheDocument();
+  });
+
+  it('is one compact line per level on a phone, with the price on the right', async () => {
+    setViewportWidth(390);
+    const calls: Call[] = [];
+    const { session } = createTestSession(handlers(calls), MARGIN_ME);
+    renderApp(session, '/configuracion/margenes');
+    const user = userEvent.setup();
+
+    const list = await screen.findByLabelText('Lista de niveles de margen');
+    // Without a cost the right side says the state, and every action is behind ⋮.
+    expect(within(list).getByText('Por defecto')).toBeInTheDocument();
+    expect(
+      within(list).getByRole('button', { name: 'Acciones de Margen 35 %' }),
+    ).toBeInTheDocument();
+    expect(within(list).queryByRole('button', { name: /^Editar:/ })).toBeNull();
+
+    await user.type(screen.getByLabelText('Costo de prueba (con IVA)'), '525.01');
+
+    expect(await within(list).findByText('Q 807.83')).toBeInTheDocument();
+    expect(within(list).getByText('33 % · Por defecto · sin IVA Q 721.28')).toBeInTheDocument();
+    expect(within(list).getByText('35 % · sin IVA Q 743.47')).toBeInTheDocument();
+    expect(within(list).queryByText('Activo')).toBeNull();
   });
 });

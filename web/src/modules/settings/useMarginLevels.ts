@@ -1,11 +1,10 @@
-import { unwrap, type components, type paths } from '@soltec/shared';
+import { unwrap, type paths } from '@soltec/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../access/SessionContext';
 
 type MarginLevelStatus = NonNullable<
   paths['/v1/margin-levels']['get']['parameters']['query']
 >['status'];
-export type PriceResult = components['schemas']['PriceResult'];
 
 export function useMarginLevels(status: MarginLevelStatus = 'active', enabled = true) {
   const apiClient = useApiClient();
@@ -73,19 +72,14 @@ export function useSetDefaultMarginLevel() {
 }
 
 /**
- * The server's price for a cost. It keeps the previous answer while the next one loads: the simulator still needs
- * the tax rates in it to preview the next cost at once.
+ * The server's price for a cost with the default level. It keeps the previous answer while the next one loads: the
+ * list still needs the tax rates in it to price the levels for the next cost at once.
  */
-export function usePrice(cost: string, marginLevelId: string | null, enabled: boolean) {
+export function usePrice(cost: string, enabled: boolean) {
   const apiClient = useApiClient();
   return useQuery({
-    queryKey: ['margin-levels', 'price', cost, marginLevelId],
-    queryFn: async () =>
-      unwrap(
-        await apiClient.POST('/v1/price/calculate', {
-          body: { cost, margin_level_id: marginLevelId },
-        }),
-      ),
+    queryKey: ['margin-levels', 'price', cost],
+    queryFn: async () => unwrap(await apiClient.POST('/v1/price/calculate', { body: { cost } })),
     placeholderData: keepPreviousData,
     enabled,
   });

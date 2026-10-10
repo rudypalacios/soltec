@@ -11,19 +11,28 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { percentToRate, rateToPercent, type components } from '@soltec/shared';
-import { useState, type FormEvent } from 'react';
+import {
+  calculatePrice,
+  isValidCost,
+  percentToRate,
+  rateToPercent,
+  type components,
+} from '@soltec/shared';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import type { RowAction } from '../../components/RowActions';
 import { StatusBadge } from '../../components/StatusBadge';
+import { useIsMobile } from '../../components/useIsMobile';
+import { color } from '../../theme/tokens';
 import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { PriceSimulator } from './PriceSimulator';
+import { formatAmount } from './formatAmount';
 import {
   useMarginLevels,
+  usePrice,
   useSaveMarginLevel,
   useSetDefaultMarginLevel,
   useSetMarginLevelActive,
@@ -38,7 +47,27 @@ export function ratePercentLabel(rate: string): string {
   return `${rateToPercent(rate) ?? rate} %`;
 }
 
-/** `/configuracion/margenes`: the margin levels prices are computed with, and a simulator to see the effect. */
+/** How long the cost must stay still before the server is asked: typing "525.01" is not six requests. */
+const SETTLE_MS = 400;
+
+function useSettled(value: string): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return settled;
+}
+
+interface LevelPrice {
+  withoutVat: string;
+  withVat: string;
+}
+
+/**
+ * `/configuracion/margenes`: the margin levels prices are computed with. Typing a test cost adds each level's price
+ * to the same list, so there is one list however many levels there are.
+ */
 export function MarginLevelsPage() {
   const can = useCan();
   const [status, setStatus] = useState<StatusValue>('active');
@@ -51,9 +80,44 @@ export function MarginLevelsPage() {
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
+  const isMobile = useIsMobile();
+  const [costText, setCostText] = useState('');
+
   const levels = useMarginLevels(status);
   const setActive = useSetMarginLevelActive();
   const setDefault = useSetDefaultMarginLevel();
+
+  // A comma is a decimal mark to whoever types it; the API only knows the dot.
+  const cost = costText.trim().replace(',', '.');
+  const costInvalid = cost !== '' && !isValidCost(cost);
+  const settledCost = useSettled(cost);
+  // The server's answer is the truth (ADR-0014). It also carries the taxes, so the other levels can be priced at
+  // once with the same function from `shared/` while the next answer is on its way.
+  const serverPrice = usePrice(settledCost, isValidCost(settledCost));
+  const answer = serverPrice.data;
+  const confirmed = answer !== undefined && !serverPrice.isPlaceholderData && cost === settledCost;
+  const priced = isValidCost(cost) && answer !== undefined;
+
+  const priceOf = (level: MarginLevel): LevelPrice | null => {
+    if (!priced || !level.is_active) {
+      return null;
+    }
+    if (confirmed && answer.margin_level.id === level.id) {
+      return { withoutVat: answer.without_vat, withVat: answer.with_vat };
+    }
+    try {
+      const price = calculatePrice({
+        cost,
+        vatRate: answer.vat_rate,
+        incomeTaxRate: answer.income_tax_rate,
+        marginRate: level.rate,
+      });
+      return { withoutVat: price.withoutVat, withVat: price.withVat };
+    } catch {
+      return null;
+    }
+  };
+  const columns = levelColumns({ priced, showStatus: status !== 'active', isMobile, priceOf });
 
   const confirm = async () => {
     if (!pending) {
@@ -143,8 +207,35 @@ export function MarginLevelsPage() {
         ) : null}
       </Stack>
 
-      <Box sx={{ display: 'flex', mb: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1.5,
+          mb: 2,
+          // On a phone the cost stays in sight while a long list scrolls under the fixed app bar.
+          position: { xs: 'sticky', md: 'static' },
+          top: { xs: 56, sm: 64 },
+          zIndex: 1,
+          bgcolor: 'background.default',
+          py: { xs: 1, md: 0 },
+        }}
+      >
         <StatusFilter value={status} onChange={setStatus} />
+        <TextField
+          label="Costo de prueba (con IVA)"
+          value={costText}
+          onChange={(event) => setCostText(event.target.value)}
+          error={costInvalid}
+          helperText={
+            costInvalid ? 'Escribe un monto con hasta 4 decimales, por ejemplo 525.01.' : undefined
+          }
+          slotProps={{
+            htmlInput: { inputMode: 'decimal', maxLength: 14 },
+            input: { startAdornment: <Typography color="text.secondary">Q&nbsp;</Typography> },
+          }}
+          sx={{ flex: '1 1 220px', maxWidth: { sm: 320 } }}
+        />
       </Box>
 
       {failure ? (
@@ -156,7 +247,8 @@ export function MarginLevelsPage() {
       <DataList
         label="Lista de niveles de margen"
         noun="niveles de margen"
-        columns={COLUMNS}
+        columns={columns}
+        dense
         rows={levels.data?.data}
         error={levels.isError ? problemMessage(levels.error) : null}
         getRowId={(level) => level.id}
@@ -164,7 +256,12 @@ export function MarginLevelsPage() {
         getActions={actionsFor}
       />
 
-      <PriceSimulator />
+      {priced ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+          IVA {ratePercentLabel(answer.vat_rate)} · ISR {ratePercentLabel(answer.income_tax_rate)}.{' '}
+          {confirmed ? 'Precios calculados por el servidor.' : 'Calculando…'}
+        </Typography>
+      ) : null}
 
       {editing !== null ? (
         <MarginLevelDialog
@@ -191,36 +288,136 @@ export function MarginLevelsPage() {
   );
 }
 
-const COLUMNS: DataColumn<MarginLevel>[] = [
-  {
-    id: 'name',
-    header: 'Nombre',
-    mobile: 'title',
-    minWidth: 180,
-    render: (level) => level.name,
-  },
-  {
-    id: 'rate',
-    header: 'Margen',
-    mobile: 'subtitle',
-    nowrap: true,
-    render: (level) => ratePercentLabel(level.rate),
-  },
-  {
-    id: 'status',
-    header: 'Estado',
-    mobile: 'badge',
-    nowrap: true,
-    render: (level) =>
-      !level.is_active ? (
-        <StatusBadge tone="neutral" label="Inactivo" />
-      ) : level.is_default ? (
-        <StatusBadge tone="success" label="Por defecto" />
-      ) : (
-        <StatusBadge tone="success" label="Activo" />
+const statusBadge = (level: MarginLevel) =>
+  !level.is_active ? (
+    <StatusBadge tone="neutral" label="Inactivo" />
+  ) : level.is_default ? (
+    <StatusBadge tone="success" label="Por defecto" />
+  ) : (
+    <StatusBadge tone="success" label="Activo" />
+  );
+
+const defaultMark = (
+  <Box
+    component="span"
+    sx={{ ml: 1, fontSize: 12, fontWeight: 400, color: color.success.main, whiteSpace: 'nowrap' }}
+  >
+    ● Por defecto
+  </Box>
+);
+
+/**
+ * The columns of the list. A table shows the name (with the default marked), the margin, the two prices when a test
+ * cost is typed, and the state only when the filter shows inactive levels too (with «Activos» it would say «Activo»
+ * on every row). A phone shows one compact line: name and margin on the left, the price (or the state) on the right.
+ */
+function levelColumns({
+  priced,
+  showStatus,
+  isMobile,
+  priceOf,
+}: {
+  priced: boolean;
+  showStatus: boolean;
+  isMobile: boolean;
+  priceOf: (level: MarginLevel) => LevelPrice | null;
+}): DataColumn<MarginLevel>[] {
+  if (isMobile) {
+    return [
+      { id: 'name', header: 'Nombre', mobile: 'title', render: (level) => level.name },
+      {
+        id: 'detail',
+        header: 'Margen',
+        mobile: 'subtitle',
+        render: (level) => {
+          const price = priceOf(level);
+          return [
+            ratePercentLabel(level.rate),
+            priced && level.is_default && level.is_active ? 'Por defecto' : null,
+            price ? `sin IVA ${formatAmount(price.withoutVat)}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+        },
+      },
+      {
+        id: 'result',
+        header: priced ? 'Precio con IVA' : 'Estado',
+        mobile: 'badge',
+        render: (level) => {
+          const price = priceOf(level);
+          return price ? (
+            <Typography component="span" sx={{ fontWeight: 700, fontSize: 17 }}>
+              {formatAmount(price.withVat)}
+            </Typography>
+          ) : (
+            statusBadge(level)
+          );
+        },
+      },
+    ];
+  }
+
+  const columns: DataColumn<MarginLevel>[] = [
+    {
+      id: 'name',
+      header: 'Nombre',
+      mobile: 'title',
+      minWidth: 220,
+      render: (level) => (
+        <>
+          {level.name}
+          {level.is_default && level.is_active ? defaultMark : null}
+        </>
       ),
-  },
-];
+    },
+    {
+      id: 'rate',
+      header: 'Margen',
+      mobile: 'subtitle',
+      nowrap: true,
+      render: (level) => ratePercentLabel(level.rate),
+    },
+  ];
+  if (priced) {
+    const money = (pick: keyof LevelPrice, bold: boolean) => (level: MarginLevel) => {
+      const price = priceOf(level);
+      return price ? (
+        <Box component="span" sx={{ fontWeight: bold ? 700 : 400 }}>
+          {formatAmount(price[pick])}
+        </Box>
+      ) : (
+        '—'
+      );
+    };
+    columns.push(
+      {
+        id: 'without',
+        header: 'Precio sin IVA',
+        mobile: 'hidden',
+        nowrap: true,
+        render: money('withoutVat', false),
+      },
+      {
+        id: 'with',
+        header: 'Precio con IVA',
+        mobile: 'hidden',
+        nowrap: true,
+        render: money('withVat', true),
+      },
+    );
+  }
+  if (showStatus) {
+    columns.push({
+      id: 'status',
+      header: 'Estado',
+      mobile: 'badge',
+      nowrap: true,
+      render: statusBadge,
+    });
+  }
+  return columns;
+}
 
 /** Creates a level (`level` null) or edits its name and margin. */
 function MarginLevelDialog({ level, onClose }: { level: MarginLevel | null; onClose: () => void }) {

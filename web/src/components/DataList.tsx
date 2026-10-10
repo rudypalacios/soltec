@@ -52,6 +52,11 @@ interface DataListProps<T> {
   /** Names a row for the screen reader in its action buttons. */
   getRowName: (row: T) => string;
   getActions?: (row: T) => RowAction[];
+  /**
+   * For a long list of short rows (a dozen levels, not a dozen people): on a phone each row is one compact line
+   * (title and subtitle on the left, the badges on the right, every action behind ⋮) instead of a card.
+   */
+  dense?: boolean;
   /** Omit it for a list that is never long (a handful of fixed rows). */
   pagination?: {
     /** Zero-based. */
@@ -88,6 +93,7 @@ export function DataList<T>({
   getRowId,
   getRowName,
   getActions,
+  dense = false,
   pagination,
 }: DataListProps<T>) {
   const isMobile = useIsMobile();
@@ -104,7 +110,24 @@ export function DataList<T>({
 
   return (
     <>
-      {isMobile ? (
+      {isMobile && dense ? (
+        <Paper
+          component="ul"
+          variant="outlined"
+          aria-label={label}
+          sx={{ listStyle: 'none', m: 0, p: 0, overflow: 'hidden' }}
+        >
+          {rows.map((row) => (
+            <DenseRow
+              key={getRowId(row)}
+              row={row}
+              columns={columns}
+              rowName={getRowName(row)}
+              actions={getActions?.(row) ?? []}
+            />
+          ))}
+        </Paper>
+      ) : isMobile ? (
         <Stack
           component="ul"
           spacing={1.5}
@@ -259,5 +282,65 @@ function RowCard<T>({
         </Stack>
       ) : null}
     </Card>
+  );
+}
+
+/** One compact line of a dense list on a phone; at least 56 px tall so it stays a touch target. */
+function DenseRow<T>({
+  row,
+  columns,
+  rowName,
+  actions,
+}: {
+  row: T;
+  columns: DataColumn<T>[];
+  rowName: string;
+  actions: RowAction[];
+}) {
+  const withRole = (role: MobileRole) => columns.filter((column) => column.mobile === role);
+  const [title] = withRole('title');
+  const [subtitle] = withRole('subtitle');
+  const badges = withRole('badge');
+
+  return (
+    <Box
+      component="li"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        minHeight: 56,
+        pl: 1.5,
+        pr: 0.5,
+        py: 0.5,
+        borderTop: 1,
+        borderColor: 'divider',
+        '&:first-of-type': { borderTop: 0 },
+      }}
+    >
+      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+        {title ? (
+          <Typography component="div" sx={{ fontWeight: 600 }}>
+            {title.render(row)}
+          </Typography>
+        ) : null}
+        {subtitle ? (
+          <Typography component="div" variant="body2" color="text.secondary" noWrap>
+            {subtitle.render(row)}
+          </Typography>
+        ) : null}
+      </Box>
+      {badges.map((badge) => (
+        <Box key={badge.id} sx={{ flexShrink: 0 }}>
+          {badge.render(row)}
+        </Box>
+      ))}
+      {actions.length > 0 ? (
+        <ActionMenu actions={actions} rowName={rowName} />
+      ) : (
+        // Keeps the badges of rows with and without actions in one column.
+        <Box sx={{ width: 40, flexShrink: 0 }} />
+      )}
+    </Box>
   );
 }
