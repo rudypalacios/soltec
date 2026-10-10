@@ -50,7 +50,11 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - Acordado: el remitente del correo **se queda en el `.env`** (`MAIL_FROM_*`): no hay tabla ni pantalla de correo, para que nadie lo desconfigure. El formato del número es `COT-2610-0001` (año y mes) y el contador vuelve a 1 cada mes en cotización, proyecto y orden de compra; cliente y proveedor no tienen período
   - Acordado: `company.timezone` (`America/Guatemala`) fija el calendario de los correlativos. `stale_cost_days` queda en 90 como valor provisional hasta tener la cifra de la empresa
   - Fuera de 1.3: parámetros de seguridad (van en 1.5), SVG como logo, tema por empresa, régimen fiscal de la empresa (Hito 2)
-- [ ] 1.4 Niveles de margen y función de precio
+- [x] **1.4 Niveles de margen y función de precio** (`Modules/Settings`, ADR-0011 y ADR-0014; API y web en un solo PR)
+  - Acordado: el nivel de margen **no es del ítem ni del proveedor**: es habitual del **cliente** (`clients.margin_level_id`, Hito 2, opcional; sin él se usa el por defecto), lo elige la línea de cotización y se congela en la cotización emitida (Hito 4). El documento de requerimientos decía «MCP por proveedor»; el usuario lo corrigió. Confirmado por el usuario: no hay margen por proveedor
+  - Acordado: se siembran «Margen 33 %» (por defecto) y «Margen 35 %»; el cliente agrega los suyos. Todo se gobierna por permisos de perfil (`margin_levels.*`); cambiar el nivel por defecto exige `edit`
+  - Hecho: `margin_levels`, CRUD con `set-default`, `POST /v1/price/calculate`, `PriceCalculator` (PHP) y `calculatePrice` (shared) probados con `contract/test-vectors/price.json`; pantalla «Márgenes» en `/configuracion/margenes`: una sola lista de niveles (hay 9 en el legacy, se diseñó para 15 o más) a la que un costo de prueba le agrega los dos precios por nivel; en móvil, una línea compacta por nivel
+  - Fuera de 1.4: nivel por cliente o por línea (Hitos 2 y 4), orden manual de los niveles (se listan por margen ascendente), historial de tasas más allá de la auditoría
 - [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable, dashboard base y **parámetros de seguridad** (`security_settings`: bloqueo, caducidad de contraseña, sesión; hoy son constantes en `SecurityPolicy`, no olvidar)
 Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones

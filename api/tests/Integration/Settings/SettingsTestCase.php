@@ -6,6 +6,7 @@ namespace Soltec\Tests\Integration\Settings;
 
 use Psr\Http\Message\ResponseInterface;
 use Soltec\Kernel\Paths;
+use Soltec\Kernel\Uuid;
 use Soltec\Modules\Settings\Application\LogoStorage;
 use Soltec\Tests\Integration\Access\AccessTestCase;
 
@@ -82,11 +83,24 @@ abstract class SettingsTestCase extends AccessTestCase
         return array_map('basename', $files);
     }
 
+    /** The id (with dashes) of the margin level with this name, read from the database. */
+    protected function marginLevelId(string $name): string
+    {
+        $hex = $this->connection->fetchOne(
+            'SELECT LOWER(HEX(id)) FROM margin_levels WHERE name = :name',
+            ['name' => $name],
+        );
+        self::assertIsString($hex, "No margin level named $name.");
+
+        return Uuid::fromHex($hex);
+    }
+
     /** A user whose only role gives the listed permissions. */
     protected function tokenWith(string $resource, string ...$permissions): string
     {
         $matrix = [$resource => array_values($permissions)];
-        $role = $this->createRole('Limited ' . $resource, $matrix, [$resource => 'all']);
+        $name = 'Limited ' . $resource . ' ' . bin2hex(random_bytes(3));
+        $role = $this->createRole($name, $matrix, [$resource => 'all']);
         $user = $this->createUser('limited-' . bin2hex(random_bytes(3)) . '@example.com', [$role]);
 
         return $this->tokenFor($user['id']);

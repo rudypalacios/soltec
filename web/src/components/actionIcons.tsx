@@ -3,6 +3,7 @@ import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import ForwardToInboxOutlined from '@mui/icons-material/ForwardToInboxOutlined';
 import RestoreOutlined from '@mui/icons-material/RestoreOutlined';
+import StarOutline from '@mui/icons-material/StarOutline';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
 
 /**
@@ -16,4 +17,5 @@ export const ACTION_ICONS = {
   resend: <ForwardToInboxOutlined />,
   deactivate: <BlockOutlined />,
   reactivate: <RestoreOutlined />,
+  setDefault: <StarOutline />,
 } as const;

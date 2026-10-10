@@ -22,6 +22,7 @@ import { HomePage } from '../modules/home/HomePage';
 import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
+import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
 import { useBranding } from '../modules/settings/useSettings';
 import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
@@ -121,6 +122,14 @@ export function App() {
             element={
               <RequirePermission resource="financial_settings" action="view">
                 <FinancialPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="margenes"
+            element={
+              <RequirePermission resource="margin_levels" action="view">
+                <MarginLevelsPage />
               </RequirePermission>
             }
           />

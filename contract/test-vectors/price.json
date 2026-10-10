@@ -1,0 +1,235 @@
+{
+  "description": "Shared by PHPUnit and Vitest (ADR-0014). Rates are strings, amounts are decimal strings; the price is rounded half up to two decimals only at the end. Expected values come from exact rational arithmetic, not from either implementation.",
+  "cases": [
+    {
+      "name": "adr-0011 case 1",
+      "cost": "1.25",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "1.72",
+      "with_vat": "1.92"
+    },
+    {
+      "name": "adr-0011 case 2",
+      "cost": "22.96",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "31.54",
+      "with_vat": "35.33"
+    },
+    {
+      "name": "adr-0011 case 3",
+      "cost": "525.01",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "721.28",
+      "with_vat": "807.83"
+    },
+    {
+      "name": "second default level (35 %)",
+      "cost": "525.01",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.35000",
+      "without_vat": "743.47",
+      "with_vat": "832.69"
+    },
+    {
+      "name": "zero cost",
+      "cost": "0",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "0.00",
+      "with_vat": "0.00"
+    },
+    {
+      "name": "no margin and no income tax",
+      "cost": "112.00",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.00000",
+      "margin_rate": "0.00000",
+      "without_vat": "100.00",
+      "with_vat": "112.00"
+    },
+    {
+      "name": "no vat",
+      "cost": "100",
+      "vat_rate": "0.00000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.35000",
+      "without_vat": "158.60",
+      "with_vat": "158.60"
+    },
+    {
+      "name": "rates with fewer decimals",
+      "cost": "100",
+      "vat_rate": "0.12",
+      "income_tax_rate": "0.03",
+      "margin_rate": "0.3",
+      "without_vat": "131.50",
+      "with_vat": "147.28"
+    },
+    {
+      "name": "half cent rounds up",
+      "cost": "0.0125",
+      "vat_rate": "0.00000",
+      "income_tax_rate": "0.00000",
+      "margin_rate": "0.50000",
+      "without_vat": "0.03",
+      "with_vat": "0.03"
+    },
+    {
+      "name": "cost with four decimals",
+      "cost": "3.3333",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "4.58",
+      "with_vat": "5.13"
+    },
+    {
+      "name": "largest cost",
+      "cost": "999999999.9999",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "without_vat": "1373837733.28",
+      "with_vat": "1538698261.27"
+    },
+    {
+      "name": "highest margin",
+      "cost": "1",
+      "vat_rate": "0.00000",
+      "income_tax_rate": "0.00000",
+      "margin_rate": "0.99999",
+      "without_vat": "100000.00",
+      "with_vat": "100000.00"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "negative cost",
+      "cost": "-1",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "comma as decimal mark",
+      "cost": "1,5",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "not a number",
+      "cost": "abc",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "empty cost",
+      "cost": "",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "five decimals in the cost",
+      "cost": "1.23456",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "ten integer digits",
+      "cost": "1000000000",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_cost"
+    },
+    {
+      "name": "margin of 100 %",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "1",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "margin above 100 %",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "1.5",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "negative margin",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "-0.1",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "margin with six decimals",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.123456",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "margin not a number",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "abc",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "empty margin",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "income tax of 100 %",
+      "cost": "100",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "1",
+      "margin_rate": "0.33000",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "vat of 100 %",
+      "cost": "100",
+      "vat_rate": "1.00000",
+      "income_tax_rate": "0.03000",
+      "margin_rate": "0.33000",
+      "error": "invalid_rate"
+    },
+    {
+      "name": "price beyond the supported range",
+      "cost": "999999999.9999",
+      "vat_rate": "0.12000",
+      "income_tax_rate": "0.99999",
+      "margin_rate": "0.99999",
+      "error": "price_too_large"
+    }
+  ]
+}

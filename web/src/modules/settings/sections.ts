@@ -2,5 +2,6 @@
 export const SETTINGS_SECTIONS = [
   { label: 'Empresa', path: '/configuracion/empresa', resource: 'company' },
   { label: 'Finanzas', path: '/configuracion/finanzas', resource: 'financial_settings' },
+  { label: 'Márgenes', path: '/configuracion/margenes', resource: 'margin_levels' },
   { label: 'Numeración', path: '/configuracion/numeracion', resource: 'sequences' },
 ] as const;
