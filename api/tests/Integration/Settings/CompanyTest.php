@@ -121,6 +121,12 @@ final class CompanyTest extends SettingsTestCase
         self::assertSame('image/webp', $logo->getHeaderLine('Content-Type'));
         self::assertSame('"' . $version . '"', $logo->getHeaderLine('ETag'));
         self::assertSame('public, no-cache', $logo->getHeaderLine('Cache-Control'));
+
+        // Asked with its own version the content cannot change, so the browser keeps it for good.
+        $versioned = $this->api('GET', '/branding/logo?v=' . $version);
+        self::assertSame('public, max-age=31536000, immutable', $versioned->getHeaderLine('Cache-Control'));
+        $stale = $this->api('GET', '/branding/logo?v=logo-0000000000000000');
+        self::assertSame('public, no-cache', $stale->getHeaderLine('Cache-Control'));
         $size = getimagesizefromstring((string) $logo->getBody());
         self::assertIsArray($size);
         self::assertSame(IMAGETYPE_WEBP, $size[2]);

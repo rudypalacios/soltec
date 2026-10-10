@@ -1,6 +1,7 @@
 import { unwrap, type components } from '@soltec/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { API_PATH } from '../../app/apiPath';
+import { readCachedBranding, writeCachedBranding } from '../../adapters/brandingCache';
 import { useApiClient } from '../access/SessionContext';
 
 type CompanyUpdate = components['schemas']['CompanyUpdate'];
@@ -12,12 +13,22 @@ export function brandingLogoUrl(version: string): string {
   return `${API_PATH}/v1/branding/logo?v=${encodeURIComponent(version)}`;
 }
 
-/** The company's name and logo version: public, so it works on the sign-in screen too. */
+/**
+ * The company's name and logo version: public, so it works on the sign-in screen too. The app asks for it as soon as
+ * it starts (see `App`), in parallel with restoring the session, not after it.
+ */
 export function useBranding() {
   const apiClient = useApiClient();
   return useQuery({
     queryKey: ['branding'],
-    queryFn: async () => unwrap(await apiClient.GET('/v1/branding')),
+    queryFn: async () => {
+      const branding = unwrap(await apiClient.GET('/v1/branding'));
+      writeCachedBranding(branding);
+      return branding;
+    },
+    // What this browser saw last time paints at once; `initialDataUpdatedAt: 0` marks it stale, so it is asked again.
+    initialData: readCachedBranding,
+    initialDataUpdatedAt: 0,
     staleTime: 5 * 60_000,
     // The brand is decoration: if it cannot be read the screens show the product's own mark.
     retry: false,

@@ -30,15 +30,20 @@ final class BrandingController
         ]);
     }
 
-    /** The image, with an ETag so the browser revalidates for a 304 instead of downloading it again. */
+    /**
+     * The image. Asked with `?v=` equal to the current version the content can never change (a new logo is a new
+     * version, so a new URL) and the browser keeps it for good. Without it, or with an old version, the browser
+     * revalidates by ETag and gets a 304 instead of the image again.
+     */
     public function logo(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $logo = $this->company->logo() ?? throw ApiException::notFound();
         $etag = '"' . $logo['version'] . '"';
 
+        $immutable = ($request->getQueryParams()['v'] ?? null) === $logo['version'];
         $response = $response
             ->withHeader('ETag', $etag)
-            ->withHeader('Cache-Control', 'public, no-cache');
+            ->withHeader('Cache-Control', $immutable ? 'public, max-age=31536000, immutable' : 'public, no-cache');
         if ($request->getHeaderLine('If-None-Match') === $etag) {
             return $response->withStatus(304);
         }

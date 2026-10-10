@@ -973,11 +973,19 @@ paths:
       summary: The company's logo.
       description:
         A WebP image of at most 512 px on its longer side. Public like `/v1/branding`. The response carries an `ETag`
-        (the logo version); a client that sends it back in `If-None-Match` gets 304 instead of the image.
+        (the logo version); a client that sends it back in `If-None-Match` gets 304 instead of the image. With `v` equal
+        to the current `logo_version` the response is immutable (a new logo is a new version) and can be kept for good.
       tags:
         - Settings
       x-permission: public
       security: []
+      parameters:
+        - name: v
+          in: query
+          required: false
+          description: The `logo_version` the client knows. Lets the browser cache the image for good.
+          schema:
+            type: string
       responses:
         '200':
           description: The logo.

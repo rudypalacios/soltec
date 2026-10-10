@@ -1,18 +1,6 @@
 import { Box } from '@mui/material';
 import { useState } from 'react';
 import { brandingLogoUrl, useBranding } from '../modules/settings/useSettings';
-import { color } from '../theme/tokens';
-
-// Seven dots on an arc, growing to the middle: the product's own mark, drawn in code.
-const DOTS = [
-  { x: 4, y: 9, r: 1.6 },
-  { x: 14, y: 5.8, r: 2 },
-  { x: 24, y: 3.4, r: 2.6 },
-  { x: 34, y: 2.6, r: 3.2 },
-  { x: 44, y: 3.4, r: 2.6 },
-  { x: 54, y: 5.8, r: 2 },
-  { x: 64, y: 9, r: 1.6 },
-];
 
 const NAME_SX = {
   fontSize: 24,
@@ -21,32 +9,43 @@ const NAME_SX = {
   color: 'text.primary',
 } as const;
 
+/** What shows when the company has not set a name yet. */
+const DEFAULT_NAME = 'Dashboard';
+
 /**
- * The brand of this installation: the company's logo when it uploaded one, else its name, else the product's own
- * mark (the dotted arc over "soltec") while nothing is configured yet. While the brand loads, or if it cannot be
- * read, the product's mark shows.
+ * The brand of this installation: the company's logo if it has one, else its commercial name, else "Dashboard".
+ * While the brand is not known yet (first visit, nothing remembered) it shows nothing but keeps its height, so the
+ * screen never shows a brand that is not the company's and nothing below it moves.
  */
 export function Brand() {
   const branding = useBranding().data;
-  const name = branding?.trade_name ?? '';
 
-  if (branding?.logo_version) {
-    return <CompanyLogo key={branding.logo_version} version={branding.logo_version} name={name} />;
+  if (!branding) {
+    return <Box component="span" aria-hidden sx={{ display: 'block', height: 40 }} />;
   }
-  return name ? <NameMark name={name} /> : <ProductMark />;
+  if (branding.logo_version) {
+    return (
+      <CompanyLogo
+        key={branding.logo_version}
+        version={branding.logo_version}
+        name={branding.trade_name}
+      />
+    );
+  }
+  return <NameMark name={branding.trade_name} />;
 }
 
 /** The logo image; if the browser cannot load it the name stands in, so the header never shows a broken image. */
 function CompanyLogo({ version, name }: { version: string; name: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return name ? <NameMark name={name} /> : <ProductMark />;
+    return <NameMark name={name} />;
   }
   return (
     <Box
       component="img"
       src={brandingLogoUrl(version)}
-      alt={name || 'Logo de la empresa'}
+      alt={name || DEFAULT_NAME}
       onError={() => setFailed(true)}
       // The file is at most 512 px wide; the header shows it small. A fixed height avoids a jump while it loads.
       sx={{ display: 'block', height: 40, maxWidth: 180, objectFit: 'contain' }}
@@ -58,27 +57,16 @@ function NameMark({ name }: { name: string }) {
   return (
     <Box
       component="span"
-      sx={{ ...NAME_SX, lineHeight: 1.1, display: 'inline-block', maxWidth: 200 }}
+      sx={{
+        ...NAME_SX,
+        display: 'flex',
+        alignItems: 'center',
+        height: 40,
+        lineHeight: 1.1,
+        maxWidth: 200,
+      }}
     >
-      {name}
-    </Box>
-  );
-}
-
-function ProductMark() {
-  return (
-    <Box
-      component="span"
-      sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}
-    >
-      <svg width="68" height="13" viewBox="0 0 68 13" aria-hidden="true" focusable="false">
-        {DOTS.map((dot) => (
-          <circle key={dot.x} cx={dot.x} cy={dot.y} r={dot.r} fill={color.brand} />
-        ))}
-      </svg>
-      <Box component="span" sx={{ ...NAME_SX, mt: '-1px' }}>
-        soltec
-      </Box>
+      {name || DEFAULT_NAME}
     </Box>
   );
 }

@@ -23,11 +23,15 @@ import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
+import { useBranding } from '../modules/settings/useSettings';
 import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
 
 /** Route table. The paths are in Spanish because the user sees them (docs/arquitectura/glosario.md). */
 export function App() {
+  // Starts the brand request now, in parallel with restoring the session, so the logo is not waited for twice.
+  useBranding();
+
   return (
     <Routes>
       <Route path={LOGIN_PATH} element={<LoginPage />} />

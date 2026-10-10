@@ -60,7 +60,10 @@ const CLIENT = {
   example: 'CLI-0058',
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('brand', () => {
   it('shows the company logo with its name on the sign-in screen', async () => {
@@ -91,11 +94,72 @@ describe('brand', () => {
     expect(screen.queryByRole('img', { name: 'Acme' })).not.toBeInTheDocument();
   });
 
-  it("shows the product's own mark while nothing is configured", async () => {
+  it('says «Dashboard» when the company has no name yet', async () => {
     const { session } = createTestSession({}, null);
     renderApp(session, '/ingresar');
 
-    expect(await screen.findByText('soltec')).toBeInTheDocument();
+    expect(await screen.findByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('shows no brand at all, and never a default one, while it is not known yet', async () => {
+    const { session } = createTestSession(
+      { 'GET /v1/branding': () => new Promise<Response>(() => undefined) },
+      null,
+    );
+    renderApp(session, '/ingresar');
+
+    await screen.findByRole('heading', { name: 'Iniciar sesión' });
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByText('soltec')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('paints the brand this browser remembers before the API answers, and remembers the new one', async () => {
+    window.localStorage.setItem(
+      'soltec.branding',
+      JSON.stringify({ trade_name: 'Acme', logo_version: 'logo-1a2b' }),
+    );
+    const { session } = createTestSession(
+      {
+        'GET /v1/branding': () => Response.json({ trade_name: 'Acme', logo_version: 'logo-9z9z' }),
+      },
+      null,
+    );
+    renderApp(session, '/ingresar');
+
+    // At once, from memory: the old logo.
+    expect(screen.getByRole('img', { name: 'Acme' })).toHaveAttribute(
+      'src',
+      '/api/v1/branding/logo?v=logo-1a2b',
+    );
+    // Then what the API says.
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: 'Acme' })).toHaveAttribute(
+        'src',
+        '/api/v1/branding/logo?v=logo-9z9z',
+      ),
+    );
+    expect(JSON.parse(window.localStorage.getItem('soltec.branding') ?? 'null')).toEqual({
+      trade_name: 'Acme',
+      logo_version: 'logo-9z9z',
+    });
+  });
+
+  it('works when the browser refuses to remember anything', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const { session } = createTestSession(
+      { 'GET /v1/branding': () => Response.json({ trade_name: 'Acme', logo_version: null }) },
+      null,
+    );
+    renderApp(session, '/ingresar');
+
+    expect(await screen.findByText('Acme')).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });
 
