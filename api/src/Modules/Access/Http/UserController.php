@@ -13,6 +13,7 @@ use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Application\CredentialService;
 use Soltec\Modules\Access\Application\OrganizationChange;
 use Soltec\Modules\Access\Application\UserService;
+use Soltec\Modules\Access\Domain\UserFilter;
 use Soltec\Modules\Access\Domain\UserRecord;
 
 /** /v1/users */
@@ -35,16 +36,14 @@ final class UserController
         $type = $query->choice('type', ['internal', 'external'], '');
         $roleId = $query->nullableUuid('role_id');
         $departmentId = $query->nullableUuid('department_id');
+        $eligibleManagerFor = $query->nullableUuid('eligible_manager_for');
         $page = $query->pagination();
         $query->done();
 
         $result = $this->users->list(
             $this->caller($request),
-            $text,
-            (string) $status,
-            $type === '' ? null : $type,
-            $roleId,
-            $departmentId,
+            new UserFilter($text, (string) $status, $type === '' ? null : $type, $roleId, $departmentId),
+            $eligibleManagerFor,
             $page,
         );
 

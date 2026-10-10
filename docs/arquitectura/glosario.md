@@ -28,6 +28,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 | alcance de datos: propio, equipo, todo, cliente asignado | `own`, `team`, `all`, `client` | |
 | departamento | `Department` · `departments` | `/departamentos` |
 | jefe directo | `manager_id` (un jefe que depende del usuario es un ciclo: código de campo `cycle`) | |
+| fuera de alcance (el registro quedaría donde quien lo crea o mueve ya no lo ve) | `out_of_scope` (código de campo) | |
 | departamento con usuarios activos (no se desactiva) | `department_in_use` (código de error, con `active_user_count`) | |
 | dispositivo | `Device` · `devices` | `/dispositivos` |
 | evento de ubicación | `LocationEvent` · `location_events` | |

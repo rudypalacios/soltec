@@ -15,6 +15,7 @@ use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Domain\NamedRef;
+use Soltec\Modules\Access\Domain\UserFilter;
 use Soltec\Modules\Access\Domain\UserRecord;
 
 /**
@@ -62,28 +63,10 @@ final class UserRepository
         return $row === false ? null : $this->withRoles($this->hydrate($row));
     }
 
-    /**
-     * @param string $status active, inactive or all
-     * @return array{records: list<UserRecord>, total: int}
-     */
-    public function search(
-        CurrentUser $scope,
-        ?string $text,
-        string $status,
-        ?string $type,
-        ?string $roleId,
-        ?string $departmentId,
-        Pagination $page,
-    ): array {
-        $filtered = fn (QueryBuilder $query): QueryBuilder => $this->applyFilters(
-            $query,
-            $scope,
-            $text,
-            $status,
-            $type,
-            $roleId,
-            $departmentId,
-        );
+    /** @return array{records: list<UserRecord>, total: int} */
+    public function search(CurrentUser $scope, UserFilter $filter, Pagination $page): array
+    {
+        $filtered = fn (QueryBuilder $query): QueryBuilder => $this->applyFilters($query, $scope, $filter);
 
         $total = $filtered($this->connection->createQueryBuilder()->select('COUNT(*)')->from('users', 'u'))
             ->executeQuery()
@@ -168,6 +151,26 @@ final class UserRepository
                 'now' => Timestamps::toDb($now),
             ],
         ) === 1;
+    }
+
+    /**
+     * The management hierarchy of every internal user, active or not, in the shape Team expects.
+     *
+     * @return list<array{id: string, manager_id: string|null, department_id: string|null}>
+     */
+    public function hierarchy(): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'id' => Uuid::fromHex(Row::string($row, 'id')),
+                'manager_id' => self::idOrNull($row, 'manager_id'),
+                'department_id' => self::idOrNull($row, 'department_id'),
+            ],
+            $this->connection->fetchAllAssociative(
+                'SELECT LOWER(HEX(id)) AS id, LOWER(HEX(manager_id)) AS manager_id, '
+                . "LOWER(HEX(department_id)) AS department_id FROM users WHERE type = 'internal'",
+            ),
+        );
     }
 
     /**
@@ -317,37 +320,38 @@ final class UserRepository
         ) > 0;
     }
 
-    private function applyFilters(
-        QueryBuilder $query,
-        CurrentUser $scope,
-        ?string $text,
-        string $status,
-        ?string $type,
-        ?string $roleId,
-        ?string $departmentId,
-    ): QueryBuilder {
+    private function applyFilters(QueryBuilder $query, CurrentUser $scope, UserFilter $filter): QueryBuilder
+    {
         ScopedQuery::restrict($query, $scope, self::RESOURCE, 'u.id');
-        if ($status === 'active') {
+        if ($filter->status === 'active') {
             $query->andWhere('u.deleted_at IS NULL');
-        } elseif ($status === 'inactive') {
+        } elseif ($filter->status === 'inactive') {
             $query->andWhere('u.deleted_at IS NOT NULL');
         }
-        if ($text !== null && $text !== '') {
+        if ($filter->text !== null && $filter->text !== '') {
             $query
                 ->andWhere('(u.name LIKE :text OR u.email LIKE :text)')
-                ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
+                ->setParameter('text', '%' . addcslashes($filter->text, '%_\\') . '%');
         }
-        if ($type !== null) {
-            $query->andWhere('u.type = :type')->setParameter('type', $type);
+        if ($filter->type !== null) {
+            $query->andWhere('u.type = :type')->setParameter('type', $filter->type);
         }
-        if ($roleId !== null) {
+        if ($filter->roleId !== null) {
             $query
                 ->andWhere('EXISTS (SELECT 1 FROM user_roles f WHERE f.user_id = u.id AND f.role_id = UNHEX(:role_id))')
-                ->setParameter('role_id', Uuid::toHex($roleId));
+                ->setParameter('role_id', Uuid::toHex($filter->roleId));
         }
-        if ($departmentId !== null) {
+        if ($filter->departmentId !== null) {
             $query->andWhere('u.department_id = UNHEX(:department_id)')
-                ->setParameter('department_id', Uuid::toHex($departmentId));
+                ->setParameter('department_id', Uuid::toHex($filter->departmentId));
+        }
+        if ($filter->excludeIds !== []) {
+            $placeholders = [];
+            foreach ($filter->excludeIds as $index => $id) {
+                $placeholders[] = sprintf('UNHEX(:exclude_%d)', $index);
+                $query->setParameter('exclude_' . $index, Uuid::toHex($id));
+            }
+            $query->andWhere(sprintf('u.id NOT IN (%s)', implode(', ', $placeholders)));
         }
 
         return $query;
@@ -359,6 +363,14 @@ final class UserRepository
             ->from('users', 'u')
             ->leftJoin('u', 'departments', 'd', 'd.id = u.department_id')
             ->leftJoin('u', 'users', 'm', 'm.id = u.manager_id');
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function idOrNull(array $row, string $column): ?string
+    {
+        $hex = Row::nullableString($row, $column);
+
+        return $hex === null ? null : Uuid::fromHex($hex);
     }
 
     private static function hexOrNull(?string $id): ?string

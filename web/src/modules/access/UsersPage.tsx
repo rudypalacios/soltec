@@ -129,7 +129,8 @@ export function UsersPage() {
       <PageHeader
         title="Usuarios"
         actions={
-          can('users', 'create') ? (
+          // `own` (also the default without a scope) reaches nobody else: the API refuses to create anyone with it.
+          can('users', 'create') && (me?.scopes.users ?? 'own') !== 'own' ? (
             <Button
               component={RouterLink}
               to="/usuarios/nuevo"

@@ -594,7 +594,11 @@ describe('department and direct manager of a user', () => {
       {
         'GET /v1/roles': () => Response.json(page([ROLE])),
         'GET /v1/departments': () => Response.json(page([SALES])),
-        'GET /v1/users': () => Response.json(page([placed, BOSS])),
+        // The API leaves out the user and everybody under them when asked for eligible managers.
+        'GET /v1/users': (call) =>
+          Response.json(
+            page(call.query.get('eligible_manager_for') === OTHER.id ? [BOSS] : [placed, BOSS]),
+          ),
         [`GET /v1/users/${OTHER.id}`]: () => Response.json(placed),
         [`PATCH /v1/users/${OTHER.id}`]: () =>
           problem(422, 'validation_failed', [{ field: 'manager_id', code: 'cycle' }]),
@@ -606,7 +610,7 @@ describe('department and direct manager of a user', () => {
 
     expect(await screen.findByLabelText(/^Departamento/)).toHaveValue('Comercial');
     await user.click(screen.getByLabelText(/^Jefe directo/));
-    // Nobody is offered as their own manager.
+    // Nobody is offered as their own manager, nor anyone under them.
     expect(screen.queryByRole('option', { name: 'Luis Gómez' })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('option', { name: 'Jefa Uno' }));
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
@@ -631,5 +635,48 @@ describe('department and direct manager of a user', () => {
     expect(within(table).getByText('Comercial')).toBeInTheDocument();
     const listCall = calls.find((call) => call.path === '/v1/users');
     expect(listCall?.query.get('department_id')).toBe(SALES.id);
+  });
+
+  it('starts with the person creating as the manager when they reach only their team', async () => {
+    let created: Call | undefined;
+    const lead = { ...ORG_ME, scopes: { ...ORG_ME.scopes, users: 'team' } };
+    const { session } = createTestSession(
+      {
+        'GET /v1/roles': () => Response.json(page([ROLE])),
+        'GET /v1/departments': () => Response.json(page([SALES])),
+        'GET /v1/users': () => Response.json(page([])),
+        'POST /v1/users': (call) => {
+          created = call;
+          return problem(422, 'validation_failed', [
+            { field: 'department_id', code: 'out_of_scope' },
+            { field: 'manager_id', code: 'out_of_scope' },
+          ]);
+        },
+      },
+      lead,
+    );
+    renderApp(session, '/usuarios/nuevo');
+    const user = userEvent.setup();
+
+    expect(await screen.findByLabelText(/^Jefe directo/)).toHaveValue(ME.name);
+    await user.type(screen.getByLabelText(/^Nombre/), 'Nueva Persona');
+    await user.type(screen.getByLabelText(/^Correo/), 'nueva@example.com');
+    await user.click(screen.getByLabelText(/^Perfiles/));
+    await user.click(await screen.findByRole('option', { name: 'Ventas' }));
+    await user.click(screen.getByLabelText(/^Departamento/));
+    await user.click(await screen.findByRole('option', { name: 'Comercial' }));
+    await user.click(screen.getByRole('button', { name: 'Crear y enviar invitación' }));
+
+    expect(created?.body).toMatchObject({ manager_id: ME.id });
+    expect(await screen.findByText(/debe quedar en tu departamento/)).toBeInTheDocument();
+  });
+
+  it('hides "Nuevo usuario" from whoever reaches only their own record', async () => {
+    const self = { ...ME, scopes: { ...ME.scopes, users: 'own' } };
+    const { session } = createTestSession({ ...list(SELF) }, self);
+    renderApp(session, '/usuarios');
+
+    await screen.findByRole('table', { name: 'Lista de usuarios' });
+    expect(screen.queryByRole('link', { name: /Nuevo usuario/ })).not.toBeInTheDocument();
   });
 });

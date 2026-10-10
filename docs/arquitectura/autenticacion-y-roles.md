@@ -75,6 +75,7 @@ Si la contraseña venció o `must_change_password` es verdadero (cuenta creada o
 - **Aplicación**: cada repositorio declara la columna que indica a quién pertenece cada fila (`clients.seller_id`, `tasks.assignee_id`, `tickets.client_id`…). `ScopedQuery` agrega el filtro: `own` → esa columna = usuario; `team` → pertenece a alguien del equipo; `all` → sin filtro; `client` → la columna de cliente = `users.client_id`. Nadie escribe ese filtro a mano.
 - **Equipo**: el usuario, sus subordinados directos e indirectos (`manager_id`) y los miembros de su departamento. Solo existe para usuarios internos: un usuario externo no tiene departamento ni jefe. `PermissionLoader` lo calcula una vez por petición, y solo si algún alcance es `team`: lee la jerarquía de los usuarios internos (activos o no, para que un jefe desactivado no corte la cadena) y la recorre en PHP con `Team::members` (MySQL 5.7 no tiene CTE recursivo). `ScopedQuery` filtra con `IN (…)`.
 - Para operaciones sobre un registro puntual, el alcance también se comprueba: un id fuera del alcance responde 404, no 403, para no revelar que existe.
+- **Nadie deja un registro fuera de su propio alcance** al crearlo o moverlo, porque lo perdería en ese momento. En usuarios: con `team`, el usuario debe quedar en el departamento de quien llama o bajo alguien de su equipo (`422 out_of_scope`); con `own` no se crea a nadie (403). El propio registro está exento.
 
 ## 7.1 Protección contra quedarse fuera
 

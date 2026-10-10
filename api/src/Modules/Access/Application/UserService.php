@@ -8,11 +8,14 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Soltec\Kernel\Auth\CurrentUser;
+use Soltec\Kernel\Auth\DataScope;
+use Soltec\Kernel\Auth\Team;
 use Soltec\Kernel\Clock;
 use Soltec\Kernel\Http\ApiException;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Http\ValidationException;
 use Soltec\Kernel\Uuid;
+use Soltec\Modules\Access\Domain\UserFilter;
 use Soltec\Modules\Access\Domain\UserRecord;
 use Soltec\Modules\Access\Persistence\AccountTokenRepository;
 use Soltec\Modules\Access\Persistence\AuditLogger;
@@ -42,17 +45,25 @@ final class UserService
     ) {
     }
 
-    /** @return array{records: list<UserRecord>, total: int} */
-    public function list(
-        CurrentUser $caller,
-        ?string $text,
-        string $status,
-        ?string $type,
-        ?string $roleId,
-        ?string $departmentId,
-        Pagination $page,
-    ): array {
-        return $this->users->search($caller, $text, $status, $type, $roleId, $departmentId, $page);
+    /**
+     * @param string|null $eligibleManagerFor leaves out that user and everybody under them: none of them can be
+     *     their manager (it would be a cycle), so a manager picker only offers valid choices
+     * @return array{records: list<UserRecord>, total: int}
+     */
+    public function list(CurrentUser $caller, UserFilter $filter, ?string $eligibleManagerFor, Pagination $page): array
+    {
+        if ($eligibleManagerFor !== null) {
+            $filter = new UserFilter(
+                $filter->text,
+                $filter->status,
+                $filter->type,
+                $filter->roleId,
+                $filter->departmentId,
+                Team::withSubordinates($eligibleManagerFor, $this->users->hierarchy()),
+            );
+        }
+
+        return $this->users->search($caller, $filter, $page);
     }
 
     public function get(CurrentUser $caller, string $id): UserRecord
@@ -96,6 +107,7 @@ final class UserService
                 if (!$caller->isAdmin() && $this->grantsAdmin($roles)) {
                     throw ApiException::forbidden();
                 }
+                $this->assertStaysInScope($caller, $id, $departmentId, $managerId);
 
                 // No password yet: the person chooses it when they accept the invitation (ADR-0017).
                 $this->users->insert($id, 'internal', $name, $email, null, false, $now, $departmentId, $managerId);
@@ -115,7 +127,8 @@ final class UserService
             throw ValidationException::field('email', 'taken');
         }
 
-        $user = $this->get($caller, $id);
+        // Read without the scope: it was checked above, and the caller's team was computed before this user existed.
+        $user = $this->users->find($id) ?? throw ApiException::notFound();
 
         return ['user' => $user, 'invitationSent' => $this->credentials->sendInvitation($user, $actor)];
     }
@@ -154,6 +167,9 @@ final class UserService
                 );
                 if ($errors !== []) {
                     throw new ValidationException($errors);
+                }
+                if ($newDepartmentId !== $target->department?->id || $newManagerId !== $target->manager?->id) {
+                    $this->assertStaysInScope($caller, $id, $newDepartmentId, $newManagerId);
                 }
 
                 $newName = $name ?? $target->name;
@@ -336,6 +352,40 @@ final class UserService
         }
 
         return $errors;
+    }
+
+    /**
+     * A caller who does not reach every user must not create or move someone out of their reach: they would lose
+     * the record at once. With `team` the user must end up in the caller's team (in their department or under them);
+     * `own` reaches only the caller, so it can create nobody. The caller's own record always stays in reach.
+     *
+     * @throws ApiException 403 `forbidden` for a scope that cannot hold anybody else, 422 `out_of_scope`
+     */
+    private function assertStaysInScope(
+        CurrentUser $caller,
+        string $userId,
+        ?string $departmentId,
+        ?string $managerId,
+    ): void {
+        $scope = $caller->scopeFor(UserRepository::RESOURCE);
+        if ($scope === DataScope::All || $userId === $caller->id) {
+            return;
+        }
+        if ($scope !== DataScope::Team) {
+            throw ApiException::forbidden('forbidden', 'This data scope reaches no other user.');
+        }
+
+        $people = array_values(array_filter(
+            $this->users->hierarchy(),
+            static fn (array $person): bool => $person['id'] !== $userId,
+        ));
+        $people[] = ['id' => $userId, 'manager_id' => $managerId, 'department_id' => $departmentId];
+        if (!in_array($userId, Team::members($caller->id, $people), true)) {
+            throw new ValidationException([
+                ['field' => 'department_id', 'code' => 'out_of_scope'],
+                ['field' => 'manager_id', 'code' => 'out_of_scope'],
+            ]);
+        }
     }
 
     /** Only an administrator may modify another administrator. */

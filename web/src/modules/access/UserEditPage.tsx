@@ -125,7 +125,7 @@ function UserEditForm({ user }: { user: User }) {
           <ManagerSelect
             value={manager}
             onChange={setManager}
-            excludeUserId={user.id}
+            forUserId={user.id}
             error={fieldErrors.manager_id}
           />
           {isSelf ? (

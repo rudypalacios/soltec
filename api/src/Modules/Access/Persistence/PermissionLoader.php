@@ -21,7 +21,7 @@ use Soltec\Kernel\Uuid;
  */
 final class PermissionLoader implements CurrentUserLoader
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private readonly Connection $connection, private readonly UserRepository $users)
     {
     }
 
@@ -77,34 +77,8 @@ final class PermissionLoader implements CurrentUserLoader
             $this->permissions($roleHexIds),
             $scopes,
             $restricted,
-            in_array(DataScope::Team, $scopes, true) ? $this->team($userId) : [],
+            in_array(DataScope::Team, $scopes, true) ? Team::members($userId, $this->users->hierarchy()) : [],
         );
-    }
-
-    /** @return list<string> */
-    private function team(string $userId): array
-    {
-        $people = array_map(
-            static fn (array $row): array => [
-                'id' => Uuid::fromHex(Row::string($row, 'id')),
-                'manager_id' => self::nullableId($row, 'manager_id'),
-                'department_id' => self::nullableId($row, 'department_id'),
-            ],
-            $this->connection->fetchAllAssociative(
-                'SELECT LOWER(HEX(id)) AS id, LOWER(HEX(manager_id)) AS manager_id, '
-                . "LOWER(HEX(department_id)) AS department_id FROM users WHERE type = 'internal'",
-            ),
-        );
-
-        return Team::members($userId, $people);
-    }
-
-    /** @param array<string, mixed> $row */
-    private static function nullableId(array $row, string $column): ?string
-    {
-        $hex = Row::nullableString($row, $column);
-
-        return $hex === null ? null : Uuid::fromHex($hex);
     }
 
     /**

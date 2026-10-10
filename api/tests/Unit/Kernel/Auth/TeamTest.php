@@ -64,6 +64,17 @@ final class TeamTest extends TestCase
         self::assertSame(['a', 'b'], $this->sorted(Team::members('a', $people)));
     }
 
+    public function testTheUserWithSubordinatesLeavesOutTheDepartment(): void
+    {
+        $people = [
+            $this->person('lead', department: 'sales'),
+            $this->person('report', manager: 'lead'),
+            $this->person('colleague', department: 'sales'),
+        ];
+
+        self::assertSame(['lead', 'report'], $this->sorted(Team::withSubordinates('lead', $people)));
+    }
+
     /** @return array{id: string, manager_id: string|null, department_id: string|null} */
     private function person(string $id, ?string $manager = null, ?string $department = null): array
     {

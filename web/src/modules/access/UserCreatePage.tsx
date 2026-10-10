@@ -10,6 +10,7 @@ import {
   type NamedRef,
 } from '../organization/OrganizationFields';
 import { fieldMessages, problemMessage } from './messages';
+import { useCurrentUser } from './SessionContext';
 import { useCreateUser } from './useUsers';
 import { useRoles } from './useRoles';
 
@@ -20,10 +21,15 @@ export type RoleChoice = Pick<components['schemas']['Role'], 'id' | 'name'>;
 /** Shared by the create and edit screens. */
 export const USER_FIELD_MESSAGES = {
   role_ids: { not_found: 'Algún perfil ya no existe o está inactivo.' },
-  department_id: { not_found: 'El departamento ya no existe o está inactivo.' },
+  department_id: {
+    not_found: 'El departamento ya no existe o está inactivo.',
+    out_of_scope: 'Queda fuera de tu equipo.',
+  },
   manager_id: {
     not_found: 'Esa persona ya no está activa.',
     invalid: 'Nadie puede ser su propio jefe.',
+    out_of_scope:
+      'Con tu alcance, esta persona debe quedar en tu departamento o depender de ti o de alguien de tu equipo.',
   },
 };
 
@@ -33,7 +39,11 @@ export function UserCreatePage() {
   const [email, setEmail] = useState('');
   const [selected, setSelected] = useState<RoleChoice[]>([]);
   const [department, setDepartment] = useState<NamedRef | null>(null);
-  const [manager, setManager] = useState<NamedRef | null>(null);
+  const me = useCurrentUser();
+  // Whoever reaches only their team starts with themselves as the manager, so the new user lands inside it.
+  const defaultManager: NamedRef | null =
+    me && me.scopes.users === 'team' ? { id: me.id, name: me.name } : null;
+  const [manager, setManager] = useState<NamedRef | null>(defaultManager);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [created, setCreated] = useState<User | null>(null);
@@ -66,7 +76,7 @@ export function UserCreatePage() {
     setEmail('');
     setSelected([]);
     setDepartment(null);
-    setManager(null);
+    setManager(defaultManager);
   };
 
   if (created) {

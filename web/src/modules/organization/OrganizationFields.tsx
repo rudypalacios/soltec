@@ -68,16 +68,19 @@ export function DepartmentSelect({
   );
 }
 
-/** The direct manager: any other active internal user, searched by name or email. */
+/**
+ * The direct manager: an active internal user, searched by name or email. When editing (`forUserId`), the API leaves
+ * out that user and everybody under them, who would make a cycle.
+ */
 export function ManagerSelect({
   value,
   onChange,
-  excludeUserId,
+  forUserId,
   error,
 }: {
   value: NamedRef | null;
   onChange: (manager: NamedRef | null) => void;
-  excludeUserId?: string;
+  forUserId?: string;
   error?: string;
 }) {
   const [text, setText] = useState('');
@@ -86,11 +89,10 @@ export function ManagerSelect({
     q: deferredText.trim() || undefined,
     status: 'active',
     type: 'internal',
+    eligible_manager_for: forUserId,
     per_page: 20,
   });
-  const found: NamedRef[] = (users.data?.data ?? [])
-    .filter((user) => user.id !== excludeUserId)
-    .map(({ id, name }) => ({ id, name }));
+  const found: NamedRef[] = (users.data?.data ?? []).map(({ id, name }) => ({ id, name }));
   const options = value && !found.some((user) => user.id === value.id) ? [value, ...found] : found;
 
   return (
