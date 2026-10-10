@@ -69,7 +69,8 @@ final class CompanyController
         if (($body->getSize() ?? 0) > LogoImage::MAX_BYTES) {
             throw ValidationException::field('logo', 'too_large');
         }
-        $company = $this->company->setLogo(ActorContext::fromRequest($request), BodyReader::read($body, LogoImage::MAX_BYTES));
+        $upload = BodyReader::read($body, LogoImage::MAX_BYTES);
+        $company = $this->company->setLogo(ActorContext::fromRequest($request), $upload);
 
         return Json::write($response, $company->toApi());
     }

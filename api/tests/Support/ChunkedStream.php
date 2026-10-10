@@ -10,6 +10,7 @@ use Slim\Psr7\Stream;
  * A PSR-7 stream that hands out at most 8192 bytes per read(), the way php://input can on some servers. A reader
  * that trusts a single read() to return everything gets only the first chunk.
  */
+// phpcs:disable PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's stream wrapper interface fixes these names.
 final class ChunkedStream
 {
     private const CHUNK = 8192;
