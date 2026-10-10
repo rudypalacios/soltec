@@ -1,38 +1,29 @@
 import AddIcon from '@mui/icons-material/Add';
 import {
   Alert,
-  Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Link,
-  Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
   TextField,
-  Typography,
 } from '@mui/material';
 import { ApiError, type components } from '@soltec/shared';
-import { useDeferredValue, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataList, type DataColumn } from '../../components/DataList';
+import { FilterBar } from '../../components/FilterBar';
 import { PageHeader } from '../../components/PageHeader';
-import { useIsMobile } from '../../components/useIsMobile';
+import type { RowAction } from '../../components/RowActions';
+import { ActiveBadge } from '../../components/StatusBadge';
+import { StatusFilter } from '../../components/StatusFilter';
+import { useListFilters } from '../../components/useListFilters';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
+import { touchQuery } from '../../theme/tokens';
 import { useDepartments, useSaveDepartment, useSetDepartmentActive } from './useDepartments';
 
 type Department = components['schemas']['Department'];
@@ -61,12 +52,8 @@ type Failure = { message: string; departmentId?: string };
 
 /** `/departamentos`: list, create, rename, deactivate and reactivate departments. */
 export function DepartmentsPage() {
-  const isMobile = useIsMobile();
   const can = useCan();
-  const [text, setText] = useState('');
-  const deferredText = useDeferredValue(text);
-  const [status, setStatus] = useState<StatusValue>('active');
-  const [page, setPage] = useState(0);
+  const filters = useListFilters();
   const [editing, setEditing] = useState<Department | 'new' | null>(null);
   // Kept after closing (`open` false) so the dialog does not lose its text while it fades out.
   const [pending, setPending] = useState<{
@@ -77,9 +64,9 @@ export function DepartmentsPage() {
   const [failure, setFailure] = useState<Failure | null>(null);
 
   const departments = useDepartments({
-    q: deferredText.trim() || undefined,
-    status,
-    page: page + 1,
+    q: filters.query,
+    status: filters.status,
+    page: filters.page + 1,
     per_page: PER_PAGE,
   });
   const setActive = useSetDepartmentActive();
@@ -108,12 +95,24 @@ export function DepartmentsPage() {
     }
   };
 
-  const rowActions = {
-    canEdit: can('departments', 'edit'),
-    canToggle: can('departments', 'deactivate'),
-    onEdit: (department: Department) => setEditing(department),
-    onToggle: (department: Department) =>
-      setPending({ department, activate: !department.is_active, open: true }),
+  const actionsFor = (department: Department): RowAction[] => {
+    const actions: RowAction[] = [];
+    if (can('departments', 'edit')) {
+      actions.push({
+        key: 'rename',
+        label: 'Renombrar',
+        onSelect: () => setEditing(department),
+      });
+    }
+    if (can('departments', 'deactivate')) {
+      actions.push({
+        key: 'toggle',
+        label: department.is_active ? 'Desactivar' : 'Reactivar',
+        tone: department.is_active ? 'danger' : undefined,
+        onSelect: () => setPending({ department, activate: !department.is_active, open: true }),
+      });
+    }
+    return actions;
   };
 
   return (
@@ -129,25 +128,13 @@ export function DepartmentsPage() {
         }
       />
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          label="Buscar por nombre"
-          type="search"
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            setPage(0);
-          }}
-          sx={{ flexGrow: 1, maxWidth: { sm: 360 } }}
-        />
-        <StatusFilter
-          value={status}
-          onChange={(value) => {
-            setStatus(value);
-            setPage(0);
-          }}
-        />
-      </Stack>
+      <FilterBar
+        searchLabel="Buscar por nombre"
+        search={filters.text}
+        onSearchChange={filters.setText}
+      >
+        <StatusFilter value={filters.status} onChange={filters.setStatus} />
+      </FilterBar>
 
       {failure ? (
         <Alert severity="error" onClose={() => setFailure(null)} sx={{ mb: 2 }}>
@@ -163,34 +150,22 @@ export function DepartmentsPage() {
         </Alert>
       ) : null}
 
-      {departments.isPending ? (
-        <CircularProgress aria-label="Cargando departamentos" />
-      ) : departments.isError ? (
-        <Alert severity="error">{problemMessage(departments.error)}</Alert>
-      ) : departments.data.data.length === 0 ? (
-        <Alert severity="info">No hay departamentos con esos filtros.</Alert>
-      ) : isMobile ? (
-        <Stack spacing={1.5} aria-label="Lista de departamentos">
-          {departments.data.data.map((department) => (
-            <DepartmentCard key={department.id} department={department} {...rowActions} />
-          ))}
-        </Stack>
-      ) : (
-        <DepartmentsTable departments={departments.data.data} {...rowActions} />
-      )}
-
-      {departments.data ? (
-        <TablePagination
-          component="div"
-          count={departments.data.meta.total}
-          page={page}
-          onPageChange={(_, next) => setPage(next)}
-          rowsPerPage={PER_PAGE}
-          rowsPerPageOptions={[]}
-          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-          sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
-        />
-      ) : null}
+      <DataList
+        label="Lista de departamentos"
+        noun="departamentos"
+        columns={COLUMNS}
+        rows={departments.data?.data}
+        error={departments.isError ? problemMessage(departments.error) : null}
+        getRowId={(department) => department.id}
+        getRowName={(department) => department.name}
+        getActions={actionsFor}
+        pagination={{
+          page: filters.page,
+          perPage: PER_PAGE,
+          total: departments.data?.meta.total ?? 0,
+          onPageChange: filters.setPage,
+        }}
+      />
 
       {editing !== null ? (
         <DepartmentDialog
@@ -216,125 +191,37 @@ export function DepartmentsPage() {
   );
 }
 
-interface RowActionProps {
-  canEdit: boolean;
-  canToggle: boolean;
-  onEdit: (department: Department) => void;
-  onToggle: (department: Department) => void;
-}
-
-function StatusChip({ department }: { department: Department }) {
-  return department.is_active ? (
-    <Chip size="small" color="success" variant="outlined" label="Activo" />
-  ) : (
-    <Chip size="small" label="Inactivo" />
-  );
-}
-
-function UsersLink({ department }: { department: Department }) {
-  return (
-    <Link component={RouterLink} to={usersOfDepartmentPath(department.id)}>
-      {activeUsersLabel(department.active_user_count)}
-    </Link>
-  );
-}
-
-function RowButtons({
-  department,
-  canEdit,
-  canToggle,
-  onEdit,
-  onToggle,
-}: RowActionProps & { department: Department }) {
-  return (
-    <>
-      {canEdit ? (
-        <Button
-          size="small"
-          onClick={() => onEdit(department)}
-          aria-label={`Renombrar: ${department.name}`}
-          sx={{ minHeight: 44 }}
-        >
-          Renombrar
-        </Button>
-      ) : null}
-      {canToggle ? (
-        <Button
-          size="small"
-          color={department.is_active ? 'error' : 'primary'}
-          onClick={() => onToggle(department)}
-          aria-label={`${department.is_active ? 'Desactivar' : 'Reactivar'}: ${department.name}`}
-          sx={{ minHeight: 44 }}
-        >
-          {department.is_active ? 'Desactivar' : 'Reactivar'}
-        </Button>
-      ) : null}
-    </>
-  );
-}
-
-function DepartmentsTable({
-  departments,
-  ...actions
-}: RowActionProps & { departments: Department[] }) {
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small" aria-label="Lista de departamentos">
-        <TableHead>
-          <TableRow>
-            <TableCell>Nombre</TableCell>
-            <TableCell>Usuarios</TableCell>
-            <TableCell>Estado</TableCell>
-            <TableCell align="right">
-              <span style={{ position: 'absolute', left: -9999 }}>Acciones</span>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {departments.map((department) => (
-            <TableRow key={department.id} hover>
-              <TableCell>{department.name}</TableCell>
-              <TableCell>
-                <UsersLink department={department} />
-              </TableCell>
-              <TableCell>
-                <StatusChip department={department} />
-              </TableCell>
-              <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                <RowButtons department={department} {...actions} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-}
-
-function DepartmentCard({ department, ...actions }: RowActionProps & { department: Department }) {
-  return (
-    <Card variant="outlined">
-      <CardContent sx={{ '&:last-child': { pb: 2 } }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 600 }}>{department.name}</Typography>
-            <Typography variant="body2">
-              <UsersLink department={department} />
-            </Typography>
-          </Box>
-          <StatusChip department={department} />
-        </Stack>
-        <Stack direction="row" sx={{ mt: 1, ml: -1, flexWrap: 'wrap' }}>
-          <RowButtons department={department} {...actions} />
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-}
+const COLUMNS: DataColumn<Department>[] = [
+  {
+    id: 'name',
+    header: 'Nombre',
+    mobile: 'title',
+    minWidth: 200,
+    render: (department) => department.name,
+  },
+  {
+    id: 'users',
+    header: 'Usuarios',
+    mobile: 'subtitle',
+    render: (department) => (
+      <Link
+        component={RouterLink}
+        to={usersOfDepartmentPath(department.id)}
+        // A link in a card is a touch target like any button.
+        sx={{ display: 'inline-flex', alignItems: 'center', [touchQuery]: { minHeight: 44 } }}
+      >
+        {activeUsersLabel(department.active_user_count)}
+      </Link>
+    ),
+  },
+  {
+    id: 'status',
+    header: 'Estado',
+    mobile: 'badge',
+    nowrap: true,
+    render: (department) => <ActiveBadge active={department.is_active} />,
+  },
+];
 
 /** Creates a department (`department` null) or renames one. */
 function DepartmentDialog({

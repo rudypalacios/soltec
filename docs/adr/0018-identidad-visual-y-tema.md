@@ -1,6 +1,6 @@
 # ADR-0018: Identidad visual, tokens del tema y componentes compartidos de la web
 
-**Estado:** Propuesta (pasa a Aceptada cuando el usuario apruebe la pantalla de muestra) · **Fecha:** 2026-10-10
+**Estado:** Aceptada (la muestra de usuarios fue aprobada el 2026-10-10) · **Fecha:** 2026-10-10
 
 ## Contexto
 El ADR-0008 fijó MUI y dejó pendiente afinar el tema (paleta, tipografía, densidad). Al empezar el afinado había tres problemas:
@@ -28,4 +28,4 @@ El ADR-0008 fijó MUI y dejó pendiente afinar el tema (paleta, tipografía, den
 - Cambiar un color o una altura es tocar `tokens.ts`; la prueba de contraste avisa si un par deja de leerse.
 - Una pantalla de lista nueva declara columnas y acciones, no tablas ni tarjetas. Si una pantalla necesita algo que `DataList` no da (ordenar, seleccionar, filas expandibles), se amplía el componente en vez de copiarlo.
 - Modo oscuro, ordenar columnas y tematizar por empresa quedan fuera; el tema por empresa llega, si hace falta, con la configuración.
-- El tema es global: al aplicarlo, todas las pantallas cambian de color y de fuente aunque aún no usen los componentes nuevos.
+- Todas las pantallas usan ya el tema y los componentes: usuarios, perfiles y departamentos (`DataList`), los formularios (`FormPage`) y las pantallas públicas (`PublicCard` con la marca). Una pantalla nueva que no los use es una excepción que se explica en su PR.

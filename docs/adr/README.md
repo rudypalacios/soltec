@@ -25,4 +25,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0015](0015-identificadores-uuid.md) | UUID v7 como clave primaria en todas las tablas | Propuesta |
 | [0016](0016-catalogos-y-configuracion-tipados.md) | Catálogos y configuración en tablas tipadas | Propuesta |
 | [0017](0017-credenciales-por-enlace-de-correo.md) | Invitación y recuperación de contraseña por enlace de correo | Aceptada |
-| [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Propuesta |
+| [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Aceptada |

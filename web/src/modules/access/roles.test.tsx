@@ -74,11 +74,11 @@ describe('roles list', () => {
 
     const table = await screen.findByRole('table', { name: 'Lista de perfiles' });
     expect(within(table).getByText('Sistema')).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'Ver Administrador' })).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'Editar Ventas' })).toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: 'Desactivar Ventas' })).toBeInTheDocument();
+    expect(within(table).getByRole('link', { name: 'Ver: Administrador' })).toBeInTheDocument();
+    expect(within(table).getByRole('link', { name: 'Editar: Ventas' })).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: 'Desactivar: Ventas' })).toBeInTheDocument();
     expect(
-      within(table).queryByRole('button', { name: 'Desactivar Administrador' }),
+      within(table).queryByRole('button', { name: 'Desactivar: Administrador' }),
     ).not.toBeInTheDocument();
   });
 
@@ -102,8 +102,8 @@ describe('roles list', () => {
     );
     renderApp(session, '/perfiles');
 
-    expect(await screen.findByRole('link', { name: 'Ver Ventas' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Desactivar Ventas' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Ver: Ventas' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Desactivar: Ventas' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Nuevo perfil' })).not.toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe('roles list', () => {
     renderApp(session, '/perfiles');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Desactivar Ventas' }));
+    await user.click(await screen.findByRole('button', { name: 'Desactivar: Ventas' }));
     await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
 
     expect(await screen.findByText(/hay usuarios activos con este perfil/)).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('roles list', () => {
     renderApp(session, '/perfiles');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Reactivar Retirado' }));
+    await user.click(await screen.findByRole('button', { name: 'Reactivar: Retirado' }));
     await user.click(await screen.findByRole('button', { name: 'Reactivar' }));
 
     await waitFor(() => expect(reactivated).toBe(true));

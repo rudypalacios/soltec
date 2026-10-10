@@ -1,7 +1,8 @@
-import { Alert, Button, CircularProgress, Paper, Stack, TextField } from '@mui/material';
+import { Alert, Button, CircularProgress, TextField } from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import {
   DepartmentSelect,
@@ -87,93 +88,91 @@ function UserEditForm({ user }: { user: User }) {
   return (
     <>
       <PageHeader title="Editar usuario" />
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 560 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
-          {failure ? <Alert severity="error">{failure}</Alert> : null}
-          {!user.is_active ? (
-            <Alert severity="info">
-              Este usuario está inactivo. Puedes corregir sus datos; para que entre de nuevo,
-              reactívalo desde la lista.
-            </Alert>
-          ) : null}
-          <TextField
-            label="Nombre"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            error={Boolean(fieldErrors.name)}
-            helperText={fieldErrors.name}
-            required
-            fullWidth
-            autoFocus
-          />
-          <TextField
-            label="Correo"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            error={Boolean(fieldErrors.email)}
-            helperText={fieldErrors.email}
-            required
-            fullWidth
-            disabled={onlyName}
-          />
-          {emailChanged && user.invitation_pending ? (
-            <Alert severity="warning">
-              Al cambiar el correo, el enlace de invitación ya enviado deja de servir. Después de
-              guardar, reenvía la invitación desde la lista.
-            </Alert>
-          ) : null}
-          <RoleSelect
-            selected={selected}
-            onChange={setSelected}
-            error={fieldErrors.role_ids}
-            disabled={onlyName}
-          />
-          <DepartmentSelect
-            value={department}
-            onChange={setDepartment}
-            choices={departmentChoices}
-            error={fieldErrors.department_id}
-            disabled={onlyName}
-          />
-          <ManagerSelect
-            value={manager}
-            onChange={setManager}
-            forUserId={user.id}
-            error={fieldErrors.manager_id}
-            disabled={onlyName}
-          />
-          {onlyName ? (
-            <Alert severity="info">
-              Estás editando tu propia cuenta: solo puedes cambiar tu nombre. Tu contraseña se
-              cambia en «Cambiar contraseña»; lo demás lo cambia un administrador.
-            </Alert>
-          ) : isSelf ? (
-            <Alert severity="info">
-              Estás editando tu propia cuenta. Solo puedes cambiar tus perfiles si queda otro
-              administrador activo.
-            </Alert>
-          ) : null}
-          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
-            <Button component={RouterLink} to="/usuarios">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={
-                update.isPending ||
-                !name ||
-                !email ||
-                selected.length === 0 ||
-                (!onlyName && departmentChoices.required && department === null)
-              }
-            >
-              Guardar cambios
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
+      <FormPage onSubmit={(event) => void submit(event)}>
+        {failure ? <Alert severity="error">{failure}</Alert> : null}
+        {!user.is_active ? (
+          <Alert severity="info">
+            Este usuario está inactivo. Puedes corregir sus datos; para que entre de nuevo,
+            reactívalo desde la lista.
+          </Alert>
+        ) : null}
+        <TextField
+          label="Nombre"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          error={Boolean(fieldErrors.name)}
+          helperText={fieldErrors.name}
+          required
+          fullWidth
+          autoFocus
+        />
+        <TextField
+          label="Correo"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          error={Boolean(fieldErrors.email)}
+          helperText={fieldErrors.email}
+          required
+          fullWidth
+          disabled={onlyName}
+        />
+        {emailChanged && user.invitation_pending ? (
+          <Alert severity="warning">
+            Al cambiar el correo, el enlace de invitación ya enviado deja de servir. Después de
+            guardar, reenvía la invitación desde la lista.
+          </Alert>
+        ) : null}
+        <RoleSelect
+          selected={selected}
+          onChange={setSelected}
+          error={fieldErrors.role_ids}
+          disabled={onlyName}
+        />
+        <DepartmentSelect
+          value={department}
+          onChange={setDepartment}
+          choices={departmentChoices}
+          error={fieldErrors.department_id}
+          disabled={onlyName}
+        />
+        <ManagerSelect
+          value={manager}
+          onChange={setManager}
+          forUserId={user.id}
+          error={fieldErrors.manager_id}
+          disabled={onlyName}
+        />
+        {onlyName ? (
+          <Alert severity="info">
+            Estás editando tu propia cuenta: solo puedes cambiar tu nombre. Tu contraseña se cambia
+            en «Cambiar contraseña»; lo demás lo cambia un administrador.
+          </Alert>
+        ) : isSelf ? (
+          <Alert severity="info">
+            Estás editando tu propia cuenta. Solo puedes cambiar tus perfiles si queda otro
+            administrador activo.
+          </Alert>
+        ) : null}
+        <FormActions>
+          <Button component={RouterLink} to="/usuarios">
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={
+              update.isPending ||
+              !name ||
+              !email ||
+              selected.length === 0 ||
+              (!onlyName && departmentChoices.required && department === null)
+            }
+          >
+            Guardar cambios
+          </Button>
+        </FormActions>
+      </FormPage>
     </>
   );
 }

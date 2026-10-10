@@ -28,7 +28,13 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Dialog open={open} onClose={busy ? undefined : onCancel} aria-labelledby="confirm-title">
+    <Dialog
+      open={open}
+      onClose={busy ? undefined : onCancel}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="confirm-title"
+    >
       <DialogTitle id="confirm-title">{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>

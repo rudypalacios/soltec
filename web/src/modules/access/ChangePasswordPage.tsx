@@ -1,6 +1,7 @@
-import { Alert, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, TextField, Typography } from '@mui/material';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessages, problemMessage } from './messages';
 import { useSession, useSessionState } from './SessionContext';
@@ -59,74 +60,72 @@ export function ChangePasswordPage() {
   return (
     <>
       <PageHeader title="Cambiar contraseña" />
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 480 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
-          {mustChange ? (
-            <Alert severity="info">
-              Tu contraseña es temporal o venció. Elige una nueva para continuar.
-            </Alert>
-          ) : null}
-          {done ? (
-            <Alert severity="success">
-              Contraseña actualizada. Se cerró tu sesión en los demás dispositivos.
-            </Alert>
-          ) : null}
-          {failure && Object.keys(fieldErrors).length === 0 ? (
-            <Alert severity="error">{failure}</Alert>
-          ) : null}
-          <TextField
-            label="Contraseña actual"
-            type="password"
-            autoComplete="current-password"
-            value={current}
-            onChange={(event) => setCurrent(event.target.value)}
-            error={Boolean(fieldErrors.current_password)}
-            helperText={fieldErrors.current_password}
-            required
-            fullWidth
-          />
-          <TextField
-            label="Contraseña nueva"
-            type="password"
-            autoComplete="new-password"
-            value={next}
-            onChange={(event) => {
-              setNext(event.target.value);
-              // What the server said was about the previous text, not this one.
-              setFieldErrors((errors) => ({ ...errors, new_password: '' }));
-            }}
-            error={Boolean(fieldErrors.new_password)}
-            helperText={
-              fieldErrors.new_password ??
-              'De 12 a 72 caracteres, distinta de tu correo y de la actual.'
-            }
-            required
-            fullWidth
-          />
-          <TextField
-            label="Repite la contraseña nueva"
-            type="password"
-            autoComplete="new-password"
-            value={repeat}
-            onChange={(event) => setRepeat(event.target.value)}
-            error={mismatch}
-            helperText={mismatch ? 'Las contraseñas no coinciden.' : undefined}
-            required
-            fullWidth
-          />
-          <Typography variant="body2" color="text.secondary">
-            Al cambiarla se cierra tu sesión en tus demás dispositivos.
-          </Typography>
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            disabled={submitting || !current || !next || !repeat || mismatch}
-          >
-            Cambiar contraseña
-          </Button>
-        </Stack>
-      </Paper>
+      <FormPage maxWidth={480} onSubmit={(event) => void submit(event)}>
+        {mustChange ? (
+          <Alert severity="info">
+            Tu contraseña es temporal o venció. Elige una nueva para continuar.
+          </Alert>
+        ) : null}
+        {done ? (
+          <Alert severity="success">
+            Contraseña actualizada. Se cerró tu sesión en los demás dispositivos.
+          </Alert>
+        ) : null}
+        {failure && Object.keys(fieldErrors).length === 0 ? (
+          <Alert severity="error">{failure}</Alert>
+        ) : null}
+        <TextField
+          label="Contraseña actual"
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(event) => setCurrent(event.target.value)}
+          error={Boolean(fieldErrors.current_password)}
+          helperText={fieldErrors.current_password}
+          required
+          fullWidth
+        />
+        <TextField
+          label="Contraseña nueva"
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(event) => {
+            setNext(event.target.value);
+            // What the server said was about the previous text, not this one.
+            setFieldErrors((errors) => ({ ...errors, new_password: '' }));
+          }}
+          error={Boolean(fieldErrors.new_password)}
+          helperText={
+            fieldErrors.new_password ??
+            'De 12 a 72 caracteres, distinta de tu correo y de la actual.'
+          }
+          required
+          fullWidth
+        />
+        <TextField
+          label="Repite la contraseña nueva"
+          type="password"
+          autoComplete="new-password"
+          value={repeat}
+          onChange={(event) => setRepeat(event.target.value)}
+          error={mismatch}
+          helperText={mismatch ? 'Las contraseñas no coinciden.' : undefined}
+          required
+          fullWidth
+        />
+        <Typography variant="body2" color="text.secondary">
+          Al cambiarla se cierra tu sesión en tus demás dispositivos.
+        </Typography>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={submitting || !current || !next || !repeat || mismatch}
+        >
+          Cambiar contraseña
+        </Button>
+      </FormPage>
     </>
   );
 }
