@@ -11,6 +11,11 @@ El ADR-0011 dice que la función de precio es pura y vive en `shared/`. Pero el 
 - Ambas implementaciones se prueban con **los mismos vectores** (`contract/test-vectors/`): PHPUnit y Vitest leen el mismo archivo, con los tres casos del ADR-0011 y los límites de validación.
 - Si los resultados difieren, manda el del servidor.
 
+## Implementación
+- Sin `float` ni `bcmath` (el hosting no garantiza la extensión): PHP hace división larga con enteros y TypeScript usa `BigInt`; ambos redondean a centavos una sola vez, mitad hacia arriba.
+- El IVA se cancela en `con_iva = costo / ((1 − MC) × (1 − ISR))`, así que cada monto es una sola división.
+- Límites compartidos (en los vectores): costo de hasta 9 enteros y 4 decimales; un precio de 10^13 o más se rechaza (`price_too_large`).
+
 ## Alternativas descartadas
 - **Solo TypeScript en `shared/`:** el servidor no puede congelar precios por su cuenta.
 - **Solo PHP, sin vista previa en el cliente:** cada cambio de margen en el simulador exigiría una petición.

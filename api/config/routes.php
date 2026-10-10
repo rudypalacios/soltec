@@ -21,6 +21,8 @@ use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Settings\Http\BrandingController;
 use Soltec\Modules\Settings\Http\CompanyController;
 use Soltec\Modules\Settings\Http\FinancialSettingsController;
+use Soltec\Modules\Settings\Http\MarginLevelController;
+use Soltec\Modules\Settings\Http\PriceController;
 use Soltec\Modules\Settings\Http\SequenceController;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
@@ -97,6 +99,23 @@ return static function (App $app): void {
         $group->get('/sequences', [SequenceController::class, 'list'])->setArgument('permission', 'sequences.view');
         $group->patch('/sequences/{code}', [SequenceController::class, 'update'])
             ->setArgument('permission', 'sequences.edit');
+
+        $group->get('/margin-levels', [MarginLevelController::class, 'list'])
+            ->setArgument('permission', 'margin_levels.view');
+        $group->post('/margin-levels', [MarginLevelController::class, 'create'])
+            ->setArgument('permission', 'margin_levels.create');
+        $group->get('/margin-levels/{marginLevelId}', [MarginLevelController::class, 'show'])
+            ->setArgument('permission', 'margin_levels.view');
+        $group->patch('/margin-levels/{marginLevelId}', [MarginLevelController::class, 'update'])
+            ->setArgument('permission', 'margin_levels.edit');
+        $group->post('/margin-levels/{marginLevelId}/set-default', [MarginLevelController::class, 'setDefault'])
+            ->setArgument('permission', 'margin_levels.edit');
+        $group->post('/margin-levels/{marginLevelId}/deactivate', [MarginLevelController::class, 'deactivate'])
+            ->setArgument('permission', 'margin_levels.deactivate');
+        $group->post('/margin-levels/{marginLevelId}/reactivate', [MarginLevelController::class, 'reactivate'])
+            ->setArgument('permission', 'margin_levels.deactivate');
+        $group->post('/price/calculate', [PriceController::class, 'calculate'])
+            ->setArgument('permission', 'margin_levels.view');
 
         $group->get('/resources', [CatalogController::class, 'resources'])->setArgument('permission', 'roles.view');
         $group->get('/permissions', [CatalogController::class, 'permissions'])->setArgument('permission', 'roles.view');

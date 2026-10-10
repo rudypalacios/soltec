@@ -15,7 +15,7 @@ final class SchemaTest extends AccessTestCase
     public function testSeedsTheCatalogsAndTheImmutableAdminRole(): void
     {
         self::assertSame(
-            ['company', 'departments', 'financial_settings', 'roles', 'sequences', 'users'],
+            ['company', 'departments', 'financial_settings', 'margin_levels', 'roles', 'sequences', 'users'],
             $this->connection->fetchFirstColumn('SELECT code FROM resources ORDER BY code'),
         );
         self::assertSame(
@@ -31,12 +31,12 @@ final class SchemaTest extends AccessTestCase
         self::assertSame('internal', $role['user_type']);
         self::assertNull($role['deleted_at']);
         self::assertSame(
-            18,
+            22,
             $this->countRows('SELECT COUNT(*) FROM role_permissions'),
-            'Access and departments have every verb; the settings only view and edit.',
+            'Access, departments and margin levels have every verb; the settings only view and edit.',
         );
         self::assertSame(
-            array_fill(0, 6, 'all'),
+            array_fill(0, 7, 'all'),
             $this->connection->fetchFirstColumn('SELECT scope FROM role_scopes ORDER BY resource_code'),
         );
     }
@@ -77,8 +77,8 @@ final class SchemaTest extends AccessTestCase
 
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM roles WHERE code = 'admin'"));
         self::assertSame($adminBefore, $this->adminRoleId());
-        self::assertSame(18, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
-        self::assertSame(6, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
+        self::assertSame(22, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(7, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
     }
 
     public function testAccountTokensAreUniqueByHashAndKeepTheirUser(): void

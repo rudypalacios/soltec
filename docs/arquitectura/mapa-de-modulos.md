@@ -310,7 +310,7 @@ Dependencias blandas que van contra el orden (ver ajustes en la sección 6):
 ## 7. Decisiones de negocio ya tomadas que afectan el diseño
 
 - **Fórmula de precio:** `sin IVA = ((costo / (1 + IVA)) / (1 − MC)) / (1 − ISR)` y `con IVA = sin IVA × (1 + IVA)`. El costo del producto es **con IVA**. IVA, ISR y MC son parámetros (hoy 12%, 3% y los niveles del legacy). Ver [ADR-0011](adr/0011-calculo-de-precios.md).
-- **Nivel de margen:** se elige al consultar o cotizar; en un paquete aplica a todos sus componentes.
+- **Nivel de margen:** es habitual de cada cliente (opcional; sin él se usa el por defecto), se elige por línea al cotizar y se congela en la cotización emitida; no se guarda en el producto ni en el proveedor. En un paquete aplica a todos sus componentes.
 - **Paquetes:** su precio es la suma de sus componentes, calculado en el momento. En la primera versión solo contienen productos simples.
 - **Cotización:** tiene validez configurable (15 días). Los precios y la composición se congelan en la cotización. Una cotización nueva toma los precios vigentes. "Vigente" significa dentro de su validez.
 - **Redondeo:** se calcula sin redondear; se redondea a 2 decimales al mostrar o cerrar una línea; el IVA se calcula sobre el total del documento.

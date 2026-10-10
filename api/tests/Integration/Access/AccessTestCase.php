@@ -323,7 +323,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 18;
+        ) === 22;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -353,6 +353,21 @@ abstract class AccessTestCase extends IntegrationTestCase
             "UPDATE financial_settings SET currency_code = 'GTQ', vat_rate = 0.12, income_tax_rate = 0.03, "
             . 'stale_cost_days = 90, quote_validity_days = 15, version = 1',
         );
+        $this->connection->executeStatement('DELETE FROM margin_levels');
+        $levels = [['Margen 33 %', '0.33000', 1, 1], ['Margen 35 %', '0.35000', 0, 2]];
+        foreach ($levels as [$name, $rate, $default, $order]) {
+            $this->connection->executeStatement(
+                'INSERT INTO margin_levels (id, name, rate, is_default, sort_order, created_at, updated_at) '
+                . 'VALUES (UNHEX(:id), :name, :rate, :is_default, :sort_order, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
+                [
+                    'id' => Uuid::toHex(Uuid::v7()),
+                    'name' => $name,
+                    'rate' => $rate,
+                    'is_default' => $default,
+                    'sort_order' => $order,
+                ],
+            );
+        }
         $seeded = ['client' => ['CLI', 'none'], 'supplier' => ['PRV', 'none'], 'quote' => ['COT', 'month'],
             'project' => ['PRY', 'month'], 'purchase_order' => ['OC', 'month']];
         foreach ($seeded as $code => [$prefix, $period]) {

@@ -16,6 +16,8 @@ const PROBLEM_MESSAGES: Record<string, string> = {
   system_role_immutable: 'Los perfiles de sistema no se pueden modificar.',
   department_in_use:
     'No se puede desactivar: el departamento tiene usuarios activos. Asígnalos a otro departamento primero.',
+  default_margin_level:
+    'No se puede desactivar el nivel por defecto. Elige otro nivel como el que se usa por defecto y vuelve a intentarlo.',
   link_invalid:
     'Este enlace ya no sirve: ya se usó o se envió uno más reciente. Pide que te lo envíen de nuevo.',
   link_expired: 'Este enlace venció. Pide que te lo envíen de nuevo.',
