@@ -186,6 +186,7 @@ export function DepartmentsPage() {
             : `«${pending?.department.name ?? ''}» dejará de estar disponible para asignar usuarios. Sus datos se conservan.`
         }
         confirmLabel={pending?.activate ? 'Reactivar' : 'Desactivar'}
+        destructive={pending?.activate === false}
         busy={setActive.isPending}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(pending && { ...pending, open: false })}

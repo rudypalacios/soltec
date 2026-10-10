@@ -198,6 +198,8 @@ function RowCard<T>({
   const [subtitle] = withRole('subtitle');
   const badges = withRole('badge');
   const meta = withRole('meta');
+  // One button always in sight and the rest behind ⋮: the footer is one row however many actions a row has.
+  const [primary, ...others] = actions;
 
   return (
     <Card variant="outlined">
@@ -235,14 +237,24 @@ function RowCard<T>({
             ))}
           </Stack>
         ) : null}
-        {actions.length > 0 ? (
-          <Stack direction="row" sx={{ mt: 1, ml: -1, flexWrap: 'wrap' }}>
-            {actions.map((action) => (
-              <ActionButton key={action.key} action={action} rowName={rowName} touch />
-            ))}
-          </Stack>
-        ) : null}
       </CardContent>
+      {primary ? (
+        <Stack
+          direction="row"
+          sx={{
+            borderTop: 1,
+            borderColor: 'divider',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            pl: 1,
+            pr: 0.5,
+            py: 0.5,
+          }}
+        >
+          <ActionButton action={primary} rowName={rowName} touch />
+          {others.length > 0 ? <ActionMenu actions={others} rowName={rowName} /> : null}
+        </Stack>
+      ) : null}
     </Card>
   );
 }

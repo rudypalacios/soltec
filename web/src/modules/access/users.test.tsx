@@ -205,7 +205,9 @@ describe('deactivating and reactivating', () => {
     renderApp(session, '/usuarios');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Desactivar: Luis Gómez' }));
+    // On a phone the card shows "Editar" and keeps the rest behind ⋮.
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desactivar' }));
     await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
 
     await waitFor(() => expect(deactivated).toBe(true));
@@ -362,11 +364,37 @@ describe('pending invitations', () => {
     expect(await screen.findByText('Invitación pendiente')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Acciones de Luis Gómez' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+    await user.click(await screen.findByRole('button', { name: 'Reenviar' }));
 
     await waitFor(() => expect(sent).toBe(true));
     expect(
       await screen.findByText(/Enviamos la invitación a luis@example.com/),
     ).toBeInTheDocument();
+  });
+
+  it('asks before resending and sends nothing if the person backs out', async () => {
+    let sent = false;
+    const { session } = createTestSession({
+      ...list(PENDING),
+      [`POST /v1/users/${PENDING.id}/invite`]: () => {
+        sent = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Enviaremos una invitación nueva a luis@example.com');
+    expect(dialog).toHaveTextContent('El enlace anterior dejará de funcionar');
+    expect(sent).toBe(false);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(sent).toBe(false);
   });
 
   it('does not offer to resend to someone who already has a password', async () => {
@@ -390,6 +418,7 @@ describe('pending invitations', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+    await user.click(await screen.findByRole('button', { name: 'Reenviar' }));
 
     expect(await screen.findByText(/servidor de correo rechazó/)).toBeInTheDocument();
   });
@@ -407,9 +436,9 @@ describe('pending invitations', () => {
     renderApp(session, '/usuarios');
     const user = userEvent.setup();
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Reenviar invitación: Luis Gómez' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reenviar invitación' }));
+    await user.click(await screen.findByRole('button', { name: 'Reenviar' }));
 
     await waitFor(() => expect(sent).toBe(true));
   });

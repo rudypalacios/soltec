@@ -36,6 +36,7 @@ export function UsersPage() {
   const departmentId = searchParams.get('departamento') ?? '';
   const departmentChoices = useDepartmentChoices();
   const [pending, setPending] = useState<{ user: User; activate: boolean } | null>(null);
+  const [pendingResend, setPendingResend] = useState<User | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -49,14 +50,19 @@ export function UsersPage() {
   const setActive = useSetUserActive();
   const resend = useResendInvitation();
 
-  const resendInvitation = async (user: User) => {
+  const resendInvitation = async () => {
+    if (!pendingResend) {
+      return;
+    }
     setActionError(null);
     setNotice(null);
     try {
-      await resend.mutateAsync(user.id);
-      setNotice(`Enviamos la invitación a ${user.email}. El enlace anterior ya no sirve.`);
+      await resend.mutateAsync(pendingResend.id);
+      setNotice(`Enviamos la invitación a ${pendingResend.email}. El enlace anterior ya no sirve.`);
     } catch (error) {
       setActionError(problemMessage(error));
+    } finally {
+      setPendingResend(null);
     }
   };
 
@@ -74,7 +80,7 @@ export function UsersPage() {
           key: 'invite',
           label: 'Reenviar invitación',
           icon: ACTION_ICONS.resend,
-          onSelect: () => void resendInvitation(user),
+          onSelect: () => setPendingResend(user),
         });
       }
     }
@@ -190,9 +196,19 @@ export function UsersPage() {
             : `${pending?.user.name ?? ''} no podrá iniciar sesión y se cerrarán todas sus sesiones. Sus datos se conservan.`
         }
         confirmLabel={pending?.activate ? 'Reactivar' : 'Desactivar'}
+        destructive={pending?.activate === false}
         busy={setActive.isPending}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
+      />
+      <ConfirmDialog
+        open={pendingResend !== null}
+        title="Reenviar invitación"
+        message={`Enviaremos una invitación nueva a ${pendingResend?.email ?? ''}. El enlace anterior dejará de funcionar.`}
+        confirmLabel="Reenviar"
+        busy={resend.isPending}
+        onConfirm={() => void resendInvitation()}
+        onCancel={() => setPendingResend(null)}
       />
     </>
   );

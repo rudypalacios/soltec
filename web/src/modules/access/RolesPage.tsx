@@ -164,6 +164,7 @@ export function RolesPage() {
             : `El perfil «${pending?.role.name ?? ''}» dejará de poder asignarse. Sus datos se conservan.`
         }
         confirmLabel={pending?.activate ? 'Reactivar' : 'Desactivar'}
+        destructive={pending?.activate === false}
         busy={setActive.isPending}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}

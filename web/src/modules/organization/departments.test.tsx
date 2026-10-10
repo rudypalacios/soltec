@@ -54,7 +54,9 @@ describe('departments', () => {
 
     const cards = await screen.findByLabelText('Lista de departamentos');
     expect(within(cards).getByText('Ventas')).toBeInTheDocument();
-    expect(within(cards).getByRole('button', { name: 'Desactivar: Ventas' })).toBeInTheDocument();
+    // The card keeps its main action in sight and the rest behind ⋮.
+    expect(within(cards).getByRole('button', { name: 'Renombrar: Ventas' })).toBeInTheDocument();
+    expect(within(cards).getByRole('button', { name: 'Acciones de Ventas' })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
