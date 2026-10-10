@@ -6,7 +6,7 @@
 El cliente tomó como referencia la diagramación y los colores de Gmail y de StelOrder: cómoda, práctica, a la vista.
 
 ## Decisión
-**MUI (Material UI)** con un tema propio (paleta, tipografía, densidad) definido como tokens. Tablas con TanStack Table o las de MUI. El tema se afina con la skill de diseño de frontend. Antes de cerrar, una pantalla de muestra (lista y formulario) para aprobación del cliente.
+**MUI (Material UI)** con un tema propio (paleta, tipografía, densidad) definido como tokens. Tablas con TanStack Table o las de MUI. El tema se afina con la skill de diseño de frontend. Antes de cerrar, una pantalla de muestra (lista y formulario) para aprobación del cliente. El afinado y sus tokens están en el [ADR-0018](0018-identidad-visual-y-tema.md).
 
 ## Alternativas descartadas
 - **Ant Design:** excelente en tablas y formularios, más pesado.

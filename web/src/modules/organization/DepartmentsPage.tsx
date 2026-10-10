@@ -32,7 +32,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { useIsMobile } from '../../components/useIsMobile';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { StatusFilter, type StatusValue } from '../access/StatusFilter';
+import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
 import { useDepartments, useSaveDepartment, useSetDepartmentActive } from './useDepartments';
 
 type Department = components['schemas']['Department'];

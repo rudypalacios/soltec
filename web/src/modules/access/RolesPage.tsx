@@ -28,7 +28,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { useIsMobile } from '../../components/useIsMobile';
 import { problemMessage } from './messages';
 import { useCan } from './SessionContext';
-import { StatusFilter, type StatusValue } from './StatusFilter';
+import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
 import { useRoles, useSetRoleActive } from './useRoles';
 
 type Role = components['schemas']['Role'];

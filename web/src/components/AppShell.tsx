@@ -25,6 +25,8 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
+import { color } from '../theme/tokens';
+import { Brand } from './Brand';
 import { useIsMobile } from './useIsMobile';
 
 const DRAWER_WIDTH = 232;
@@ -79,12 +81,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navigation = (
     <Box role="navigation" aria-label="Navegación principal" sx={{ width: DRAWER_WIDTH }}>
-      <Toolbar>
-        <Typography variant="h6" component="span">
-          Soltec
-        </Typography>
+      <Toolbar sx={{ px: 3 }}>
+        <Brand />
       </Toolbar>
-      <List>
+      <List sx={{ pr: 1.5 }}>
         {items.map((item) => (
           <ListItemButton
             key={item.path}
@@ -92,7 +92,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={item.path}
             end={item.path === '/'}
             onClick={() => setDrawerOpen(false)}
-            sx={{ minHeight: 48, '&.active': { bgcolor: 'action.selected', fontWeight: 600 } }}
+            sx={{
+              minHeight: 44,
+              pl: 3,
+              borderRadius: '0 999px 999px 0',
+              '&.active': { bgcolor: color.primary.tint, color: color.primary.dark },
+              '&.active .MuiListItemIcon-root': { color: color.primary.main },
+              '&.active .MuiListItemText-primary': { fontWeight: 600 },
+            }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
             <ListItemText primary={item.label} />
@@ -126,13 +133,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <MenuIcon />
             </IconButton>
           ) : null}
-          <Typography
-            variant="h6"
-            component="span"
-            sx={{ display: { xs: 'block', md: restricted ? 'block' : 'none' } }}
-          >
-            Soltec
-          </Typography>
+          <Box sx={{ display: { xs: 'block', md: restricted ? 'block' : 'none' } }}>
+            <Brand />
+          </Box>
           <Box sx={{ flexGrow: 1 }} />
           <UserMenu />
         </Toolbar>
@@ -163,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
         <Toolbar />
-        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, md: 3 } }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, md: 3 } }}>
           {children}
         </Container>
       </Box>

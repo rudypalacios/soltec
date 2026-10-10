@@ -40,6 +40,10 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - Acordado: nadie crea ni mueve a un usuario fuera de su alcance (`422 out_of_scope`; con alcance `own` no se crea a nadie). En su propia cuenta, quien no es administrador solo cambia su nombre. Con alcance `team` el formulario propone como jefe a quien crea. El selector de jefe solo ofrece candidatos válidos (`eligible_manager_for`: sin el usuario ni quienes dependen de él)
   - Acordado: un departamento con usuarios activos no se desactiva; el error dice cuántos tiene y la web enlaza a esos usuarios. Desactivar a un jefe no cambia el `manager_id` de sus subordinados
   - Fuera de 1.2: organigrama visual, jefe del departamento como campo propio, reasignación masiva de usuarios
+- [ ] **Transversal: tema y componentes compartidos de la web** (ADR-0008 y ADR-0018; sin cambios en la API)
+  - [x] Muestra para aprobar: tokens, fuente autoalojada y componentes (`DataList`, `FilterBar`, `StatusBadge`, `FormPage`) aplicados a la lista y al alta de usuarios, con capturas a 390 y 1280 px
+  - [ ] Tras la aprobación: aplicar a perfiles, departamentos, edición de usuarios, formularios restantes, `AppShell` y pantallas públicas; ADR-0018 pasa a Aceptada
+  - Fuera: modo oscuro, ordenar columnas o seleccionar filas en las listas, tema por empresa (llega con la configuración, 1.3)
 - [ ] 1.3 Configuración general y correlativos
 - [ ] 1.4 Niveles de margen y función de precio
 - [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable y dashboard base
