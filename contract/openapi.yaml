@@ -1111,6 +1111,9 @@ paths:
     get:
       operationId: getFinancialSettings
       summary: Tax rates and business-rule periods.
+      description:
+        VAT and income tax rates (as strings, never floats), the days after which a cost counts as out of date, and the
+        days a quote stays valid. The currency is fixed to GTQ (P1).
       tags:
         - Settings
       x-permission: financial_settings.view
