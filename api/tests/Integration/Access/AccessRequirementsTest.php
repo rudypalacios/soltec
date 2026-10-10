@@ -26,6 +26,26 @@ final class AccessRequirementsTest extends AccessTestCase
         self::assertSame('pass', $this->service(AccessRequirements::class)->checks()[0]->toArray()['status']);
     }
 
+    public function testWarnsWhileTheAdminPasswordIsStillInTheEnv(): void
+    {
+        $this->createAdmin();
+
+        $checks = (new AccessRequirements($this->configWith(['ADMIN_PASSWORD' => 'x'])))->checks();
+
+        self::assertSame(['access.first_admin', 'access.admin_password_in_env'], array_map(
+            static fn ($check): string => $check->toArray()['id'],
+            $checks,
+        ));
+        self::assertSame('warn', $checks[1]->toArray()['status']);
+    }
+
+    public function testDoesNotMentionTheAdminPasswordWhenThereIsNone(): void
+    {
+        $this->createAdmin();
+
+        self::assertCount(1, (new AccessRequirements($this->configWith([])))->checks());
+    }
+
     public function testADeactivatedAdministratorDoesNotCount(): void
     {
         $this->createAdmin();

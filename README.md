@@ -52,4 +52,4 @@ El orden para cualquier instancia nueva (entorno, hosting u otra empresa). El de
 2. **`.env`:** copia `api/.env.example` a la carpeta de la instancia, al lado de `public/`, con permisos `600`, y completa cada variable.
 3. **Despliega** (un push, ver la guía): sube el código y aplica las migraciones.
 4. **Revisa los requisitos:** abre `https://<dirección de la instancia>/api/system/requirements`. Corrige todas las fallas y entiende cada aviso; repite hasta que el veredicto sea «Todo listo» o «Listo, con avisos» que aceptas.
-5. **Primer administrador:** `php api/bin/console user:create-admin` en la carpeta de la instancia.
+5. **Primer administrador:** pon `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env` y despliega de nuevo (o, con PHP 8.3 en el terminal, `php api/bin/console user:create-admin` en la carpeta de la instancia). Después **quita esas variables del `.env`**.

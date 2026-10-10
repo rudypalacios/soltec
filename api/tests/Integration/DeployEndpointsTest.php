@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Soltec\Tests\Integration;
 
+use Soltec\Kernel\Bootstrap;
+
 final class DeployEndpointsTest extends IntegrationTestCase
 {
     public function testMigrationsRequireTheDeployToken(): void
@@ -29,6 +31,39 @@ final class DeployEndpointsTest extends IntegrationTestCase
         $second = $this->json($this->call('POST', '/api/system/migrations/apply', $this->deployHeaders()));
         self::assertSame(0, $second['count']);
         self::assertSame([], $second['applied']);
+    }
+
+    public function testNoAdministratorIsCreatedWithoutAdminSettings(): void
+    {
+        $body = $this->json($this->call('POST', '/api/system/migrations/apply', $this->deployHeaders()));
+
+        self::assertSame(['first_admin' => 'not_configured'], $body['steps']);
+        self::assertSame(0, $this->countRows('SELECT COUNT(*) FROM users'));
+    }
+
+    public function testTheFirstAdministratorIsCreatedFromTheEnvAndOnlyOnce(): void
+    {
+        $password = 'a long deployment passphrase';
+        $this->app = Bootstrap::createApp(dirname(__DIR__, 2), $this->configWith([
+            'ADMIN_EMAIL' => 'Boss@Example.com',
+            'ADMIN_PASSWORD' => $password,
+            'ADMIN_NAME' => 'The Boss',
+        ]));
+
+        $first = $this->call('POST', '/api/system/migrations/apply', $this->deployHeaders());
+        $second = $this->call('POST', '/api/system/migrations/apply', $this->deployHeaders());
+
+        self::assertSame(['first_admin' => 'created'], $this->json($first)['steps']);
+        self::assertSame(['first_admin' => 'exists'], $this->json($second)['steps']);
+        self::assertSame(1, $this->countRows('SELECT COUNT(*) FROM users'));
+        self::assertStringNotContainsString($password, (string) $first->getBody());
+        $login = $this->call('POST', '/api/v1/auth/login', ['Content-Type' => 'application/json'], json_encode([
+            'email' => 'boss@example.com',
+            'password' => $password,
+            'device' => ['platform' => 'web'],
+        ], JSON_THROW_ON_ERROR));
+        self::assertSame(200, $login->getStatusCode());
+        self::assertFalse($this->json($login)['password_change_required']);
     }
 
     public function testMigrationsAreRefusedWhileAnotherRunHoldsTheLock(): void
