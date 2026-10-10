@@ -101,7 +101,9 @@ export function UserCreatePage() {
               <Button variant="contained" component={RouterLink} to="/usuarios">
                 Volver a usuarios
               </Button>
-              <Button onClick={startAnother}>Crear otro usuario</Button>
+              <Button variant="outlined" color="inherit" onClick={startAnother}>
+                Crear otro usuario
+              </Button>
             </Stack>
           </Stack>
         </Paper>
@@ -143,7 +145,7 @@ export function UserCreatePage() {
         />
         <ManagerSelect value={manager} onChange={setManager} error={fieldErrors.manager_id} />
         <FormActions>
-          <Button component={RouterLink} to="/usuarios">
+          <Button variant="outlined" color="inherit" component={RouterLink} to="/usuarios">
             Cancelar
           </Button>
           <Button

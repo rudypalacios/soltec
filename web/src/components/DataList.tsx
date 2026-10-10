@@ -52,8 +52,6 @@ interface DataListProps<T> {
   /** Names a row for the screen reader in its action buttons. */
   getRowName: (row: T) => string;
   getActions?: (row: T) => RowAction[];
-  /** `menu` puts the actions behind a ⋮ button (for three or more); `inline` shows them as text buttons. */
-  actionsStyle?: 'inline' | 'menu';
   pagination: {
     /** Zero-based. */
     page: number;
@@ -89,7 +87,6 @@ export function DataList<T>({
   getRowId,
   getRowName,
   getActions,
-  actionsStyle = 'inline',
   pagination,
 }: DataListProps<T>) {
   const isMobile = useIsMobile();
@@ -159,15 +156,9 @@ export function DataList<T>({
                     ))}
                     {getActions ? (
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap', py: 0.5 }}>
-                        {actionsStyle === 'menu' ? (
-                          actions.length > 0 ? (
-                            <ActionMenu actions={actions} rowName={rowName} />
-                          ) : null
-                        ) : (
-                          actions.map((action) => (
-                            <ActionButton key={action.key} action={action} rowName={rowName} />
-                          ))
-                        )}
+                        {actions.length > 0 ? (
+                          <ActionMenu actions={actions} rowName={rowName} />
+                        ) : null}
                       </TableCell>
                     ) : null}
                   </TableRow>

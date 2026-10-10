@@ -106,7 +106,8 @@ describe('departments', () => {
     renderApp(session, '/departamentos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Renombrar: Ventas' }));
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Ventas' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Renombrar' }));
     const name = within(await screen.findByRole('dialog')).getByLabelText(/^Nombre/);
     expect(name).toHaveValue('Ventas');
     await user.clear(name);
@@ -137,7 +138,8 @@ describe('departments', () => {
     renderApp(session, '/departamentos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Desactivar: Ventas' }));
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Ventas' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desactivar' }));
     await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
 
     const alert = await screen.findByRole('alert');
@@ -164,7 +166,7 @@ describe('departments', () => {
 
     await screen.findByRole('table', { name: 'Lista de departamentos' });
     expect(screen.queryByRole('button', { name: 'Nuevo departamento' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Desactivar/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Renombrar/ })).not.toBeInTheDocument();
+    // Without edit or deactivate permission the row has no actions, so there is no menu either.
+    expect(screen.queryByRole('button', { name: /Acciones de/ })).not.toBeInTheDocument();
   });
 });

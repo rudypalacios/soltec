@@ -36,7 +36,7 @@ export function ForgotPasswordPage() {
             Si hay una cuenta activa con ese correo, te enviamos un enlace para elegir una
             contraseña nueva. Vence en 1 hora y sirve una sola vez.
           </Alert>
-          <Button component={RouterLink} to={LOGIN_PATH}>
+          <Button variant="outlined" color="inherit" component={RouterLink} to={LOGIN_PATH}>
             Volver a iniciar sesión
           </Button>
         </Stack>
@@ -68,7 +68,7 @@ export function ForgotPasswordPage() {
         >
           Enviar enlace
         </Button>
-        <Button component={RouterLink} to={LOGIN_PATH}>
+        <Button variant="outlined" color="inherit" component={RouterLink} to={LOGIN_PATH}>
           Volver a iniciar sesión
         </Button>
       </Stack>

@@ -3,6 +3,9 @@ import { Button, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from '
 import { useState, type ReactElement } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
+/** In a menu the icon is a hint next to the word, not a second label: smaller and quieter than the text. */
+const MENU_ICON = { minWidth: 30, color: 'text.secondary', '& svg': { fontSize: 18 } } as const;
+
 /** What a row can do. A link (`to`) navigates; anything else runs `onSelect`. */
 export interface RowAction {
   key: string;
@@ -39,7 +42,7 @@ export function ActionButton({
   );
 }
 
-/** The actions of a table row behind a ⋮ button, for rows that can have three or more. */
+/** The actions of a table row behind a ⋮ button: the same on every table, however many actions a row has. */
 export function ActionMenu({ actions, rowName }: { actions: RowAction[]; rowName: string }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const close = () => setAnchor(null);
@@ -56,7 +59,7 @@ export function ActionMenu({ actions, rowName }: { actions: RowAction[]; rowName
         {actions.map((action) =>
           action.to ? (
             <MenuItem key={action.key} component={RouterLink} to={action.to}>
-              {action.icon ? <ListItemIcon>{action.icon}</ListItemIcon> : null}
+              {action.icon ? <ListItemIcon sx={MENU_ICON}>{action.icon}</ListItemIcon> : null}
               <ListItemText>{action.label}</ListItemText>
             </MenuItem>
           ) : (
@@ -69,7 +72,14 @@ export function ActionMenu({ actions, rowName }: { actions: RowAction[]; rowName
               }}
             >
               {action.icon ? (
-                <ListItemIcon sx={{ color: 'inherit' }}>{action.icon}</ListItemIcon>
+                <ListItemIcon
+                  sx={{
+                    ...MENU_ICON,
+                    color: action.tone === 'danger' ? 'inherit' : MENU_ICON.color,
+                  }}
+                >
+                  {action.icon}
+                </ListItemIcon>
               ) : null}
               <ListItemText>{action.label}</ListItemText>
             </MenuItem>

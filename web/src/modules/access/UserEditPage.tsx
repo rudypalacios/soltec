@@ -155,7 +155,7 @@ function UserEditForm({ user }: { user: User }) {
           </Alert>
         ) : null}
         <FormActions>
-          <Button component={RouterLink} to="/usuarios">
+          <Button variant="outlined" color="inherit" component={RouterLink} to="/usuarios">
             Cancelar
           </Button>
           <Button

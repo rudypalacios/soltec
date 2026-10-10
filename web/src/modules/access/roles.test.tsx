@@ -71,15 +71,20 @@ describe('roles list', () => {
       'GET /v1/roles': () => Response.json(page([ADMIN, SALES])),
     });
     renderApp(session, '/perfiles');
+    const user = userEvent.setup();
 
     const table = await screen.findByRole('table', { name: 'Lista de perfiles' });
     expect(within(table).getByText('Sistema')).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'Ver: Administrador' })).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'Editar: Ventas' })).toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: 'Desactivar: Ventas' })).toBeInTheDocument();
-    expect(
-      within(table).queryByRole('button', { name: 'Desactivar: Administrador' }),
-    ).not.toBeInTheDocument();
+
+    // A system profile can only be opened; a custom one can also be edited and deactivated.
+    await user.click(within(table).getByRole('button', { name: 'Acciones de Administrador' }));
+    expect(await screen.findByRole('menuitem', { name: 'Ver' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Desactivar' })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(within(table).getByRole('button', { name: 'Acciones de Ventas' }));
+    expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Desactivar' })).toBeInTheDocument();
   });
 
   it('shows cards on a phone', async () => {
@@ -101,9 +106,11 @@ describe('roles list', () => {
       reader,
     );
     renderApp(session, '/perfiles');
+    const user = userEvent.setup();
 
-    expect(await screen.findByRole('link', { name: 'Ver: Ventas' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Desactivar: Ventas' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Ventas' }));
+    expect(await screen.findByRole('menuitem', { name: 'Ver' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Desactivar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Nuevo perfil' })).not.toBeInTheDocument();
   });
 
@@ -115,7 +122,8 @@ describe('roles list', () => {
     renderApp(session, '/perfiles');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Desactivar: Ventas' }));
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Ventas' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desactivar' }));
     await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
 
     expect(await screen.findByText(/hay usuarios activos con este perfil/)).toBeInTheDocument();
@@ -133,7 +141,8 @@ describe('roles list', () => {
     renderApp(session, '/perfiles');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Reactivar: Retirado' }));
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Retirado' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reactivar' }));
     await user.click(await screen.findByRole('button', { name: 'Reactivar' }));
 
     await waitFor(() => expect(reactivated).toBe(true));

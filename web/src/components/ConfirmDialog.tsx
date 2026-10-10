@@ -40,7 +40,7 @@ export function ConfirmDialog({
         <DialogContentText>{message}</DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel} disabled={busy}>
+        <Button variant="outlined" color="inherit" onClick={onCancel} disabled={busy}>
           Cancelar
         </Button>
         <Button onClick={onConfirm} disabled={busy} variant="contained" color="error">

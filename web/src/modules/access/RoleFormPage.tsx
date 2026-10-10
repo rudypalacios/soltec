@@ -203,7 +203,7 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
           perfiles puede ampliar el suyo.
         </Alert>
         <FormActions>
-          <Button component={RouterLink} to="/perfiles">
+          <Button variant="outlined" color="inherit" component={RouterLink} to="/perfiles">
             {readOnly ? 'Volver' : 'Cancelar'}
           </Button>
           {readOnly ? null : (

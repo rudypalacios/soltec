@@ -295,7 +295,7 @@ function DepartmentDialog({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} disabled={save.isPending}>
+          <Button variant="outlined" color="inherit" onClick={onClose} disabled={save.isPending}>
             Cancelar
           </Button>
           <Button type="submit" variant="contained" disabled={save.isPending || !name.trim()}>

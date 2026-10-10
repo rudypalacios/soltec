@@ -173,7 +173,6 @@ export function UsersPage() {
         getRowId={(user) => user.id}
         getRowName={(user) => user.name}
         getActions={actionsFor}
-        actionsStyle="menu"
         pagination={{
           page: filters.page,
           perPage: PER_PAGE,

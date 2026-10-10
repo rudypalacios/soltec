@@ -53,6 +53,8 @@ export const theme = createTheme(base, {
       defaultProps: { disableElevation: true },
       styleOverrides: {
         root: { borderRadius: radius.control, [touchQuery]: { minHeight: density.targetTouch } },
+        // The secondary button (Cancelar, Volver) is an outline in a neutral tone, so it reads as a button and not as a link.
+        outlinedInherit: { borderColor: color.lineStrong },
       },
     },
     MuiIconButton: {
