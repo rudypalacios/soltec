@@ -20,9 +20,10 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0010](0010-email-smtp-por-instancia.md) | Email por SMTP configurable por instancia | Reemplazada parcialmente por 0013 |
 | [0011](0011-calculo-de-precios.md) | Cálculo de precios (fórmula, redondeo, congelamiento) | Aceptada (precisada por 0014) |
 | [0012](0012-autenticacion-y-autorizacion.md) | Autenticación y autorización | Aceptada |
-| [0013](0013-envio-de-email.md) | Envío de email: SMTP autenticado, `mail()` como plan B | Aceptada |
+| [0013](0013-envio-de-email.md) | Envío de email: SMTP autenticado, `mail()` como plan B | Aceptada (el remitente pasa al `.env` por 0019) |
 | [0014](0014-el-servidor-calcula-los-precios.md) | El servidor calcula los precios; `shared/` solo los previsualiza | Aceptada |
 | [0015](0015-identificadores-uuid.md) | UUID v7 como clave primaria en todas las tablas | Propuesta |
 | [0016](0016-catalogos-y-configuracion-tipados.md) | Catálogos y configuración en tablas tipadas | Propuesta |
 | [0017](0017-credenciales-por-enlace-de-correo.md) | Invitación y recuperación de contraseña por enlace de correo | Aceptada |
 | [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Aceptada |
+| [0019](0019-correlativos-logo-y-remitente.md) | Correlativos atómicos, logo de la empresa y remitente en el `.env` | Aceptada |

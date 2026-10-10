@@ -44,9 +44,14 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Muestra para aprobar: tokens, fuente autoalojada y componentes (`DataList`, `FilterBar`, `StatusBadge`, `FormPage`) aplicados a la lista y al alta de usuarios, con capturas a 390 y 1280 px
   - [x] Aplicado a perfiles, departamentos, edición de usuarios, formularios restantes, `AppShell` y pantallas públicas; ADR-0018 Aceptada. Los nombres accesibles de las acciones de Perfiles pasan a «Editar: Ventas»
   - Fuera: modo oscuro, ordenar columnas o seleccionar filas en las listas, tema por empresa (llega con la configuración, 1.3)
-- [ ] 1.3 Configuración general y correlativos
+- [ ] **1.3 Configuración general y correlativos** (`Modules/Settings`, ADR-0019), en dos PR:
+  - [x] **API** (`claude/gallant-brown-i3bk81`): tablas `company`, `financial_settings` y `sequences`; datos de la empresa con logo (WebP de hasta 512 px, re-codificado), IVA, ISR, días de costo desactualizado y validez de cotización; correlativos con reserva atómica y sin huecos (`SequenceGenerator`, probado con procesos simultáneos); `GET /v1/branding` y `/branding/logo` públicos
+  - [ ] **Web**: sección «Configuración» (empresa, finanzas, numeración) y `Brand` leyendo nombre y logo de la configuración, con la marca provisional como respaldo; verificada a 390 y 1280 px
+  - Acordado: el remitente del correo **se queda en el `.env`** (`MAIL_FROM_*`): no hay tabla ni pantalla de correo, para que nadie lo desconfigure. El formato del número es `COT-2610-0001` (año y mes) y el contador vuelve a 1 cada mes en cotización, proyecto y orden de compra; cliente y proveedor no tienen período
+  - Acordado: `company.timezone` (`America/Guatemala`) fija el calendario de los correlativos. `stale_cost_days` queda en 90 como valor provisional hasta tener la cifra de la empresa
+  - Fuera de 1.3: parámetros de seguridad (van en 1.5), SVG como logo, tema por empresa, régimen fiscal de la empresa (Hito 2)
 - [ ] 1.4 Niveles de margen y función de precio
-- [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable y dashboard base
+- [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable, dashboard base y **parámetros de seguridad** (`security_settings`: bloqueo, caducidad de contraseña, sesión; hoy son constantes en `SecurityPolicy`, no olvidar)
 Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
 - [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
@@ -54,7 +59,7 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [x] Primer administrador por comando de consola o desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` en el despliegue
 - [x] Departamentos y jerarquía (jefe directo)
 - [ ] Auditoría y desactivación lógica
-- [ ] Configuración general (empresa, IVA, ISR, días de costo, validez de cotización, correlativos, remitente de correo, parámetros de sesión y bloqueo)
+- [ ] Configuración general: empresa, IVA, ISR, días de costo, validez de cotización y correlativos (1.3); parámetros de sesión y bloqueo (1.5). El remitente del correo se queda en el `.env`
 - [ ] Niveles de margen y función de precio, con los casos de prueba del ADR-0011
 - [ ] Dashboard base (contenedor y registro de widgets)
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.

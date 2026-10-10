@@ -54,7 +54,7 @@ flowchart LR
     subgraph H1[Hito 1 — detallado]
         A[Acceso: users, roles, permisos, devices, tokens]
         O[Organización: departments]
-        C[Configuración: company, financial, security, mail, sequences]
+        C[Configuración: company, financial, security, sequences]
         M[margin_levels]
         U[audit_logs, role_widgets]
     end

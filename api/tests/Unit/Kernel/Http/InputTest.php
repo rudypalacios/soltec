@@ -57,6 +57,51 @@ final class InputTest extends TestCase
         ]);
     }
 
+    public function testReadsWholeNumbersOnlyAsJsonNumbers(): void
+    {
+        $input = $this->body(['days' => 30, 'text' => '30', 'float' => 1.5, 'low' => 0, 'missing' => null]);
+
+        self::assertSame(30, $input->integer('days', 1, 365));
+        $input->integer('text', 1, 365);
+        $input->integer('float', 1, 365);
+        $input->integer('low', 1, 365);
+        $input->integer('missing', 1, 365);
+
+        $this->assertErrors($input, [
+            ['field' => 'text', 'code' => 'invalid'],
+            ['field' => 'float', 'code' => 'invalid'],
+            ['field' => 'low', 'code' => 'out_of_range'],
+            ['field' => 'missing', 'code' => 'required'],
+        ]);
+    }
+
+    public function testRatesAreStringsFromZeroUpToOneAndComeBackWithFiveDecimals(): void
+    {
+        $input = $this->body([
+            'a' => '0.12', 'b' => '0', 'c' => '0.99999', 'd' => '1', 'e' => '0.123456', 'f' => 0.12, 'g' => '-0.1',
+            'h' => '.5', 'i' => '1.5',
+        ]);
+
+        self::assertSame('0.12000', $input->rate('a'));
+        self::assertSame('0.00000', $input->rate('b'));
+        self::assertSame('0.99999', $input->rate('c'));
+        $input->rate('d');
+        $input->rate('e');
+        $input->rate('f');
+        $input->rate('g');
+        $input->rate('h');
+        $input->rate('i');
+
+        $this->assertErrors($input, [
+            ['field' => 'd', 'code' => 'out_of_range'],
+            ['field' => 'e', 'code' => 'invalid'],
+            ['field' => 'f', 'code' => 'invalid'],
+            ['field' => 'g', 'code' => 'out_of_range'],
+            ['field' => 'h', 'code' => 'invalid'],
+            ['field' => 'i', 'code' => 'out_of_range'],
+        ]);
+    }
+
     public function testSecretsAreNeverTrimmed(): void
     {
         $input = $this->body(['password' => '  spaced  ']);

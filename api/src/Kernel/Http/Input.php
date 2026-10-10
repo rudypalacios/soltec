@@ -177,6 +177,39 @@ final class Input
         return is_int($value) && $value >= 1 ? $value : $this->reject($field, 'invalid');
     }
 
+    /** An integer sent as a JSON number (not a string) between $min and $max. */
+    public function integer(string $field, int $min, int $max): ?int
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return $this->missing($field, true);
+        }
+        if (!is_int($value)) {
+            return $this->reject($field, 'invalid');
+        }
+
+        return $value >= $min && $value <= $max ? $value : $this->reject($field, 'out_of_range');
+    }
+
+    /**
+     * A rate from 0 up to (not including) 1, sent as a string such as "0.12" so no float ever touches it, and
+     * returned with five decimals ("0.12000"), the precision of the DECIMAL(6,5) columns.
+     */
+    public function rate(string $field): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return $this->missing($field, true);
+        }
+        if (!is_string($value) || preg_match('/^0(?:\.(\d{1,5}))?$/', $value, $match) !== 1) {
+            $outside = is_string($value) && is_numeric($value) && ((float) $value >= 1 || (float) $value < 0);
+
+            return $this->reject($field, $outside ? 'out_of_range' : 'invalid');
+        }
+
+        return '0.' . str_pad($match[1] ?? '', 5, '0');
+    }
+
     /** @return array<array-key, mixed>|null a JSON object (not a list) */
     public function object(string $field, bool $required = true): ?array
     {
