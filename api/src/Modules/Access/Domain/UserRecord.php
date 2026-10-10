@@ -27,6 +27,8 @@ final class UserRecord
         public readonly DateTimeImmutable $updatedAt,
         public readonly int $version,
         public readonly ?DateTimeImmutable $deletedAt,
+        public readonly ?NamedRef $department = null,
+        public readonly ?NamedRef $manager = null,
         public readonly array $roles = [],
     ) {
     }
@@ -49,6 +51,8 @@ final class UserRecord
             $this->updatedAt,
             $this->version,
             $this->deletedAt,
+            $this->department,
+            $this->manager,
             $roles,
         );
     }
@@ -101,6 +105,8 @@ final class UserRecord
             'name' => $this->name,
             'email' => $this->email,
             'roles' => array_map(static fn (RoleRef $role): array => $role->toArray(), $this->roles),
+            'department' => $this->department?->toArray(),
+            'manager' => $this->manager?->toArray(),
             'is_active' => $this->isActive(),
             'must_change_password' => $this->mustChangePassword,
             'invitation_pending' => $this->invitationPending(),

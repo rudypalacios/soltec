@@ -180,12 +180,13 @@ final class AuthorizationTest extends AccessTestCase
 
     public function testAScopeThatIsNotImplementedYetOpensNothing(): void
     {
-        $role = $this->createRole('Team lead', ['users' => ['view']], []);
+        // `client` arrives with the client portal; stored by hand, it must not open anything before then.
+        $role = $this->createRole('Portal', ['users' => ['view']], []);
         $this->connection->executeStatement(
-            "INSERT INTO role_scopes (role_id, resource_code, scope) VALUES (UNHEX(:id), 'users', 'team')",
+            "INSERT INTO role_scopes (role_id, resource_code, scope) VALUES (UNHEX(:id), 'users', 'client')",
             ['id' => Uuid::toHex($role)],
         );
-        $user = $this->createUser('lead@example.com', [$role]);
+        $user = $this->createUser('portal@example.com', [$role]);
         $this->createUser('other@example.com');
 
         $list = $this->json($this->api('GET', '/users', $this->tokenFor($user['id'])));

@@ -22,8 +22,8 @@ use Soltec\Modules\Access\Persistence\RoleRepository;
 final class RoleService
 {
     private const ENTITY = 'roles';
-    /** `team` needs departments (slice 1.2) and `client` belongs to external roles (client portal). */
-    private const SCOPES_IN_THIS_SLICE = ['own', 'all'];
+    /** `client` belongs to external roles, which arrive with the client portal. */
+    private const SCOPES_IN_THIS_SLICE = ['own', 'team', 'all'];
 
     public function __construct(
         private readonly Connection $connection,

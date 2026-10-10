@@ -34,7 +34,11 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] **1.1b Credenciales y edición de usuarios** (`hito-1/credenciales`, ADR-0017): invitación por correo con enlace de un solo uso para fijar la contraseña (el alta deja de pedir contraseña temporal; `/aceptar-invitacion`), reenviar invitación, recuperar contraseña por correo (`/recuperar-contrasena`, `/restablecer-contrasena`), y la pantalla de edición de un usuario existente (`/usuarios/:id/editar`: nombre, correo y perfiles). Depende de `APP_URL` en el `.env` y del correo (ADR-0013)
   - Acordado: la invitación vale 72 h y la recuperación 1 h; ambos enlaces son de un solo uso. Sin contraseña de respaldo: si el correo no llega, el administrador reenvía y nunca ve ni la contraseña ni el enlace. El alta deja de recibir `initial_password` (cambio incompatible de `POST /v1/users`, aceptable antes de producción)
   - Acordado: solo se recupera la contraseña de una cuenta activa que ya aceptó su invitación; con otra cuenta no se envía correo y la respuesta es idéntica. El estado se revisa al usar el enlace, no al emitirlo; un enlace nuevo invalida los anteriores
-- [ ] 1.2 Organización: departamentos, jefe directo y alcance `team`
+- [x] **1.2 Organización** (`Modules/Organization`): departamentos (`/departamentos`: lista, alta, renombrar, desactivar y reactivar), jefe directo y departamento en el alta y la edición de usuarios, filtro de usuarios por departamento y alcance `team` en la matriz de perfiles
+  - Acordado: equipo = el usuario, sus subordinados directos e indirectos y su departamento. Solo usuarios internos tienen departamento y jefe; los clientes (externos) usan el alcance `client`
+  - Acordado: el departamento es opcional en la API (el primer administrador no tiene) y obligatorio en el formulario web mientras existan departamentos activos
+  - Acordado: un departamento con usuarios activos no se desactiva; el error dice cuántos tiene y la web enlaza a esos usuarios. Desactivar a un jefe no cambia el `manager_id` de sus subordinados
+  - Fuera de 1.2: organigrama visual, jefe del departamento como campo propio, reasignación masiva de usuarios
 - [ ] 1.3 Configuración general y correlativos
 - [ ] 1.4 Niveles de margen y función de precio
 - [ ] 1.5 Dispositivos, desbloqueo, auditoría consultable y dashboard base
@@ -43,7 +47,7 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
 - [ ] Modelo de usuarios externos (tipo y cliente asignado); las pantallas llegan en el Hito 9
 - [x] Primer administrador por comando de consola o desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` en el despliegue
-- [ ] Departamentos y jerarquía (jefe directo)
+- [x] Departamentos y jerarquía (jefe directo)
 - [ ] Auditoría y desactivación lógica
 - [ ] Configuración general (empresa, IVA, ISR, días de costo, validez de cotización, correlativos, remitente de correo, parámetros de sesión y bloqueo)
 - [ ] Niveles de margen y función de precio, con los casos de prueba del ADR-0011

@@ -19,6 +19,7 @@ import { UserCreatePage } from '../modules/access/UserCreatePage';
 import { UserEditPage } from '../modules/access/UserEditPage';
 import { UsersPage } from '../modules/access/UsersPage';
 import { HomePage } from '../modules/home/HomePage';
+import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
 
 /** Route table. The paths are in Spanish because the user sees them (docs/arquitectura/glosario.md). */
@@ -86,6 +87,14 @@ export function App() {
           element={
             <RequirePermission resource="roles" action="view">
               <RoleFormPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="departamentos"
+          element={
+            <RequirePermission resource="departments" action="view">
+              <DepartmentsPage />
             </RequirePermission>
           }
         />

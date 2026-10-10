@@ -52,7 +52,6 @@ final class RolesTest extends AccessTestCase
             'not a list' => [['permissions' => ['users' => 'view']], 'permissions.users', 'invalid'],
             'non-string action' => [['permissions' => ['users' => [['view']]]], 'permissions.users', 'invalid'],
             'unknown scope resource' => [['scopes' => ['payroll' => 'all']], 'scopes.payroll', 'not_found'],
-            'team scope' => [['scopes' => ['users' => 'team']], 'scopes.users', 'invalid'],
             'client scope' => [['scopes' => ['users' => 'client']], 'scopes.users', 'invalid'],
             'nonsense scope' => [['scopes' => ['users' => 'galaxy']], 'scopes.users', 'invalid'],
             'external roles' => [['user_type' => 'external'], 'user_type', 'invalid'],
@@ -309,7 +308,7 @@ final class RolesTest extends AccessTestCase
         $resources = $this->json($this->api('GET', '/resources', $this->adminToken));
         $permissions = $this->json($this->api('GET', '/permissions', $this->adminToken));
 
-        self::assertSame(['roles', 'users'], $this->columnAt($resources, 'code', 'data'));
+        self::assertSame(['departments', 'roles', 'users'], $this->columnAt($resources, 'code', 'data'));
         self::assertSame(['create', 'deactivate', 'edit', 'view'], $this->columnAt($permissions, 'code', 'data'));
         self::assertSame(['code', 'name'], array_keys($this->rowsAt($resources, 'data')[0]));
     }

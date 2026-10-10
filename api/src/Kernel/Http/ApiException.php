@@ -12,11 +12,13 @@ use RuntimeException;
  */
 class ApiException extends RuntimeException
 {
+    /** @param array<string, int|string|bool> $extensions extra members of the problem body a client can act on */
     public function __construct(
         public readonly int $status,
         public readonly string $errorCode,
         public readonly string $title,
         public readonly ?string $detail = null,
+        public readonly array $extensions = [],
     ) {
         parent::__construct($detail ?? $title, $status);
     }
@@ -36,9 +38,10 @@ class ApiException extends RuntimeException
         return new self(404, 'not_found', 'Not found');
     }
 
-    public static function conflict(string $code = 'conflict', ?string $detail = null): self
+    /** @param array<string, int|string|bool> $extensions */
+    public static function conflict(string $code = 'conflict', ?string $detail = null, array $extensions = []): self
     {
-        return new self(409, $code, 'Conflict', $detail);
+        return new self(409, $code, 'Conflict', $detail, $extensions);
     }
 
     public static function notConfigured(string $what): self

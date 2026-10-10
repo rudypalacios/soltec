@@ -42,6 +42,8 @@ tags:
     description: Internal user accounts.
   - name: Roles
     description: Roles (perfiles) with their permission matrix and data scopes.
+  - name: Departments
+    description: Departments of the organization. The direct manager of each user lives in the user.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
 paths:
@@ -328,6 +330,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/Uuid'
+        - name: department_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
       responses:
         '200':
           description: A page of users.
@@ -352,7 +359,9 @@ paths:
         has `invitation_pending` true and cannot sign in. The user is created even when the email could not be sent
         (`invitation_sent` false), so resend it with POST /v1/users/{userId}/invite. Email must be unique among active
         users. Only an administrator can give the `admin` role. Role ids are checked against existing internal
-        roles. External users arrive with the client portal.
+        roles. `department_id` must be an active department and `manager_id` an active internal user (422
+        `not_found`); both are optional in the API (the first administrator has neither) and the web form asks for the
+        department. External users arrive with the client portal.
       tags:
         - Users
       x-permission: users.create
@@ -408,8 +417,11 @@ paths:
       description:
         Changes only the fields sent. Only an administrator can give or take the `admin` role or edit
         another administrator. Only an administrator can change their own roles, and only when another active
-        administrator remains; the only active administrator cannot (409 `last_admin`). A stale version answers
-        409 `conflict`.
+        administrator remains; the only active administrator cannot (409 `last_admin`). `department_id` and
+        `manager_id` sent as null clear them. The manager must be another active internal user (422 `invalid` for the
+        user themselves, `not_found` otherwise) who does not report to this user, directly or not (422 `cycle`).
+        Only internal users have a department or a manager (422 `invalid` for an external one). A stale version, or
+        two changes of manager that cross, answer 409 `conflict`.
       tags:
         - Users
       x-permission: users.edit
@@ -566,8 +578,8 @@ paths:
       description:
         'Business roles (P5) are created here by an administrator; only `admin` is seeded in this slice.
         The matrix is checked: permission and resource codes must exist. In this slice only internal roles can be
-        created and only the `own` and `all` scopes are accepted (`team` arrives with departments, `client` with the
-        client portal). Granting permissions on `users` and `roles` is close to making someone an administrator.'
+        created, with the `own`, `team` and `all` scopes (`client` arrives with the client portal). Granting
+        permissions on `users` and `roles` is close to making someone an administrator.'
       tags:
         - Roles
       x-permission: roles.create
@@ -708,6 +720,177 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/departments:
+    get:
+      operationId: listDepartments
+      summary: List departments.
+      description:
+        Inactive departments are hidden unless status says otherwise. Departments have no data scope of their own;
+        whoever may view them sees all of them.
+      tags:
+        - Departments
+      x-permission: departments.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of departments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createDepartment
+      summary: Create a department.
+      description: The name must be unique among active departments (422 `taken`).
+      tags:
+        - Departments
+      x-permission: departments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    get:
+      operationId: getDepartment
+      summary: Get a department by id.
+      description: Returns the department, active or not.
+      tags:
+        - Departments
+      x-permission: departments.view
+      responses:
+        '200':
+          description: The department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateDepartment
+      summary: Rename a department.
+      description: A stale version answers 409 `conflict`; a name used by another active department, 422 `taken`.
+      tags:
+        - Departments
+      x-permission: departments.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: The updated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    post:
+      operationId: deactivateDepartment
+      summary: Deactivate a department.
+      description:
+        Logical deactivation. Refused while the department has active users (409 `department_in_use`, with
+        `active_user_count`); move them to another department first. Inactive users may keep it. Idempotent.
+      tags:
+        - Departments
+      x-permission: departments.deactivate
+      responses:
+        '200':
+          description: The deactivated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    post:
+      operationId: reactivateDepartment
+      summary: Reactivate a department.
+      description: Fails with 422 `validation_failed` if the name is now used by an active department. Idempotent.
+      tags:
+        - Departments
+      x-permission: departments.deactivate
+      responses:
+        '200':
+          description: The reactivated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/resources:
     get:
       operationId: listResources
@@ -808,6 +991,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/Uuid'
+    DepartmentId:
+      name: departmentId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
   responses:
     Unauthorized:
       description: No valid session (`token_invalid`, `token_expired`) or wrong credentials (`invalid_credentials`).
@@ -832,7 +1021,7 @@ components:
     Conflict:
       description:
         A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `invitation_not_pending`, `system_role_immutable`,
-        `default_margin_level`).
+        `department_in_use`, `default_margin_level`).
       content:
         application/problem+json:
           schema:
@@ -922,8 +1111,9 @@ components:
     DataScope:
       type: string
       description:
-        Which rows of a resource the user reaches. `client` is only for external roles, and the only
-        scope they can have.
+        Which rows of a resource the user reaches. `team` covers the user, everybody under them through the direct
+        manager (directly or not) and the members of their department. `client` is only for external roles, and the
+        only scope they can have.
       enum:
         - own
         - team
@@ -997,6 +1187,7 @@ components:
         - conflict
         - last_admin
         - system_role_immutable
+        - department_in_use
         - auth_not_configured
     Problem:
       type: object
@@ -1019,6 +1210,9 @@ components:
           $ref: '#/components/schemas/ErrorCode'
         detail:
           type: string
+        active_user_count:
+          type: integer
+          description: With `department_in_use`, how many active users the department still has.
     FieldError:
       type: object
       required:
@@ -1032,7 +1226,7 @@ components:
           type: string
           description:
             Stable code such as `required`, `invalid`, `too_short`, `too_long`, `taken`, `not_found`,
-            `out_of_range`, `current_password_incorrect`.
+            `out_of_range`, `current_password_incorrect`, `cycle` (a manager who reports to the user).
         message:
           type: string
     ValidationProblem:
@@ -1154,6 +1348,16 @@ components:
           description: Only for system roles (`admin`, `external_client`).
         name:
           type: string
+    NamedRef:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
     Me:
       type: object
       required:
@@ -1191,6 +1395,8 @@ components:
             - name
             - email
             - roles
+            - department
+            - manager
             - is_active
             - must_change_password
             - invitation_pending
@@ -1209,6 +1415,15 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/RoleRef'
+            department:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            manager:
+              description: The direct manager (jefe directo).
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
             is_active:
               type: boolean
             must_change_password:
@@ -1261,6 +1476,14 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Uuid'
+        department_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        manager_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
     UserCreated:
       allOf:
         - $ref: '#/components/schemas/User'
@@ -1313,6 +1536,16 @@ components:
               uniqueItems: true
               items:
                 $ref: '#/components/schemas/Uuid'
+            department_id:
+              description: Null clears it.
+              oneOf:
+                - $ref: '#/components/schemas/Uuid'
+                - type: 'null'
+            manager_id:
+              description: Null clears it.
+              oneOf:
+                - $ref: '#/components/schemas/Uuid'
+                - type: 'null'
     Role:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'
@@ -1401,3 +1634,52 @@ components:
               $ref: '#/components/schemas/PermissionMap'
             scopes:
               $ref: '#/components/schemas/ScopeMap'
+    Department:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - active_user_count
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            active_user_count:
+              type: integer
+              minimum: 0
+              description: Active users in the department; it can be deactivated only when this is 0.
+    DepartmentPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    DepartmentCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    DepartmentUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100

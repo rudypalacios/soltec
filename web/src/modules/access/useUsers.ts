@@ -4,6 +4,7 @@ import { useApiClient } from './SessionContext';
 
 type UserQuery = NonNullable<paths['/v1/users']['get']['parameters']['query']>;
 type UserUpdate = components['schemas']['UserUpdate'];
+type UserCreate = components['schemas']['UserCreate'];
 
 export function useUsers(query: UserQuery) {
   const apiClient = useApiClient();
@@ -54,8 +55,7 @@ export function useCreateUser() {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { name: string; email: string; role_ids: string[] }) =>
-      unwrap(await apiClient.POST('/v1/users', { body })),
+    mutationFn: async (body: UserCreate) => unwrap(await apiClient.POST('/v1/users', { body })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 }

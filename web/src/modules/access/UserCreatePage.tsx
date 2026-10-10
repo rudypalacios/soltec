@@ -3,6 +3,12 @@ import type { components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
+import {
+  DepartmentSelect,
+  ManagerSelect,
+  useDepartmentChoices,
+  type NamedRef,
+} from '../organization/OrganizationFields';
 import { fieldMessages, problemMessage } from './messages';
 import { useCreateUser } from './useUsers';
 import { useRoles } from './useRoles';
@@ -11,8 +17,14 @@ type User = components['schemas']['UserCreated'];
 /** What a profile selector needs from a role; both the roles list and a user's own roles have it. */
 export type RoleChoice = Pick<components['schemas']['Role'], 'id' | 'name'>;
 
-const FIELD_MESSAGES = {
+/** Shared by the create and edit screens. */
+export const USER_FIELD_MESSAGES = {
   role_ids: { not_found: 'Algún perfil ya no existe o está inactivo.' },
+  department_id: { not_found: 'El departamento ya no existe o está inactivo.' },
+  manager_id: {
+    not_found: 'Esa persona ya no está activa.',
+    invalid: 'Nadie puede ser su propio jefe.',
+  },
 };
 
 export function UserCreatePage() {
@@ -20,9 +32,12 @@ export function UserCreatePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [selected, setSelected] = useState<RoleChoice[]>([]);
+  const [department, setDepartment] = useState<NamedRef | null>(null);
+  const [manager, setManager] = useState<NamedRef | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [created, setCreated] = useState<User | null>(null);
+  const departmentChoices = useDepartmentChoices();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -34,10 +49,12 @@ export function UserCreatePage() {
           name: name.trim(),
           email: email.trim(),
           role_ids: selected.map((role) => role.id),
+          department_id: department?.id ?? null,
+          manager_id: manager?.id ?? null,
         }),
       );
     } catch (error) {
-      const fields = fieldMessages(error, FIELD_MESSAGES);
+      const fields = fieldMessages(error, USER_FIELD_MESSAGES);
       setFieldErrors(fields);
       setFailure(Object.keys(fields).length === 0 ? problemMessage(error) : null);
     }
@@ -48,6 +65,8 @@ export function UserCreatePage() {
     setName('');
     setEmail('');
     setSelected([]);
+    setDepartment(null);
+    setManager(null);
   };
 
   if (created) {
@@ -108,6 +127,13 @@ export function UserCreatePage() {
             fullWidth
           />
           <RoleSelect selected={selected} onChange={setSelected} error={fieldErrors.role_ids} />
+          <DepartmentSelect
+            value={department}
+            onChange={setDepartment}
+            choices={departmentChoices}
+            error={fieldErrors.department_id}
+          />
+          <ManagerSelect value={manager} onChange={setManager} error={fieldErrors.manager_id} />
           <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
             <Button component={RouterLink} to="/usuarios">
               Cancelar
@@ -115,7 +141,13 @@ export function UserCreatePage() {
             <Button
               type="submit"
               variant="contained"
-              disabled={create.isPending || !name || !email || selected.length === 0}
+              disabled={
+                create.isPending ||
+                !name ||
+                !email ||
+                selected.length === 0 ||
+                (departmentChoices.required && department === null)
+              }
             >
               Crear y enviar invitación
             </Button>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Soltec\Modules\Access\Application;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Kernel\Clock;
@@ -19,7 +20,11 @@ use Soltec\Modules\Access\Persistence\RoleRepository;
 use Soltec\Modules\Access\Persistence\SessionRepository;
 use Soltec\Modules\Access\Persistence\UserRepository;
 
-/** Administration of internal users with the protections against locking everybody out (ADR-0012, 7.1). */
+/**
+ * Administration of internal users with the protections against locking everybody out (ADR-0012, 7.1), and their
+ * place in the organization: department and direct manager (slice 1.2). Only internal users have them; an external
+ * user (a client) is reached through its client, never through the hierarchy.
+ */
 final class UserService
 {
     private const ENTITY = 'users';
@@ -44,9 +49,10 @@ final class UserService
         string $status,
         ?string $type,
         ?string $roleId,
+        ?string $departmentId,
         Pagination $page,
     ): array {
-        return $this->users->search($caller, $text, $status, $type, $roleId, $page);
+        return $this->users->search($caller, $text, $status, $type, $roleId, $departmentId, $page);
     }
 
     public function get(CurrentUser $caller, string $id): UserRecord
@@ -67,34 +73,40 @@ final class UserService
         string $name,
         string $email,
         array $roleIds,
+        ?string $departmentId = null,
+        ?string $managerId = null,
     ): array {
-        $errors = [];
-        $roles = $this->roles->findAssignable($roleIds, 'internal');
-        if (count($roles) !== count($roleIds)) {
-            $errors[] = ['field' => 'role_ids', 'code' => 'not_found'];
-        }
-        if ($this->users->findActiveByEmail($email) !== null) {
-            $errors[] = ['field' => 'email', 'code' => 'taken'];
-        }
-        if ($errors !== []) {
-            throw new ValidationException($errors);
-        }
-        if (!$caller->isAdmin() && $this->grantsAdmin($roles)) {
-            throw ApiException::forbidden();
-        }
-
         $id = Uuid::v7();
         $now = $this->clock->now();
         try {
-            $save = function () use ($id, $name, $email, $roleIds, $actor, $now): void {
+            $save = function () use ($caller, $id, $name, $email, $roleIds, $departmentId, $managerId, $actor, $now) {
+                $errors = [];
+                $roles = $this->roles->findAssignable($roleIds, 'internal');
+                if (count($roles) !== count($roleIds)) {
+                    $errors[] = ['field' => 'role_ids', 'code' => 'not_found'];
+                }
+                if ($this->users->findActiveByEmail($email) !== null) {
+                    $errors[] = ['field' => 'email', 'code' => 'taken'];
+                }
+                // A new user has nobody under them yet, so only the manager itself can be wrong, never a cycle.
+                array_push($errors, ...$this->organizationErrors($id, $departmentId, $managerId));
+                if ($errors !== []) {
+                    throw new ValidationException($errors);
+                }
+                if (!$caller->isAdmin() && $this->grantsAdmin($roles)) {
+                    throw ApiException::forbidden();
+                }
+
                 // No password yet: the person chooses it when they accept the invitation (ADR-0017).
-                $this->users->insert($id, 'internal', $name, $email, null, false, $now);
+                $this->users->insert($id, 'internal', $name, $email, null, false, $now, $departmentId, $managerId);
                 $this->users->replaceRoles($id, $roleIds);
                 $this->audit->record($actor, 'create', self::ENTITY, $id, null, [
                     'type' => 'internal',
                     'name' => $name,
                     'email' => $email,
                     'role_ids' => $roleIds,
+                    'department_id' => $departmentId,
+                    'manager_id' => $managerId,
                     'is_active' => true,
                 ]);
             };
@@ -110,6 +122,7 @@ final class UserService
 
     /**
      * @param list<string>|null $roleIds null leaves the roles as they are
+     * @param OrganizationChange $organization the department and manager sent, if any
      * @throws ApiException 403 `forbidden`, 404, 409 `conflict` or `last_admin`
      */
     public function update(
@@ -120,11 +133,28 @@ final class UserService
         ?string $name,
         ?string $email,
         ?array $roleIds,
+        OrganizationChange $organization = new OrganizationChange(),
     ): UserRecord {
         try {
-            $save = function () use ($caller, $actor, $id, $version, $name, $email, $roleIds): void {
+            $save = function () use ($caller, $actor, $id, $version, $name, $email, $roleIds, $organization): void {
                 $target = $this->users->find($id, $caller) ?? throw ApiException::notFound();
                 $this->assertMayModify($caller, $target);
+                // Locked first, so concurrent changes of manager take the hierarchy rows in the same order.
+                $this->users->lockHierarchyNode($id);
+
+                $newDepartmentId = $organization->departmentSent
+                    ? $organization->departmentId
+                    : $target->department?->id;
+                $newManagerId = $organization->managerSent ? $organization->managerId : $target->manager?->id;
+                $errors = $this->organizationErrors(
+                    $id,
+                    $newDepartmentId === $target->department?->id ? null : $newDepartmentId,
+                    $newManagerId === $target->manager?->id ? null : $newManagerId,
+                    $target->type,
+                );
+                if ($errors !== []) {
+                    throw new ValidationException($errors);
+                }
 
                 $newName = $name ?? $target->name;
                 $newEmail = $email ?? $target->email;
@@ -142,13 +172,27 @@ final class UserService
                     $this->assertRoleChangeAllowed($caller, $target, $newRoles ?? []);
                 }
 
-                if (!$this->users->updateProfile($id, $version, $newName, $newEmail, $this->clock->now())) {
+                $saved = $this->users->updateProfile(
+                    $id,
+                    $version,
+                    $newName,
+                    $newEmail,
+                    $newDepartmentId,
+                    $newManagerId,
+                    $this->clock->now(),
+                );
+                if (!$saved) {
                     throw ApiException::conflict();
                 }
 
                 $before = [];
                 $after = [];
-                $changes = ['name' => [$target->name, $newName], 'email' => [$target->email, $newEmail]];
+                $changes = [
+                    'name' => [$target->name, $newName],
+                    'email' => [$target->email, $newEmail],
+                    'department_id' => [$target->department?->id, $newDepartmentId],
+                    'manager_id' => [$target->manager?->id, $newManagerId],
+                ];
                 foreach ($changes as $field => [$old, $new]) {
                     if ($old !== $new) {
                         $before[$field] = $old;
@@ -169,6 +213,9 @@ final class UserService
             $this->connection->transactional($save);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::field('email', 'taken');
+        } catch (DeadlockException) {
+            // Two changes of manager crossed in the same hierarchy; the one that lost can simply be sent again.
+            throw ApiException::conflict();
         }
 
         return $this->get($caller, $id);
@@ -235,6 +282,60 @@ final class UserService
         }
 
         return $this->get($caller, $id);
+    }
+
+    /**
+     * The field errors of a new department or manager (null when it does not change). Only internal users belong to
+     * the organization. The manager must be another active internal user and must not report, directly or not, to the
+     * user: that would make a cycle. Walking up the chain locks each row (see UserRepository::lockHierarchyNode).
+     *
+     * @return list<array{field: string, code: string}>
+     */
+    private function organizationErrors(
+        string $userId,
+        ?string $departmentId,
+        ?string $managerId,
+        string $userType = 'internal',
+    ): array {
+        if ($userType !== 'internal') {
+            $sent = array_filter(['department_id' => $departmentId, 'manager_id' => $managerId]);
+
+            return array_map(
+                static fn (string $field): array => ['field' => $field, 'code' => 'invalid'],
+                array_keys($sent),
+            );
+        }
+
+        $errors = [];
+        if ($departmentId !== null && !$this->users->departmentIsActive($departmentId)) {
+            $errors[] = ['field' => 'department_id', 'code' => 'not_found'];
+        }
+        if ($managerId === null) {
+            return $errors;
+        }
+        if ($managerId === $userId) {
+            $errors[] = ['field' => 'manager_id', 'code' => 'invalid'];
+
+            return $errors;
+        }
+
+        $manager = $this->users->lockHierarchyNode($managerId);
+        if ($manager === null || !$manager['is_active'] || $manager['type'] !== 'internal') {
+            $errors[] = ['field' => 'manager_id', 'code' => 'not_found'];
+
+            return $errors;
+        }
+        $visited = [$managerId => true];
+        for ($next = $manager['manager_id']; $next !== null && !isset($visited[$next]);) {
+            if ($next === $userId) {
+                $errors[] = ['field' => 'manager_id', 'code' => 'cycle'];
+                break;
+            }
+            $visited[$next] = true;
+            $next = $this->users->lockHierarchyNode($next)['manager_id'] ?? null;
+        }
+
+        return $errors;
     }
 
     /** Only an administrator may modify another administrator. */

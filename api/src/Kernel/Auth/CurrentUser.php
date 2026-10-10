@@ -16,6 +16,7 @@ final class CurrentUser
      * @param list<RoleRef> $roles
      * @param array<string, list<string>> $permissions actions by resource code
      * @param array<string, DataScope> $scopes scope by resource code
+     * @param list<string> $teamIds the members of the user's team (see Team), loaded only when a scope is `team`
      */
     public function __construct(
         public readonly string $id,
@@ -27,6 +28,7 @@ final class CurrentUser
         public readonly array $permissions,
         public readonly array $scopes,
         public readonly bool $restricted,
+        public readonly array $teamIds = [],
     ) {
     }
 

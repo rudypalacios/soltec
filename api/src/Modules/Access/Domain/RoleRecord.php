@@ -12,7 +12,7 @@ final class RoleRecord
 {
     /**
      * @param array<string, list<string>> $permissions actions by resource code
-     * @param array<string, string> $scopes `own` or `all` by resource code
+     * @param array<string, string> $scopes `own`, `team` or `all` by resource code
      */
     public function __construct(
         public readonly string $id,

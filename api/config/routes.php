@@ -17,6 +17,7 @@ use Soltec\Modules\Access\Http\CredentialController;
 use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
 use Soltec\Modules\Access\Http\UserController;
+use Soltec\Modules\Organization\Http\DepartmentController;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
 // Every /v1 route declares its access rule in the "permission" argument: `public`, `authenticated` or
@@ -61,6 +62,19 @@ return static function (App $app): void {
             ->setArgument('permission', 'roles.deactivate');
         $group->post('/roles/{roleId}/reactivate', [RoleController::class, 'reactivate'])
             ->setArgument('permission', 'roles.deactivate');
+
+        $group->get('/departments', [DepartmentController::class, 'list'])
+            ->setArgument('permission', 'departments.view');
+        $group->post('/departments', [DepartmentController::class, 'create'])
+            ->setArgument('permission', 'departments.create');
+        $group->get('/departments/{departmentId}', [DepartmentController::class, 'show'])
+            ->setArgument('permission', 'departments.view');
+        $group->patch('/departments/{departmentId}', [DepartmentController::class, 'update'])
+            ->setArgument('permission', 'departments.edit');
+        $group->post('/departments/{departmentId}/deactivate', [DepartmentController::class, 'deactivate'])
+            ->setArgument('permission', 'departments.deactivate');
+        $group->post('/departments/{departmentId}/reactivate', [DepartmentController::class, 'reactivate'])
+            ->setArgument('permission', 'departments.deactivate');
 
         $group->get('/resources', [CatalogController::class, 'resources'])->setArgument('permission', 'roles.view');
         $group->get('/permissions', [CatalogController::class, 'permissions'])->setArgument('permission', 'roles.view');

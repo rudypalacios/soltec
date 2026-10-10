@@ -3,16 +3,19 @@ import type { components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
+import {
+  DepartmentSelect,
+  ManagerSelect,
+  useDepartmentChoices,
+  type NamedRef,
+} from '../organization/OrganizationFields';
 import { fieldMessages, problemMessage } from './messages';
 import { useCurrentUser } from './SessionContext';
-import { RoleSelect, type RoleChoice } from './UserCreatePage';
+import { RoleSelect, USER_FIELD_MESSAGES, type RoleChoice } from './UserCreatePage';
 import { useUpdateUser, useUser } from './useUsers';
 
 type User = components['schemas']['User'];
 
-const FIELD_MESSAGES = {
-  role_ids: { not_found: 'Algún perfil ya no existe o está inactivo.' },
-};
 const SAVE_CONFLICTS = {
   conflict:
     'Otra persona cambió a este usuario mientras lo editabas. Recarga la página para ver sus cambios.',
@@ -21,7 +24,7 @@ const SAVE_CONFLICTS = {
     'No tienes permiso para cambiar a este usuario (por ejemplo, a un administrador, o tus propios perfiles).',
 };
 
-/** `/usuarios/:userId/editar`: name, email and profiles of a user. */
+/** `/usuarios/:userId/editar`: name, email, profiles, department and direct manager of a user. */
 export function UserEditPage() {
   const { userId } = useParams();
   const user = useUser(userId);
@@ -43,6 +46,9 @@ function UserEditForm({ user }: { user: User }) {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [selected, setSelected] = useState<RoleChoice[]>(user.roles);
+  const [department, setDepartment] = useState<NamedRef | null>(user.department);
+  const [manager, setManager] = useState<NamedRef | null>(user.manager);
+  const departmentChoices = useDepartmentChoices();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -59,10 +65,13 @@ function UserEditForm({ user }: { user: User }) {
         name: name.trim(),
         email: email.trim(),
         role_ids: selected.map((role) => role.id),
+        // Without permission to list departments the field is hidden, and what is not sent stays as it was.
+        ...(departmentChoices.canList ? { department_id: department?.id ?? null } : {}),
+        manager_id: manager?.id ?? null,
       });
       navigate('/usuarios');
     } catch (error) {
-      const fields = fieldMessages(error, FIELD_MESSAGES);
+      const fields = fieldMessages(error, USER_FIELD_MESSAGES);
       setFieldErrors(fields);
       setFailure(Object.keys(fields).length === 0 ? problemMessage(error, SAVE_CONFLICTS) : null);
     }
@@ -107,6 +116,18 @@ function UserEditForm({ user }: { user: User }) {
             </Alert>
           ) : null}
           <RoleSelect selected={selected} onChange={setSelected} error={fieldErrors.role_ids} />
+          <DepartmentSelect
+            value={department}
+            onChange={setDepartment}
+            choices={departmentChoices}
+            error={fieldErrors.department_id}
+          />
+          <ManagerSelect
+            value={manager}
+            onChange={setManager}
+            excludeUserId={user.id}
+            error={fieldErrors.manager_id}
+          />
           {isSelf ? (
             <Alert severity="info">
               Estás editando tu propia cuenta. Solo un administrador puede cambiar sus perfiles, y
@@ -120,7 +141,13 @@ function UserEditForm({ user }: { user: User }) {
             <Button
               type="submit"
               variant="contained"
-              disabled={update.isPending || !name || !email || selected.length === 0}
+              disabled={
+                update.isPending ||
+                !name ||
+                !email ||
+                selected.length === 0 ||
+                (departmentChoices.required && department === null)
+              }
             >
               Guardar cambios
             </Button>

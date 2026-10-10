@@ -25,10 +25,11 @@ import {
 } from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useDeferredValue, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { PageHeader } from '../../components/PageHeader';
 import { useIsMobile } from '../../components/useIsMobile';
+import { useDepartmentChoices } from '../organization/OrganizationFields';
 import { formatMoment } from './formatting';
 import { problemMessage } from './messages';
 import { useCan, useCurrentUser } from './SessionContext';
@@ -58,6 +59,10 @@ export function UsersPage() {
   const deferredText = useDeferredValue(text);
   const [status, setStatus] = useState<StatusValue>('active');
   const [page, setPage] = useState(0);
+  // In the address, so the link from a department ("Ver sus usuarios") opens the list already filtered.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const departmentId = searchParams.get('departamento') ?? '';
+  const departmentChoices = useDepartmentChoices();
   const [pending, setPending] = useState<{ user: User; activate: boolean } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +70,7 @@ export function UsersPage() {
   const users = useUsers({
     q: deferredText.trim() || undefined,
     status,
+    department_id: departmentId || undefined,
     page: page + 1,
     per_page: PER_PAGE,
   });
@@ -147,6 +153,29 @@ export function UsersPage() {
           }}
           sx={{ flexGrow: 1, maxWidth: { sm: 360 } }}
         />
+        {departmentChoices.canList ? (
+          <TextField
+            select
+            label="Departamento"
+            value={departmentId}
+            onChange={(event) => {
+              setSearchParams(event.target.value ? { departamento: event.target.value } : {});
+              setPage(0);
+            }}
+            sx={{ minWidth: { sm: 200 } }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {/* A filter from a link may point at a department that is no longer active. */}
+            {departmentId && !departmentChoices.options.some((d) => d.id === departmentId) ? (
+              <MenuItem value={departmentId}>Departamento inactivo</MenuItem>
+            ) : null}
+            {departmentChoices.options.map((department) => (
+              <MenuItem key={department.id} value={department.id}>
+                {department.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : null}
         <StatusFilter
           value={status}
           onChange={(value) => {
@@ -264,6 +293,7 @@ function UsersTable({
             <TableCell>Nombre</TableCell>
             <TableCell>Correo</TableCell>
             <TableCell>Perfiles</TableCell>
+            <TableCell>Departamento</TableCell>
             <TableCell>Estado</TableCell>
             <TableCell>Último acceso</TableCell>
             <TableCell align="right" sx={{ width: 56 }}>
@@ -280,6 +310,13 @@ function UsersTable({
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
                   <RoleChips user={user} />
+                </TableCell>
+                <TableCell>
+                  {user.department?.name ?? (
+                    <Typography variant="body2" color="text.secondary">
+                      Sin departamento
+                    </Typography>
+                  )}
                 </TableCell>
                 <TableCell>
                   <StatusChip user={user} />
@@ -370,7 +407,8 @@ function UserCard({
           <RoleChips user={user} />
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Último acceso: {formatMoment(user.last_login_at)}
+          {user.department ? `${user.department.name} · ` : ''}Último acceso:{' '}
+          {formatMoment(user.last_login_at)}
         </Typography>
         {actions.length > 0 ? (
           <Stack direction="row" sx={{ mt: 1, ml: -1, flexWrap: 'wrap' }}>

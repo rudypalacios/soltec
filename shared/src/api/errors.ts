@@ -12,6 +12,8 @@ export class ApiError extends Error {
     readonly code: string,
     /** Field path (for example "device.platform") → field error code (for example "too_short"). */
     readonly fieldErrors: Readonly<Record<string, string>>,
+    /** The whole problem body, for the extra members some codes carry (`active_user_count`…). */
+    readonly details: Readonly<Record<string, unknown>> = {},
   ) {
     super(`API error ${status} ${code}`);
     this.name = 'ApiError';
@@ -37,7 +39,7 @@ export function toApiError(response: Response, body: unknown): ApiError {
       }
     }
   }
-  return new ApiError(response.status, code, fieldErrors);
+  return new ApiError(response.status, code, fieldErrors, isRecord(body) ? body : {});
 }
 
 /** Returns the body of a successful call or throws the ApiError of a failed one. */
