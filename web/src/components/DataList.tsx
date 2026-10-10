@@ -52,7 +52,8 @@ interface DataListProps<T> {
   /** Names a row for the screen reader in its action buttons. */
   getRowName: (row: T) => string;
   getActions?: (row: T) => RowAction[];
-  pagination: {
+  /** Omit it for a list that is never long (a handful of fixed rows). */
+  pagination?: {
     /** Zero-based. */
     page: number;
     perPage: number;
@@ -168,16 +169,18 @@ export function DataList<T>({
           </Table>
         </TableContainer>
       )}
-      <TablePagination
-        component="div"
-        count={pagination.total}
-        page={pagination.page}
-        onPageChange={(_, next) => pagination.onPageChange(next)}
-        rowsPerPage={pagination.perPage}
-        rowsPerPageOptions={[]}
-        labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-        sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
-      />
+      {pagination ? (
+        <TablePagination
+          component="div"
+          count={pagination.total}
+          page={pagination.page}
+          onPageChange={(_, next) => pagination.onPageChange(next)}
+          rowsPerPage={pagination.perPage}
+          rowsPerPageOptions={[]}
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+          sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
+        />
+      ) : null}
     </>
   );
 }

@@ -20,6 +20,25 @@ describe('useClearCacheOnSignOut', () => {
     expect(queryClient.getQueryData(['users'])).toBeUndefined();
   });
 
+  it('keeps the public brand, which is the same for everybody', async () => {
+    const { session } = createTestSession({
+      'POST /v1/auth/logout': () => new Response(null, { status: 204 }),
+    });
+    await session.restore();
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['branding'], { trade_name: 'Acme', logo_version: null });
+    queryClient.setQueryData(['users'], ['someone else']);
+    renderHook(() => useClearCacheOnSignOut(session, queryClient));
+
+    await session.logout();
+
+    expect(queryClient.getQueryData(['branding'])).toEqual({
+      trade_name: 'Acme',
+      logo_version: null,
+    });
+    expect(queryClient.getQueryData(['users'])).toBeUndefined();
+  });
+
   it('stops listening when it is unmounted', async () => {
     const { session } = createTestSession({
       'POST /v1/auth/logout': () => new Response(null, { status: 204 }),

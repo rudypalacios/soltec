@@ -5,6 +5,7 @@ export interface Call {
   path: string;
   query: URLSearchParams;
   authorization: string | null;
+  contentType: string | null;
   body: unknown;
 }
 
@@ -62,6 +63,7 @@ export function createTestSession(
           })
         : problem(401, 'token_invalid'),
     'GET /v1/me': () => Response.json(me),
+    'GET /v1/branding': () => Response.json({ trade_name: '', logo_version: null }),
     'GET /v1/health': () => Response.json({ status: 'ok', checks: { database: 'ok' } }),
     ...handlers,
   };
@@ -72,13 +74,16 @@ export function createTestSession(
     deviceStore: memoryDeviceStore,
     fetch: async (request) => {
       const url = new URL(request.url);
+      const isJson = (request.headers.get('Content-Type') ?? '').includes('json');
       const text = await request.text();
       const call: Call = {
         method: request.method,
         path: url.pathname.replace(/^\/api/, ''),
         query: url.searchParams,
         authorization: request.headers.get('Authorization'),
-        body: text ? (JSON.parse(text) as unknown) : undefined,
+        contentType: request.headers.get('Content-Type'),
+        // A binary body (an uploaded image) is kept as the text the request carried.
+        body: text ? (isJson ? (JSON.parse(text) as unknown) : text) : undefined,
       };
       calls.push(call);
       const handler = all[`${call.method} ${call.path}`];

@@ -1,7 +1,17 @@
-import { Box, Card, CardActionArea, CardContent, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Card,
+  CardActionArea,
+  CardContent,
+  Link,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
 import { useCan, useCurrentUser } from '../access/SessionContext';
+import { useBranding } from '../settings/useSettings';
 import { HealthStatus } from '../system/HealthStatus';
 
 const SHORTCUTS = [
@@ -26,10 +36,20 @@ export function HomePage() {
   const user = useCurrentUser();
   const can = useCan();
   const shortcuts = SHORTCUTS.filter((item) => can(item.resource, item.action));
+  // A new installation has no company data; whoever may edit it is told where to start.
+  const companyPending = useBranding().data?.trade_name === '' && can('company', 'edit');
 
   return (
     <>
       <PageHeader title={user ? `Hola, ${user.name.split(' ')[0]}` : 'Inicio'} />
+      {companyPending ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Faltan los datos de la empresa.{' '}
+          <Link component={RouterLink} to="/configuracion/empresa">
+            Completarlos
+          </Link>
+        </Alert>
+      ) : null}
       {shortcuts.length > 0 ? (
         <Box
           sx={{
