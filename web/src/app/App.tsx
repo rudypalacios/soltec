@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from '../modules/access/ForgotPasswordPage';
 import { LoginPage } from '../modules/access/LoginPage';
 import { RoleFormPage } from '../modules/access/RoleFormPage';
 import { RolesPage } from '../modules/access/RolesPage';
+import { SessionsPage } from '../modules/access/SessionsPage';
 import { AcceptInvitationPage, ResetPasswordPage } from '../modules/access/SetPasswordPage';
 import { UserCreatePage } from '../modules/access/UserCreatePage';
 import { UserEditPage } from '../modules/access/UserEditPage';
@@ -23,6 +24,7 @@ import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
 import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
+import { SecurityPage } from '../modules/settings/SecurityPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
 import { useBranding } from '../modules/settings/useSettings';
 import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
@@ -51,6 +53,7 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route index element={<HomePage />} />
         <Route path={CHANGE_PASSWORD_PATH.slice(1)} element={<ChangePasswordPage />} />
+        <Route path="cuenta/sesiones" element={<SessionsPage />} />
         <Route
           path="usuarios"
           element={
@@ -138,6 +141,14 @@ export function App() {
             element={
               <RequirePermission resource="sequences" action="view">
                 <SequencesPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="seguridad"
+            element={
+              <RequirePermission resource="security_settings" action="view">
+                <SecurityPage />
               </RequirePermission>
             }
           />

@@ -14,8 +14,10 @@ use Soltec\Kernel\Http\DeployTokenMiddleware;
 use Soltec\Modules\Access\Http\AuthController;
 use Soltec\Modules\Access\Http\CatalogController;
 use Soltec\Modules\Access\Http\CredentialController;
+use Soltec\Modules\Access\Http\DeviceController;
 use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
+use Soltec\Modules\Access\Http\SecuritySettingsController;
 use Soltec\Modules\Access\Http\UserController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Settings\Http\BrandingController;
@@ -48,12 +50,17 @@ return static function (App $app): void {
         $group->post('/auth/password/reset', [CredentialController::class, 'resetPassword'])
             ->setArgument('permission', 'public');
         $group->get('/me', [MeController::class, 'show'])->setArgument('permission', 'authenticated');
+        $group->get('/me/devices', [DeviceController::class, 'list'])->setArgument('permission', 'authenticated');
+        $group->delete('/me/devices/{deviceId}', [DeviceController::class, 'revoke'])
+            ->setArgument('permission', 'authenticated');
 
         $group->get('/users', [UserController::class, 'list'])->setArgument('permission', 'users.view');
         $group->post('/users', [UserController::class, 'create'])->setArgument('permission', 'users.create');
         $group->get('/users/{userId}', [UserController::class, 'show'])->setArgument('permission', 'users.view');
         $group->patch('/users/{userId}', [UserController::class, 'update'])->setArgument('permission', 'users.edit');
         $group->post('/users/{userId}/invite', [UserController::class, 'invite'])
+            ->setArgument('permission', 'users.edit');
+        $group->post('/users/{userId}/unlock', [UserController::class, 'unlock'])
             ->setArgument('permission', 'users.edit');
         $group->post('/users/{userId}/deactivate', [UserController::class, 'deactivate'])
             ->setArgument('permission', 'users.deactivate');
@@ -96,6 +103,10 @@ return static function (App $app): void {
             ->setArgument('permission', 'financial_settings.view');
         $group->patch('/settings/financial', [FinancialSettingsController::class, 'update'])
             ->setArgument('permission', 'financial_settings.edit');
+        $group->get('/settings/security', [SecuritySettingsController::class, 'show'])
+            ->setArgument('permission', 'security_settings.view');
+        $group->patch('/settings/security', [SecuritySettingsController::class, 'update'])
+            ->setArgument('permission', 'security_settings.edit');
         $group->get('/sequences', [SequenceController::class, 'list'])->setArgument('permission', 'sequences.view');
         $group->patch('/sequences/{code}', [SequenceController::class, 'update'])
             ->setArgument('permission', 'sequences.edit');

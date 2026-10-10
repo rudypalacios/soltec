@@ -48,9 +48,13 @@ final class CreateAdminCommand
         }
 
         $password = $io->askSecret('Password: ');
-        $error = AdminBootstrap::passwordError($password, $email);
+        $error = $this->admin->passwordError($password, $email);
         if ($error !== null) {
-            $io->writeLine(sprintf('The password is not acceptable (%s): use 12 to 72 characters.', $error));
+            $io->writeLine(sprintf(
+                'The password is not acceptable (%s): use %d to 72 characters.',
+                $error,
+                $this->admin->passwordMinLength(),
+            ));
 
             return 1;
         }

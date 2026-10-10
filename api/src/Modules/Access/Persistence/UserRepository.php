@@ -249,13 +249,16 @@ final class UserRepository
     /**
      * Counts a failed login without reading the counter first (no read-modify-write), and locks the account
      * when the limit is reached. An expired lock restarts the counter from zero.
+     *
+     * @return bool true only for the attempt that locked the account (the lock is set by one statement, so of
+     *     several simultaneous attempts a single one gets true)
      */
     public function registerFailedLogin(
         string $id,
         DateTimeImmutable $now,
         int $maxAttempts,
         DateTimeImmutable $lockUntil,
-    ): void {
+    ): bool {
         $hex = Uuid::toHex($id);
         $this->connection->executeStatement(
             'UPDATE users SET failed_attempts = 0, locked_until = NULL '
@@ -266,11 +269,12 @@ final class UserRepository
             'UPDATE users SET failed_attempts = LEAST(failed_attempts + 1, 255) WHERE id = UNHEX(:id)',
             ['id' => $hex],
         );
-        $this->connection->executeStatement(
+
+        return $this->connection->executeStatement(
             'UPDATE users SET locked_until = :until WHERE id = UNHEX(:id) AND failed_attempts >= :max '
             . 'AND locked_until IS NULL',
             ['id' => $hex, 'max' => $maxAttempts, 'until' => Timestamps::toDb($lockUntil)],
-        );
+        ) === 1;
     }
 
     public function registerSuccessfulLogin(string $id, DateTimeImmutable $now): void

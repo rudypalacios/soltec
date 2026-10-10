@@ -81,3 +81,23 @@ export function fieldMessages(
     ]),
   );
 }
+
+/**
+ * The messages under a password field. The minimum length is the company's to configure, so it is the one the
+ * server reports with the error (12, the floor, when it does not say).
+ */
+export function passwordFieldMessages(
+  field: string,
+  error: unknown,
+  invalid: string,
+): Record<string, Record<string, string>> {
+  const reported = error instanceof ApiError ? error.details.password_min_length : undefined;
+  const minLength = typeof reported === 'number' ? reported : 12;
+  return {
+    [field]: {
+      too_short: `Debe tener al menos ${minLength} caracteres.`,
+      too_long: 'Debe tener 72 caracteres como máximo.',
+      invalid,
+    },
+  };
+}

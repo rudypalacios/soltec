@@ -27,10 +27,10 @@ final class AdminFromEnvStepTest extends AccessTestCase
         $status = $this->deploy(['ADMIN_EMAIL' => ' Boss@Example.com ', 'ADMIN_PASSWORD' => self::PASSWORD]);
 
         self::assertSame('created', $status);
+        $entries = $this->auditEntries('users');
         $login = $this->login('boss@example.com');
         self::assertSame(200, $login->getStatusCode());
         self::assertFalse($this->json($login)['password_change_required']);
-        $entries = $this->auditEntries('users');
         self::assertCount(1, $entries);
         self::assertSame('deploy', $entries[0]['after']['source'] ?? null);
         self::assertSame('Administrador', $entries[0]['after']['name'] ?? null);

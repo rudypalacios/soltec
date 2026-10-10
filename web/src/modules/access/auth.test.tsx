@@ -243,6 +243,29 @@ describe('the temporary password', () => {
   });
 });
 
+describe('the minimum length of a new password', () => {
+  it('is the one the server reports when changing the password', async () => {
+    const { session } = createTestSession(
+      {
+        'POST /v1/auth/password/change': () =>
+          problem(422, 'validation_failed', [{ field: 'new_password', code: 'too_short' }], {
+            password_min_length: 18,
+          }),
+      },
+      ME,
+    );
+    renderApp(session, '/cambiar-contrasena');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/^Contraseña actual/), 'la actual larga');
+    await user.type(screen.getByLabelText(/^Contraseña nueva/), 'corta');
+    await user.type(screen.getByLabelText(/^Repite/), 'corta');
+    await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+
+    expect(await screen.findByText('Debe tener al menos 18 caracteres.')).toBeInTheDocument();
+  });
+});
+
 describe('the application frame', () => {
   it('shows only the menu entries the user may open', async () => {
     const reader = { ...ME, permissions: { users: ['view'] }, scopes: {} };

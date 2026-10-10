@@ -2,6 +2,7 @@ import BlockOutlined from '@mui/icons-material/BlockOutlined';
 import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import ForwardToInboxOutlined from '@mui/icons-material/ForwardToInboxOutlined';
+import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined';
 import RestoreOutlined from '@mui/icons-material/RestoreOutlined';
 import StarOutline from '@mui/icons-material/StarOutline';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
@@ -18,4 +19,5 @@ export const ACTION_ICONS = {
   deactivate: <BlockOutlined />,
   reactivate: <RestoreOutlined />,
   setDefault: <StarOutline />,
+  unlock: <LockOpenOutlined />,
 } as const;

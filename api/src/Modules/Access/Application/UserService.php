@@ -11,6 +11,7 @@ use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Kernel\Auth\DataScope;
 use Soltec\Kernel\Auth\Team;
 use Soltec\Kernel\Clock;
+use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Http\ApiException;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Http\ValidationException;
@@ -236,6 +237,37 @@ final class UserService
             // Two changes of manager crossed in the same hierarchy; the one that lost can simply be sent again.
             throw ApiException::conflict();
         }
+
+        return $this->get($caller, $id);
+    }
+
+    /**
+     * Clears the lock and the failed-attempt counter of a user, as the administrator's answer to «I am locked out»
+     * (the other ways are waiting for the lock to expire and recovering the password). Idempotent: an account that is
+     * not counting any failures is left as it is and nothing is logged.
+     */
+    public function unlock(CurrentUser $caller, ActorContext $actor, string $id): UserRecord
+    {
+        $this->connection->transactional(function () use ($caller, $actor, $id): void {
+            $target = $this->users->find($id, $caller) ?? throw ApiException::notFound();
+            $this->assertMayModify($caller, $target);
+            if ($target->failedAttempts === 0 && $target->lockedUntil === null) {
+                return;
+            }
+
+            $this->users->clearLock($id);
+            $this->audit->record(
+                $actor,
+                'unlock',
+                self::ENTITY,
+                $id,
+                [
+                    'failed_attempts' => $target->failedAttempts,
+                    'locked_until' => Timestamps::toIsoOrNull($target->lockedUntil),
+                ],
+                ['failed_attempts' => 0, 'locked_until' => null],
+            );
+        });
 
         return $this->get($caller, $id);
     }

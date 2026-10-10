@@ -171,16 +171,18 @@ Se siembra vacía: ningún dato de un cliente va en el código.
 Límites: `0 ≤ vat_rate < 1`, `0 ≤ income_tax_rate < 1` (ADR-0011), `1 ≤ stale_cost_days ≤ 3650`, `1 ≤ quote_validity_days ≤ 365`. La API entrega las tasas como texto (`"0.12000"`), nunca como número de punto flotante.
 
 ### `security_settings`
-**Pendiente (rebanada 1.5):** hasta entonces estos valores son constantes de `SecurityPolicy`.
+Una sola fila (rebanada 1.5), con `id`, `created_at`, `updated_at` y `version`. Reemplaza las constantes de `SecurityPolicy`; la lee y la edita el módulo `Access` (son sus parámetros y así no depende de `Settings`). Se siembra con los valores de abajo.
 
 | Columna | Defecto | Límite |
 |---|---|---|
-| `web_idle_minutes` | 30 | por definir en el código |
-| `mobile_refresh_days` | 30 | por definir en el código |
-| `max_failed_attempts` | 3 | |
-| `lockout_minutes` | 15 | |
-| `password_expiry_days` | 90 | |
-| `password_min_length` | 12 | solo se puede subir |
+| `web_idle_minutes` | 30 | 5–1440 |
+| `mobile_refresh_days` | 30 | 1–90 |
+| `max_failed_attempts` | 3 | 3–20 |
+| `lockout_minutes` | 15 | 1–1440 |
+| `password_expiry_days` | 90 | 30–365 |
+| `password_min_length` | 12 | 12–72, solo sube |
+
+Un cambio aplica desde el siguiente evento que lo lee: las sesiones abiertas conservan el vencimiento con que se emitieron, las contraseñas existentes siguen valiendo con un mínimo mayor y un vencimiento más corto cuenta desde que se fijó la contraseña. Los plazos de los enlaces del correo y la ventana de gracia del refresh no son configurables.
 
 ### `sequences` (tabla de sistema)
 Numeración única y a prueba de concurrencia (clientes, proveedores, cotizaciones, proyectos, órdenes de compra…). PK `code`. La crea la migración del módulo que emite el documento; la rebanada 1.3 siembra las cinco conocidas.
@@ -228,7 +230,7 @@ Solo se agrega: nunca se edita ni se borra. Sin `updated_at`, `version` ni `dele
 | `occurred_at` | `DATETIME(3)` | no | UTC |
 | `user_id` | `BINARY(16)` | sí | FK `users`; `NULL` si lo hizo el sistema o un login fallido |
 | `device_id` | `BINARY(16)` | sí | FK `devices` |
-| `action` | `VARCHAR(50)` | no | `create`, `update`, `deactivate`, `login`, … |
+| `action` | `VARCHAR(50)` | no | `create`, `update`, `deactivate`, `login`, `logout`, `lockout`, `unlock`, `device_revoke`, … El login fallido no se registra: con correos inventados cualquiera llenaría la tabla; el momento en que una cuenta se bloquea (`lockout`) sí |
 | `entity_type` | `VARCHAR(50)` | no | Nombre de la tabla |
 | `entity_id` | `BINARY(16)` | sí | Sin FK: apunta a cualquier tabla |
 | `before_data`, `after_data` | `JSON` | sí | Solo los campos que cambiaron; nunca contraseñas ni tokens |

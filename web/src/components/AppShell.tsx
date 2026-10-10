@@ -1,3 +1,4 @@
+import DevicesOutlined from '@mui/icons-material/DevicesOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
 import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
@@ -230,6 +231,20 @@ function UserMenu() {
               <LockOutlined fontSize="small" />
             </ListItemIcon>
             Cambiar contraseña
+          </MenuItem>
+        )}
+        {state.passwordChangeRequired ? null : (
+          <MenuItem
+            onClick={() => {
+              close();
+              navigate('/cuenta/sesiones');
+            }}
+            sx={{ minHeight: 44 }}
+          >
+            <ListItemIcon>
+              <DevicesOutlined fontSize="small" />
+            </ListItemIcon>
+            Mis sesiones
           </MenuItem>
         )}
         {state.passwordChangeRequired ? null : <Divider />}

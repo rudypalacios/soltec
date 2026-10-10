@@ -10,6 +10,7 @@ use LogicException;
 use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Kernel\Auth\JwtService;
 use Soltec\Kernel\Clock;
+use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Http\ApiException;
 use Soltec\Kernel\Http\ValidationException;
 use Soltec\Modules\Access\Domain\PasswordHasher;
@@ -18,6 +19,7 @@ use Soltec\Modules\Access\Domain\SecurityPolicy;
 use Soltec\Modules\Access\Domain\UserRecord;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Access\Persistence\PermissionLoader;
+use Soltec\Modules\Access\Persistence\SecuritySettingsRepository;
 use Soltec\Modules\Access\Persistence\SessionRepository;
 use Soltec\Modules\Access\Persistence\UserRepository;
 
@@ -33,16 +35,19 @@ final class AuthService
         private readonly SessionRepository $sessions,
         private readonly PermissionLoader $permissions,
         private readonly AuditLogger $audit,
+        private readonly SecuritySettingsRepository $security,
     ) {
     }
 
     /**
      * Wrong email, wrong password and a locked account all fail the same way, in about the same time.
      *
+     * @param ActorContext $request who is calling: only the address is known before the login succeeds
      * @param string|null $deviceId id returned by an earlier login on this device
      * @throws ApiException 401 `invalid_credentials`
      */
     public function login(
+        ActorContext $request,
         string $email,
         string $password,
         string $platform,
@@ -57,18 +62,31 @@ final class AuthService
 
         if ($user === null || $locked || !$valid) {
             if ($user !== null && !$locked) {
-                $this->users->registerFailedLogin(
+                $settings = $this->security->get();
+                $lockedNow = $this->users->registerFailedLogin(
                     $user->id,
                     $now,
-                    SecurityPolicy::MAX_FAILED_ATTEMPTS,
-                    $now->modify(sprintf('+%d minutes', SecurityPolicy::LOCKOUT_MINUTES)),
+                    $settings->maxFailedAttempts,
+                    $settings->lockoutUntil($now),
                 );
+                // Failed attempts are not logged (anyone could fill the table with made-up emails); the moment an
+                // account locks is, because that is what an administrator needs to see.
+                if ($lockedNow) {
+                    $this->audit->record(
+                        new ActorContext(null, null, $request->ip),
+                        'lockout',
+                        'users',
+                        $user->id,
+                        null,
+                        ['locked_until' => Timestamps::toIso($settings->lockoutUntil($now))],
+                    );
+                }
             }
 
             throw ApiException::unauthorized('invalid_credentials');
         }
 
-        $open = function () use ($user, $password, $platform, $deviceName, $deviceId, $now): TokenResult {
+        $open = function () use ($user, $password, $platform, $deviceName, $deviceId, $now, $request): TokenResult {
             $this->users->registerSuccessfulLogin($user->id, $now);
             if ($user->passwordHash !== null && $this->hasher->needsRehash($user->passwordHash)) {
                 $this->users->rehashPassword($user->id, $this->hasher->hash($password));
@@ -78,6 +96,14 @@ final class AuthService
                 ?? $this->sessions->createDevice($user->id, $platform, $deviceName, $now);
             $this->sessions->touchDevice($deviceId, $now);
             $refreshToken = $this->issueRefreshToken($deviceId, $platform, $now);
+            $this->audit->record(
+                new ActorContext($user->id, $deviceId, $request->ip),
+                'login',
+                'users',
+                $user->id,
+                null,
+                null,
+            );
 
             return $this->result($user, $deviceId, $platform, $refreshToken, $now);
         };
@@ -139,9 +165,12 @@ final class AuthService
         return $this->result($user, $stored['deviceId'], $stored['platform'], null, $now, withUser: false);
     }
 
-    public function logout(CurrentUser $user): void
+    public function logout(CurrentUser $user, ActorContext $actor): void
     {
-        $this->sessions->revokeDevice($user->deviceId, $this->clock->now());
+        $this->connection->transactional(function () use ($user, $actor): void {
+            $this->sessions->revokeDevice($user->deviceId, $this->clock->now());
+            $this->audit->record($actor, 'logout', 'users', $user->id, null, null);
+        });
     }
 
     /**
@@ -157,10 +186,11 @@ final class AuthService
         if (!$this->hasher->verify($user->passwordHash, $currentPassword)) {
             throw ValidationException::field('current_password', 'current_password_incorrect');
         }
-        $violation = PasswordPolicy::violation($newPassword, $user->email)
+        $minLength = $this->security->get()->passwordMinLength;
+        $violation = PasswordPolicy::violation($newPassword, $user->email, $minLength)
             ?? ($newPassword === $currentPassword ? 'invalid' : null);
         if ($violation !== null) {
-            throw ValidationException::field('new_password', $violation);
+            throw ValidationException::field('new_password', $violation, ['password_min_length' => $minLength]);
         }
 
         $now = $this->clock->now();
@@ -205,7 +235,7 @@ final class AuthService
         $this->sessions->insertRefreshToken(
             $deviceId,
             self::hashToken($token),
-            $now->add(SecurityPolicy::refreshLifetime($platform)),
+            $now->add($this->security->get()->refreshLifetime($platform)),
             $now,
         );
 
@@ -220,7 +250,8 @@ final class AuthService
         DateTimeImmutable $now,
         bool $withUser = true,
     ): TokenResult {
-        $restricted = $user->mustChangePassword || $user->passwordExpired($now);
+        $restricted = $user->mustChangePassword
+            || $user->passwordExpired($now, $this->security->get()->passwordExpiryDays);
         $loaded = $withUser ? $this->permissions->build($user->id, $deviceId, $restricted) : null;
         if ($withUser && $loaded === null) {
             throw new LogicException('The user vanished during login.');

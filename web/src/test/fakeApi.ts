@@ -28,9 +28,15 @@ export const ME = {
   scopes: { users: 'all', roles: 'all' } as Record<string, string>,
 };
 
-export function problem(status: number, code: string, errors?: { field: string; code: string }[]) {
+/** A problem-details answer; `extra` carries the additional members some codes have (`password_min_length`…). */
+export function problem(
+  status: number,
+  code: string,
+  errors?: { field: string; code: string }[],
+  extra: Record<string, unknown> = {},
+) {
   return Response.json(
-    { type: 'about:blank', title: code, status, code, ...(errors ? { errors } : {}) },
+    { type: 'about:blank', title: code, status, code, ...(errors ? { errors } : {}), ...extra },
     { status },
   );
 }

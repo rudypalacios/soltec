@@ -19,6 +19,7 @@ use Soltec\Modules\Access\Domain\SecurityPolicy;
 use Soltec\Modules\Access\Domain\UserRecord;
 use Soltec\Modules\Access\Persistence\AccountTokenRepository;
 use Soltec\Modules\Access\Persistence\AuditLogger;
+use Soltec\Modules\Access\Persistence\SecuritySettingsRepository;
 use Soltec\Modules\Access\Persistence\SessionRepository;
 use Soltec\Modules\Access\Persistence\UserRepository;
 use Throwable;
@@ -42,6 +43,7 @@ final class CredentialService
         private readonly DeferredTasks $deferred,
         private readonly AuditLogger $audit,
         private readonly LoggerInterface $logger,
+        private readonly SecuritySettingsRepository $security,
     ) {
     }
 
@@ -102,9 +104,10 @@ final class CredentialService
         if ($user === null || !$user->invitationPending()) {
             throw self::linkInvalid();
         }
-        $violation = PasswordPolicy::violation($password, $user->email);
+        $minLength = $this->security->get()->passwordMinLength;
+        $violation = PasswordPolicy::violation($password, $user->email, $minLength);
         if ($violation !== null) {
-            throw ValidationException::field('password', $violation);
+            throw ValidationException::field('password', $violation, ['password_min_length' => $minLength]);
         }
 
         $hash = $this->hasher->hash($password);
@@ -171,9 +174,10 @@ final class CredentialService
         if ($user === null || !$user->isActive() || $user->passwordHash === null) {
             throw self::linkInvalid();
         }
-        $violation = PasswordPolicy::violation($password, $user->email);
+        $minLength = $this->security->get()->passwordMinLength;
+        $violation = PasswordPolicy::violation($password, $user->email, $minLength);
         if ($violation !== null) {
-            throw ValidationException::field('password', $violation);
+            throw ValidationException::field('password', $violation, ['password_min_length' => $minLength]);
         }
 
         $hash = $this->hasher->hash($password);
