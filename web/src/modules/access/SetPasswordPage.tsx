@@ -64,8 +64,7 @@ function SetPasswordForm({
     event.preventDefault();
     setFailure(null);
     setFieldErrors({});
-    if (password !== repeat) {
-      setFieldErrors({ repeat: 'Las contraseñas no coinciden.' });
+    if (mismatch) {
       return;
     }
     try {
@@ -114,7 +113,11 @@ function SetPasswordForm({
           type="password"
           autoComplete="new-password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            // What the server said was about the previous text, not this one.
+            setFieldErrors({});
+          }}
           error={Boolean(fieldErrors.password)}
           helperText={fieldErrors.password ?? 'De 12 a 72 caracteres, distinta de tu correo.'}
           required
@@ -127,8 +130,8 @@ function SetPasswordForm({
           autoComplete="new-password"
           value={repeat}
           onChange={(event) => setRepeat(event.target.value)}
-          error={mismatch || Boolean(fieldErrors.repeat)}
-          helperText={mismatch ? 'Las contraseñas no coinciden.' : fieldErrors.repeat}
+          error={mismatch}
+          helperText={mismatch ? 'Las contraseñas no coinciden.' : undefined}
           required
           fullWidth
         />
@@ -136,7 +139,7 @@ function SetPasswordForm({
           type="submit"
           variant="contained"
           size="large"
-          disabled={pending || !password || !repeat}
+          disabled={pending || !password || !repeat || mismatch}
         >
           {copy.submitLabel}
         </Button>

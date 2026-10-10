@@ -64,10 +64,50 @@ describe('accepting an invitation', () => {
 
     await user.type(await screen.findByLabelText(/^Contraseña nueva/), 'a long enough passphrase');
     await user.type(screen.getByLabelText(/^Repite la contraseña/), 'a different passphrase');
-    await user.click(screen.getByRole('button', { name: 'Activar cuenta' }));
 
     expect(await screen.findByText('Las contraseñas no coinciden.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activar cuenta' })).toBeDisabled();
     expect(sent).toBe(false);
+  });
+
+  it('drops the mismatch message as soon as the confirmation matches', async () => {
+    const { session } = createTestSession({}, NO_SESSION);
+    renderApp(session, route);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/^Contraseña nueva/), 'a long enough passphrase');
+    const repeat = screen.getByLabelText(/^Repite la contraseña/);
+    await user.type(repeat, 'a different passphrase');
+    expect(await screen.findByText('Las contraseñas no coinciden.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activar cuenta' })).toBeDisabled();
+
+    await user.clear(repeat);
+    await user.type(repeat, 'a long enough passphrase');
+
+    expect(screen.queryByText('Las contraseñas no coinciden.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activar cuenta' })).toBeEnabled();
+  });
+
+  it('forgets a server rejection once the password is edited', async () => {
+    const { session } = createTestSession(
+      {
+        'POST /v1/auth/invitations/accept': () =>
+          problem(422, 'validation_failed', [{ field: 'password', code: 'too_short' }]),
+      },
+      NO_SESSION,
+    );
+    renderApp(session, route);
+    const user = userEvent.setup();
+
+    const password = await screen.findByLabelText(/^Contraseña nueva/);
+    await user.type(password, 'short');
+    await user.type(screen.getByLabelText(/^Repite la contraseña/), 'short');
+    await user.click(screen.getByRole('button', { name: 'Activar cuenta' }));
+    expect(await screen.findByText('Debe tener al menos 12 caracteres.')).toBeInTheDocument();
+
+    await user.type(password, 'er');
+
+    expect(screen.queryByText('Debe tener al menos 12 caracteres.')).not.toBeInTheDocument();
   });
 
   it('shows what the server rejected under the password', async () => {

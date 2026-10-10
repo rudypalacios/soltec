@@ -185,6 +185,25 @@ describe('the temporary password', () => {
     expect(where()).toBe('/');
   });
 
+  it('drops the mismatch message once the confirmation matches', async () => {
+    const { session } = createTestSession({}, ME);
+    renderApp(session, '/cambiar-contrasena');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/^Contraseña actual/), 'temporal-123456');
+    await user.type(screen.getByLabelText(/^Contraseña nueva/), 'mi-clave-nueva-segura');
+    const repeat = screen.getByLabelText(/^Repite/);
+    await user.type(repeat, 'otra-clave-distinta');
+    expect(screen.getByText('Las contraseñas no coinciden.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cambiar contraseña' })).toBeDisabled();
+
+    await user.clear(repeat);
+    await user.type(repeat, 'mi-clave-nueva-segura');
+
+    expect(screen.queryByText('Las contraseñas no coinciden.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cambiar contraseña' })).toBeEnabled();
+  });
+
   it('does not send the form when the two new passwords differ', async () => {
     const { session, calls } = createTestSession({}, ME);
     renderApp(session, '/cambiar-contrasena');
@@ -195,7 +214,7 @@ describe('the temporary password', () => {
     await user.type(screen.getByLabelText(/^Repite/), 'otra-clave-distinta');
 
     expect(screen.getByText('Las contraseñas no coinciden.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+    expect(screen.getByRole('button', { name: 'Cambiar contraseña' })).toBeDisabled();
     expect(calls.some((call) => call.path === '/v1/auth/password/change')).toBe(false);
   });
 
