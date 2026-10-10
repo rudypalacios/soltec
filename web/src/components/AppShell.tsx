@@ -5,6 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import {
   AppBar,
   Box,
@@ -25,6 +26,7 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
+import { SETTINGS_SECTIONS } from '../modules/settings/sections';
 import { color } from '../theme/tokens';
 import { Brand } from './Brand';
 import { useIsMobile } from './useIsMobile';
@@ -35,8 +37,8 @@ interface NavItem {
   label: string;
   path: string;
   icon: ReactElement;
-  /** Without a permission the item is for every signed-in user. */
-  permission?: { resource: string; action: string };
+  /** Without permissions the item is for every signed-in user; with several, any one of them is enough. */
+  permissions?: { resource: string; action: string }[];
 }
 
 /** The side navigation. Each item shows only to whoever may open it; the server enforces it anyway. */
@@ -46,19 +48,28 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Usuarios',
     path: '/usuarios',
     icon: <PeopleOutline />,
-    permission: { resource: 'users', action: 'view' },
+    permissions: [{ resource: 'users', action: 'view' }],
   },
   {
     label: 'Perfiles',
     path: '/perfiles',
     icon: <ManageAccountsOutlined />,
-    permission: { resource: 'roles', action: 'view' },
+    permissions: [{ resource: 'roles', action: 'view' }],
   },
   {
     label: 'Departamentos',
     path: '/departamentos',
     icon: <AccountTreeOutlined />,
-    permission: { resource: 'departments', action: 'view' },
+    permissions: [{ resource: 'departments', action: 'view' }],
+  },
+  {
+    label: 'Configuración',
+    path: '/configuracion',
+    icon: <SettingsOutlined />,
+    permissions: SETTINGS_SECTIONS.map((section) => ({
+      resource: section.resource,
+      action: 'view',
+    })),
   },
 ];
 
@@ -76,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const items = restricted
     ? []
     : NAV_ITEMS.filter(
-        (item) => !item.permission || can(item.permission.resource, item.permission.action),
+        (item) => !item.permissions || item.permissions.some((p) => can(p.resource, p.action)),
       );
 
   const navigation = (

@@ -1,7 +1,9 @@
 import { Box } from '@mui/material';
+import { useState } from 'react';
+import { brandingLogoUrl, useBranding } from '../modules/settings/useSettings';
 import { color } from '../theme/tokens';
 
-// Seven dots on an arc, growing to the middle: the mark's shape, drawn in the logo's blue.
+// Seven dots on an arc, growing to the middle: the product's own mark, drawn in code.
 const DOTS = [
   { x: 4, y: 9, r: 1.6 },
   { x: 14, y: 5.8, r: 2 },
@@ -12,11 +14,58 @@ const DOTS = [
   { x: 64, y: 9, r: 1.6 },
 ];
 
+const NAME_SX = {
+  fontSize: 24,
+  fontWeight: 700,
+  letterSpacing: '-0.03em',
+  color: 'text.primary',
+} as const;
+
 /**
- * The product's mark: the dotted arc over the name. A stand-in drawn in code until the company's own logo
- * (a file in the configuration, slice 1.3) replaces it.
+ * The brand of this installation: the company's logo when it uploaded one, else its name, else the product's own
+ * mark (the dotted arc over "soltec") while nothing is configured yet. While the brand loads, or if it cannot be
+ * read, the product's mark shows.
  */
 export function Brand() {
+  const branding = useBranding().data;
+  const name = branding?.trade_name ?? '';
+
+  if (branding?.logo_version) {
+    return <CompanyLogo key={branding.logo_version} version={branding.logo_version} name={name} />;
+  }
+  return name ? <NameMark name={name} /> : <ProductMark />;
+}
+
+/** The logo image; if the browser cannot load it the name stands in, so the header never shows a broken image. */
+function CompanyLogo({ version, name }: { version: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return name ? <NameMark name={name} /> : <ProductMark />;
+  }
+  return (
+    <Box
+      component="img"
+      src={brandingLogoUrl(version)}
+      alt={name || 'Logo de la empresa'}
+      onError={() => setFailed(true)}
+      // The file is at most 512 px wide; the header shows it small. A fixed height avoids a jump while it loads.
+      sx={{ display: 'block', height: 40, maxWidth: 180, objectFit: 'contain' }}
+    />
+  );
+}
+
+function NameMark({ name }: { name: string }) {
+  return (
+    <Box
+      component="span"
+      sx={{ ...NAME_SX, lineHeight: 1.1, display: 'inline-block', maxWidth: 200 }}
+    >
+      {name}
+    </Box>
+  );
+}
+
+function ProductMark() {
   return (
     <Box
       component="span"
@@ -27,16 +76,7 @@ export function Brand() {
           <circle key={dot.x} cx={dot.x} cy={dot.y} r={dot.r} fill={color.brand} />
         ))}
       </svg>
-      <Box
-        component="span"
-        sx={{
-          fontSize: 24,
-          fontWeight: 700,
-          letterSpacing: '-0.03em',
-          color: 'text.primary',
-          mt: '-1px',
-        }}
-      >
+      <Box component="span" sx={{ ...NAME_SX, mt: '-1px' }}>
         soltec
       </Box>
     </Box>

@@ -20,6 +20,10 @@ import { UserEditPage } from '../modules/access/UserEditPage';
 import { UsersPage } from '../modules/access/UsersPage';
 import { HomePage } from '../modules/home/HomePage';
 import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
+import { CompanyPage } from '../modules/settings/CompanyPage';
+import { FinancialPage } from '../modules/settings/FinancialPage';
+import { SequencesPage } from '../modules/settings/SequencesPage';
+import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
 
 /** Route table. The paths are in Spanish because the user sees them (docs/arquitectura/glosario.md). */
@@ -98,6 +102,33 @@ export function App() {
             </RequirePermission>
           }
         />
+        <Route path="configuracion" element={<SettingsLayout />}>
+          <Route index element={<SettingsIndex />} />
+          <Route
+            path="empresa"
+            element={
+              <RequirePermission resource="company" action="view">
+                <CompanyPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="finanzas"
+            element={
+              <RequirePermission resource="financial_settings" action="view">
+                <FinancialPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="numeracion"
+            element={
+              <RequirePermission resource="sequences" action="view">
+                <SequencesPage />
+              </RequirePermission>
+            }
+          />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
       <Route path="*" element={<NotFound />} />

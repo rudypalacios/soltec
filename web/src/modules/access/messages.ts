@@ -37,6 +37,10 @@ const FIELD_MESSAGES: Record<string, string> = {
   taken: 'Ya está en uso.',
   not_found: 'No existe o no está disponible.',
   out_of_range: 'Está fuera del rango permitido.',
+  too_large: 'Es demasiado grande.',
+  unsupported_type: 'Ese tipo de archivo no se acepta.',
+  locked: 'Ya no se puede cambiar.',
+  too_low: 'No puede ser menor que el valor actual.',
   current_password_incorrect: 'La contraseña actual no es correcta.',
   cycle: 'Esa persona depende de este usuario: no puede ser su jefe.',
 };
