@@ -33,8 +33,7 @@ export function ChangePasswordPage() {
     setFailure(null);
     setFieldErrors({});
     setDone(false);
-    if (next !== repeat) {
-      setFieldErrors({ repeat: 'Las contraseñas no coinciden.' });
+    if (mismatch) {
       return;
     }
 
@@ -91,7 +90,11 @@ export function ChangePasswordPage() {
             type="password"
             autoComplete="new-password"
             value={next}
-            onChange={(event) => setNext(event.target.value)}
+            onChange={(event) => {
+              setNext(event.target.value);
+              // What the server said was about the previous text, not this one.
+              setFieldErrors((errors) => ({ ...errors, new_password: '' }));
+            }}
             error={Boolean(fieldErrors.new_password)}
             helperText={
               fieldErrors.new_password ??
@@ -106,8 +109,8 @@ export function ChangePasswordPage() {
             autoComplete="new-password"
             value={repeat}
             onChange={(event) => setRepeat(event.target.value)}
-            error={mismatch || Boolean(fieldErrors.repeat)}
-            helperText={mismatch ? 'Las contraseñas no coinciden.' : fieldErrors.repeat}
+            error={mismatch}
+            helperText={mismatch ? 'Las contraseñas no coinciden.' : undefined}
             required
             fullWidth
           />
@@ -118,7 +121,7 @@ export function ChangePasswordPage() {
             type="submit"
             variant="contained"
             size="large"
-            disabled={submitting || !current || !next || !repeat}
+            disabled={submitting || !current || !next || !repeat || mismatch}
           >
             Cambiar contraseña
           </Button>

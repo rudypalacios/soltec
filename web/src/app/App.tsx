@@ -2,15 +2,21 @@ import { Alert, Box, Button, Container, Typography } from '@mui/material';
 import { Link as RouterLink, Route, Routes } from 'react-router-dom';
 import { ChangePasswordPage } from '../modules/access/ChangePasswordPage';
 import {
+  ACCEPT_INVITATION_PATH,
   CHANGE_PASSWORD_PATH,
+  FORGOT_PASSWORD_PATH,
   LOGIN_PATH,
+  RESET_PASSWORD_PATH,
   RequireAuth,
   RequirePermission,
 } from '../modules/access/guards';
+import { ForgotPasswordPage } from '../modules/access/ForgotPasswordPage';
 import { LoginPage } from '../modules/access/LoginPage';
 import { RoleFormPage } from '../modules/access/RoleFormPage';
 import { RolesPage } from '../modules/access/RolesPage';
+import { AcceptInvitationPage, ResetPasswordPage } from '../modules/access/SetPasswordPage';
 import { UserCreatePage } from '../modules/access/UserCreatePage';
+import { UserEditPage } from '../modules/access/UserEditPage';
 import { UsersPage } from '../modules/access/UsersPage';
 import { HomePage } from '../modules/home/HomePage';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
@@ -20,6 +26,9 @@ export function App() {
   return (
     <Routes>
       <Route path={LOGIN_PATH} element={<LoginPage />} />
+      <Route path={FORGOT_PASSWORD_PATH} element={<ForgotPasswordPage />} />
+      <Route path={ACCEPT_INVITATION_PATH} element={<AcceptInvitationPage />} />
+      <Route path={RESET_PASSWORD_PATH} element={<ResetPasswordPage />} />
       {/* Server diagnostics, open on purpose (see TODO.md): it carries no session. */}
       <Route
         path="/requisitos"
@@ -45,6 +54,14 @@ export function App() {
           element={
             <RequirePermission resource="users" action="create">
               <UserCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="usuarios/:userId/editar"
+          element={
+            <RequirePermission resource="users" action="edit">
+              <UserEditPage />
             </RequirePermission>
           }
         />

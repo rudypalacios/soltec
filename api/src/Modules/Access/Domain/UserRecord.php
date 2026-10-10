@@ -58,6 +58,12 @@ final class UserRecord
         return $this->deletedAt === null;
     }
 
+    /** Created by an administrator and not yet accepted: there is no password until the person sets one. */
+    public function invitationPending(): bool
+    {
+        return $this->passwordHash === null && $this->isActive();
+    }
+
     public function isLocked(DateTimeImmutable $now): bool
     {
         return $this->lockedUntil !== null && $this->lockedUntil > $now;
@@ -97,6 +103,7 @@ final class UserRecord
             'roles' => array_map(static fn (RoleRef $role): array => $role->toArray(), $this->roles),
             'is_active' => $this->isActive(),
             'must_change_password' => $this->mustChangePassword,
+            'invitation_pending' => $this->invitationPending(),
             'password_changed_at' => Timestamps::toIsoOrNull($this->passwordChangedAt),
             'last_login_at' => Timestamps::toIsoOrNull($this->lastLoginAt),
             'locked_until' => $this->isLocked($now) ? Timestamps::toIsoOrNull($this->lockedUntil) : null,

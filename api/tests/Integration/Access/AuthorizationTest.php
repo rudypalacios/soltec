@@ -196,7 +196,14 @@ final class AuthorizationTest extends AccessTestCase
     public function testEveryContractedV1RouteDeniesAnAnonymousCaller(): void
     {
         $app = $this->app;
-        $anonymousAllowed = ['GET /v1/health', 'POST /v1/auth/login', 'POST /v1/auth/refresh'];
+        $anonymousAllowed = [
+            'GET /v1/health',
+            'POST /v1/auth/login',
+            'POST /v1/auth/refresh',
+            'POST /v1/auth/invitations/accept',
+            'POST /v1/auth/password/forgot',
+            'POST /v1/auth/password/reset',
+        ];
         $unprotected = [];
         foreach ($app->getRouteCollector()->getRoutes() as $route) {
             if (!str_starts_with($route->getPattern(), '/v1/')) {

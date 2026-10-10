@@ -118,14 +118,14 @@ Solo se agregan y se revocan; sin `version` ni `deleted_at`.
 | `revoked_at` | `DATETIME(3)` NULL | Restablecer contraseña o desactivar al usuario revoca todos |
 
 ### `account_tokens`
-Tokens de un solo uso para recuperar la contraseña y para las invitaciones de usuarios externos.
+Tokens de un solo uso de los enlaces del correo: invitación de cualquier usuario nuevo (72 h) y recuperación de contraseña (1 h). ADR-0017.
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `user_id` | `BINARY(16)` | FK `users` |
 | `purpose` | `ENUM('password_reset','invitation')` | |
 | `token_hash` | `CHAR(64)` | SHA-256; único |
-| `expires_at` | `DATETIME(3)` | 1 hora para recuperar contraseña |
+| `expires_at` | `DATETIME(3)` | 72 horas la invitación, 1 hora la recuperación |
 | `used_at` | `DATETIME(3)` NULL | Un `UPDATE … WHERE used_at IS NULL` condicionado lo marca: un solo uso aun con peticiones simultáneas |
 
 ---

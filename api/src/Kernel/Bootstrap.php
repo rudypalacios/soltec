@@ -75,6 +75,7 @@ final class Bootstrap
                 Paths::class => $paths,
                 Config::class => $config,
                 Clock::class => autowire(SystemClock::class),
+                DeferredTasks::class => autowire(ShutdownTasks::class),
                 CurrentUserLoader::class => autowire(PermissionLoader::class),
                 ModuleRequirements::class => autowire(AccessRequirements::class),
                 ResponseFactoryInterface::class => new ResponseFactory(),

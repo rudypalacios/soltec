@@ -14,8 +14,14 @@ final class FakeMailTransport implements MailTransport
     /** @var list<MailMessage> */
     public array $sent = [];
 
-    public function __construct(private readonly ?Throwable $failure = null)
+    public function __construct(private ?Throwable $failure = null)
     {
+    }
+
+    /** Makes every later call fail, or work again with null. */
+    public function failWith(?Throwable $failure): void
+    {
+        $this->failure = $failure;
     }
 
     public function send(MailMessage $message): void

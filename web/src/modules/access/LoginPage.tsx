@@ -1,17 +1,8 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, CircularProgress, Link, Stack, TextField } from '@mui/material';
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { CHANGE_PASSWORD_PATH } from './guards';
+import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { PublicCard } from '../../components/PublicCard';
+import { CHANGE_PASSWORD_PATH, FORGOT_PASSWORD_PATH } from './guards';
 import { problemMessage } from './messages';
 import { useSession, useSessionState } from './SessionContext';
 
@@ -58,58 +49,48 @@ export function LoginPage() {
   };
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        placeItems: { xs: 'start center', sm: 'center' },
-        minHeight: '100vh',
-        p: 2,
-      }}
-    >
-      <Card sx={{ width: '100%', maxWidth: 400 }} elevation={0} variant="outlined">
-        <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
-          <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
-            <Box>
-              <Typography variant="h5" component="h1">
-                Soltec
-              </Typography>
-              <Typography color="text.secondary">Inicia sesión para continuar</Typography>
-            </Box>
-            {failure ? <Alert severity="error">{failure}</Alert> : null}
-            <TextField
-              label="Correo"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              autoFocus
-              fullWidth
-            />
-            <TextField
-              label="Contraseña"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              fullWidth
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={submitting || !email || !password}
-            >
-              {submitting ? (
-                <CircularProgress size={22} color="inherit" aria-label="Entrando" />
-              ) : (
-                'Entrar'
-              )}
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-    </Box>
+    <PublicCard title="Soltec" subtitle="Inicia sesión para continuar">
+      <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
+        {failure ? <Alert severity="error">{failure}</Alert> : null}
+        <TextField
+          label="Correo"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+          autoFocus
+          fullWidth
+        />
+        <TextField
+          label="Contraseña"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+          fullWidth
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={submitting || !email || !password}
+        >
+          {submitting ? (
+            <CircularProgress size={22} color="inherit" aria-label="Entrando" />
+          ) : (
+            'Entrar'
+          )}
+        </Button>
+        <Link
+          component={RouterLink}
+          to={FORGOT_PASSWORD_PATH}
+          sx={{ alignSelf: 'center', py: 1.5 }}
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </Stack>
+    </PublicCard>
   );
 }

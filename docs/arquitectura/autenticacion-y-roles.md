@@ -121,7 +121,7 @@ Unitarias y de integración, y mutaciones deliberadas del código para comprobar
 6. Recuperar contraseña, cambio de contraseña e invitaciones.
 7. Comando del primer administrador.
 
-Cada paso con sus pruebas y su parte del contrato OpenAPI. La rebanada 1.1 (acceso) cubre los pasos 1 a 5 en lo que usa (alcance `own`/`all`) y el comando del paso 7; recuperar contraseña e invitaciones (paso 6), `team` y `client` llegan con las rebanadas siguientes.
+Cada paso con sus pruebas y su parte del contrato OpenAPI. La rebanada 1.1 (acceso) cubre los pasos 1 a 5 en lo que usa (alcance `own`/`all`) y el comando del paso 7; recuperar contraseña e invitaciones (paso 6) llegan con la rebanada 1.1b ([ADR-0017](../adr/0017-credenciales-por-enlace-de-correo.md)); `team` y `client`, con las siguientes.
 
 ## 13. Por confirmar
 

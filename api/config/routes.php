@@ -13,6 +13,7 @@ use Soltec\Kernel\Http\Controller\RequirementsController;
 use Soltec\Kernel\Http\DeployTokenMiddleware;
 use Soltec\Modules\Access\Http\AuthController;
 use Soltec\Modules\Access\Http\CatalogController;
+use Soltec\Modules\Access\Http\CredentialController;
 use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
 use Soltec\Modules\Access\Http\UserController;
@@ -33,12 +34,20 @@ return static function (App $app): void {
             ->setArguments(['permission' => 'authenticated', 'restricted' => 'allowed']);
         $group->post('/auth/password/change', [AuthController::class, 'changePassword'])
             ->setArguments(['permission' => 'authenticated', 'restricted' => 'allowed']);
+        $group->post('/auth/invitations/accept', [CredentialController::class, 'acceptInvitation'])
+            ->setArgument('permission', 'public');
+        $group->post('/auth/password/forgot', [CredentialController::class, 'forgotPassword'])
+            ->setArgument('permission', 'public');
+        $group->post('/auth/password/reset', [CredentialController::class, 'resetPassword'])
+            ->setArgument('permission', 'public');
         $group->get('/me', [MeController::class, 'show'])->setArgument('permission', 'authenticated');
 
         $group->get('/users', [UserController::class, 'list'])->setArgument('permission', 'users.view');
         $group->post('/users', [UserController::class, 'create'])->setArgument('permission', 'users.create');
         $group->get('/users/{userId}', [UserController::class, 'show'])->setArgument('permission', 'users.view');
         $group->patch('/users/{userId}', [UserController::class, 'update'])->setArgument('permission', 'users.edit');
+        $group->post('/users/{userId}/invite', [UserController::class, 'invite'])
+            ->setArgument('permission', 'users.edit');
         $group->post('/users/{userId}/deactivate', [UserController::class, 'deactivate'])
             ->setArgument('permission', 'users.deactivate');
         $group->post('/users/{userId}/reactivate', [UserController::class, 'reactivate'])

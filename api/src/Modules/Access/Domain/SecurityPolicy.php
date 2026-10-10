@@ -24,6 +24,11 @@ final class SecurityPolicy
     /** Two tabs refreshing at once: the loser presents a token that was just rotated and is not treated as theft. */
     public const REFRESH_GRACE_SECONDS = 10;
 
+    public const INVITATION_HOURS = 72;
+    public const PASSWORD_RESET_HOURS = 1;
+    /** One recovery email per account per this many seconds, so the form cannot be used to flood a mailbox. */
+    public const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
+
     public static function refreshLifetime(string $platform): DateInterval
     {
         return $platform === 'web'
