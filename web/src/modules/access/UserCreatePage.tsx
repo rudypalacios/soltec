@@ -173,10 +173,12 @@ export function RoleSelect({
   selected,
   onChange,
   error,
+  disabled,
 }: {
   selected: RoleChoice[];
   onChange: (roles: RoleChoice[]) => void;
   error?: string;
+  disabled?: boolean;
 }) {
   // Active internal roles. 100 is the most the API returns per page: more than that is not a realistic list of roles.
   const roles = useRoles({ status: 'active', user_type: 'internal', per_page: 100 });
@@ -187,6 +189,7 @@ export function RoleSelect({
       loading={roles.isPending}
       value={selected}
       onChange={(_, value) => onChange(value)}
+      disabled={disabled}
       getOptionLabel={(role) => role.name}
       isOptionEqualToValue={(a, b) => a.id === b.id}
       noOptionsText={roles.isError ? problemMessage(roles.error) : 'No hay perfiles'}

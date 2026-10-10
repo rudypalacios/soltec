@@ -54,21 +54,28 @@ function UserEditForm({ user }: { user: User }) {
 
   const emailChanged = email.trim() !== user.email;
   const isSelf = me?.id === user.id;
+  // On their own account, anyone but an administrator changes only their name (the API enforces it too): email,
+  // profiles, department and manager decide what they reach and how they sign in.
+  const onlyName = isSelf && !(me?.roles.some((role) => role.code === 'admin') ?? false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setFieldErrors({});
     setFailure(null);
     try {
-      await update.mutateAsync({
-        version: user.version,
-        name: name.trim(),
-        email: email.trim(),
-        role_ids: selected.map((role) => role.id),
-        // Without permission to list departments the field is hidden, and what is not sent stays as it was.
-        ...(departmentChoices.canList ? { department_id: department?.id ?? null } : {}),
-        manager_id: manager?.id ?? null,
-      });
+      await update.mutateAsync(
+        onlyName
+          ? { version: user.version, name: name.trim() }
+          : {
+              version: user.version,
+              name: name.trim(),
+              email: email.trim(),
+              role_ids: selected.map((role) => role.id),
+              // Without permission to list departments the field is hidden; what is not sent stays as it was.
+              ...(departmentChoices.canList ? { department_id: department?.id ?? null } : {}),
+              manager_id: manager?.id ?? null,
+            },
+      );
       navigate('/usuarios');
     } catch (error) {
       const fields = fieldMessages(error, USER_FIELD_MESSAGES);
@@ -108,6 +115,7 @@ function UserEditForm({ user }: { user: User }) {
             helperText={fieldErrors.email}
             required
             fullWidth
+            disabled={onlyName}
           />
           {emailChanged && user.invitation_pending ? (
             <Alert severity="warning">
@@ -115,23 +123,35 @@ function UserEditForm({ user }: { user: User }) {
               guardar, reenvía la invitación desde la lista.
             </Alert>
           ) : null}
-          <RoleSelect selected={selected} onChange={setSelected} error={fieldErrors.role_ids} />
+          <RoleSelect
+            selected={selected}
+            onChange={setSelected}
+            error={fieldErrors.role_ids}
+            disabled={onlyName}
+          />
           <DepartmentSelect
             value={department}
             onChange={setDepartment}
             choices={departmentChoices}
             error={fieldErrors.department_id}
+            disabled={onlyName}
           />
           <ManagerSelect
             value={manager}
             onChange={setManager}
             forUserId={user.id}
             error={fieldErrors.manager_id}
+            disabled={onlyName}
           />
-          {isSelf ? (
+          {onlyName ? (
             <Alert severity="info">
-              Estás editando tu propia cuenta. Solo un administrador puede cambiar sus perfiles, y
-              solo si queda otro administrador activo.
+              Estás editando tu propia cuenta: solo puedes cambiar tu nombre. Tu contraseña se
+              cambia en «Cambiar contraseña»; lo demás lo cambia un administrador.
+            </Alert>
+          ) : isSelf ? (
+            <Alert severity="info">
+              Estás editando tu propia cuenta. Solo puedes cambiar tus perfiles si queda otro
+              administrador activo.
             </Alert>
           ) : null}
           <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
@@ -146,7 +166,7 @@ function UserEditForm({ user }: { user: User }) {
                 !name ||
                 !email ||
                 selected.length === 0 ||
-                (departmentChoices.required && department === null)
+                (!onlyName && departmentChoices.required && department === null)
               }
             >
               Guardar cambios

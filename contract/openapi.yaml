@@ -431,7 +431,8 @@ paths:
         `manager_id` sent as null clear them. The manager must be another active internal user (422 `invalid` for the
         user themselves, `not_found` otherwise) who does not report to this user, directly or not (422 `cycle`).
         Only internal users have a department or a manager (422 `invalid` for an external one). A caller with the
-        `team` scope cannot move someone out of their team (422 `out_of_scope`); their own record is exempt. A stale
+        `team` scope cannot move someone out of their team (422 `out_of_scope`). On their own account, anyone but an
+        administrator changes only the name (403 `forbidden` for email, roles, department or manager). A stale
         version, or two changes of manager that cross, answer 409 `conflict`.
       tags:
         - Users

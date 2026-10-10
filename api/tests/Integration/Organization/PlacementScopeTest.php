@@ -87,9 +87,29 @@ final class PlacementScopeTest extends AccessTestCase
         self::assertSame(200, $inside->getStatusCode());
     }
 
-    public function testTheCallerCanChangeTheirOwnPlacement(): void
+    public function testOnTheirOwnAccountAUserChangesOnlyTheirName(): void
     {
-        $response = $this->update($this->leadToken, $this->lead['id'], ['department_id' => $this->support]);
+        // Otherwise a team lead could move to another department and see everybody in it.
+        $attempts = [
+            'department' => ['department_id' => $this->support],
+            'manager' => ['manager_id' => $this->createUser('boss@example.com')['id']],
+            'email' => ['email' => 'elsewhere@example.com'],
+        ];
+        foreach ($attempts as $label => $change) {
+            $response = $this->update($this->leadToken, $this->lead['id'], $change);
+            self::assertSame(403, $response->getStatusCode(), $label);
+        }
+
+        $renamed = $this->update($this->leadToken, $this->lead['id'], ['name' => 'Lead Renamed']);
+        self::assertSame(200, $renamed->getStatusCode());
+        self::assertSame('Lead Renamed', $this->json($renamed)['name']);
+    }
+
+    public function testAnAdministratorStillEditsTheirOwnAccount(): void
+    {
+        $admin = $this->createAdmin();
+
+        $response = $this->update($this->tokenFor($admin['id']), $admin['id'], ['department_id' => $this->support]);
 
         self::assertSame(200, $response->getStatusCode());
     }

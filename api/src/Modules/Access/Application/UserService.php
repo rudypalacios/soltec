@@ -159,6 +159,9 @@ final class UserService
                     ? $organization->departmentId
                     : $target->department?->id;
                 $newManagerId = $organization->managerSent ? $organization->managerId : $target->manager?->id;
+                $placementChanges = $newDepartmentId !== $target->department?->id
+                    || $newManagerId !== $target->manager?->id;
+                $this->assertSelfEditAllowed($caller, $target, $email, $roleIds, $placementChanges);
                 $errors = $this->organizationErrors(
                     $id,
                     $newDepartmentId === $target->department?->id ? null : $newDepartmentId,
@@ -168,7 +171,7 @@ final class UserService
                 if ($errors !== []) {
                     throw new ValidationException($errors);
                 }
-                if ($newDepartmentId !== $target->department?->id || $newManagerId !== $target->manager?->id) {
+                if ($placementChanges) {
                     $this->assertStaysInScope($caller, $id, $newDepartmentId, $newManagerId);
                 }
 
@@ -357,7 +360,7 @@ final class UserService
     /**
      * A caller who does not reach every user must not create or move someone out of their reach: they would lose
      * the record at once. With `team` the user must end up in the caller's team (in their department or under them);
-     * `own` reaches only the caller, so it can create nobody. The caller's own record always stays in reach.
+     * `own` reaches only the caller, so it can create nobody.
      *
      * @throws ApiException 403 `forbidden` for a scope that cannot hold anybody else, 422 `out_of_scope`
      */
@@ -368,7 +371,7 @@ final class UserService
         ?string $managerId,
     ): void {
         $scope = $caller->scopeFor(UserRepository::RESOURCE);
-        if ($scope === DataScope::All || $userId === $caller->id) {
+        if ($scope === DataScope::All) {
             return;
         }
         if ($scope !== DataScope::Team) {
@@ -385,6 +388,30 @@ final class UserService
                 ['field' => 'department_id', 'code' => 'out_of_scope'],
                 ['field' => 'manager_id', 'code' => 'out_of_scope'],
             ]);
+        }
+    }
+
+    /**
+     * On their own account, anyone but an administrator changes only their name (the password has its own route).
+     * Email, roles, department and manager decide what they reach and how they sign in: changing their own department
+     * would let a team lead see a whole other department.
+     *
+     * @param list<string>|null $roleIds
+     */
+    private function assertSelfEditAllowed(
+        CurrentUser $caller,
+        UserRecord $target,
+        ?string $email,
+        ?array $roleIds,
+        bool $placementChanges,
+    ): void {
+        if ($target->id !== $caller->id || $caller->isAdmin()) {
+            return;
+        }
+        $emailChanges = $email !== null && $email !== $target->email;
+        $rolesChange = $roleIds !== null && $this->differs($roleIds, $target->roleIds());
+        if ($emailChanges || $rolesChange || $placementChanges) {
+            throw ApiException::forbidden('forbidden', 'On their own account a user can change only their name.');
         }
     }
 

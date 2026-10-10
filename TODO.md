@@ -37,7 +37,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] **1.2 Organización** (`Modules/Organization`): departamentos (`/departamentos`: lista, alta, renombrar, desactivar y reactivar), jefe directo y departamento en el alta y la edición de usuarios, filtro de usuarios por departamento y alcance `team` en la matriz de perfiles
   - Acordado: equipo = el usuario, sus subordinados directos e indirectos y su departamento. Solo usuarios internos tienen departamento y jefe; los clientes (externos) usan el alcance `client`
   - Acordado: el departamento es opcional en la API (el primer administrador no tiene) y obligatorio en el formulario web mientras existan departamentos activos
-  - Acordado: nadie crea ni mueve a un usuario fuera de su alcance (`422 out_of_scope`; con alcance `own` no se crea a nadie). Con alcance `team` el formulario propone como jefe a quien crea. El selector de jefe solo ofrece candidatos válidos (`eligible_manager_for`: sin el usuario ni quienes dependen de él)
+  - Acordado: nadie crea ni mueve a un usuario fuera de su alcance (`422 out_of_scope`; con alcance `own` no se crea a nadie). En su propia cuenta, quien no es administrador solo cambia su nombre. Con alcance `team` el formulario propone como jefe a quien crea. El selector de jefe solo ofrece candidatos válidos (`eligible_manager_for`: sin el usuario ni quienes dependen de él)
   - Acordado: un departamento con usuarios activos no se desactiva; el error dice cuántos tiene y la web enlaza a esos usuarios. Desactivar a un jefe no cambia el `manager_id` de sus subordinados
   - Fuera de 1.2: organigrama visual, jefe del departamento como campo propio, reasignación masiva de usuarios
 - [ ] 1.3 Configuración general y correlativos

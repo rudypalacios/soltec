@@ -26,11 +26,13 @@ export function DepartmentSelect({
   onChange,
   choices,
   error,
+  disabled,
 }: {
   value: NamedRef | null;
   onChange: (department: NamedRef | null) => void;
   choices: ReturnType<typeof useDepartmentChoices>;
   error?: string;
+  disabled?: boolean;
 }) {
   if (!choices.canList) {
     return null;
@@ -52,6 +54,7 @@ export function DepartmentSelect({
       loading={choices.departments.isPending}
       value={value}
       onChange={(_, department) => onChange(department)}
+      disabled={disabled}
       getOptionLabel={(department) => department.name}
       isOptionEqualToValue={(a, b) => a.id === b.id}
       noOptionsText="No hay departamentos"
@@ -77,11 +80,13 @@ export function ManagerSelect({
   onChange,
   forUserId,
   error,
+  disabled,
 }: {
   value: NamedRef | null;
   onChange: (manager: NamedRef | null) => void;
   forUserId?: string;
   error?: string;
+  disabled?: boolean;
 }) {
   const [text, setText] = useState('');
   const deferredText = useDeferredValue(text);
@@ -101,6 +106,7 @@ export function ManagerSelect({
       loading={users.isFetching}
       value={value}
       onChange={(_, manager) => onChange(manager)}
+      disabled={disabled}
       inputValue={text}
       onInputChange={(_, next) => setText(next)}
       // The API already filters by the text typed; filtering again here would hide matches by email.

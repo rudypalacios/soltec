@@ -679,4 +679,40 @@ describe('department and direct manager of a user', () => {
     await screen.findByRole('table', { name: 'Lista de usuarios' });
     expect(screen.queryByRole('link', { name: /Nuevo usuario/ })).not.toBeInTheDocument();
   });
+
+  it('lets someone who is not an administrator change only their own name', async () => {
+    let patched: Call | undefined;
+    const lead = {
+      ...ORG_ME,
+      roles: [{ id: '0192f1c2-7d3a-7a11-8f2e-0000000000c1', code: null, name: 'Supervisor' }],
+      scopes: { ...ORG_ME.scopes, users: 'team' },
+    };
+    const mine = { ...SELF, roles: lead.roles, department: { id: SALES.id, name: SALES.name } };
+    const { session } = createTestSession(
+      {
+        'GET /v1/roles': () => Response.json(page([ROLE])),
+        'GET /v1/departments': () => Response.json(page([SALES])),
+        'GET /v1/users': () => Response.json(page([])),
+        [`GET /v1/users/${ME.id}`]: () => Response.json(mine),
+        [`PATCH /v1/users/${ME.id}`]: (call) => {
+          patched = call;
+          return Response.json({ ...mine, name: 'Ana P.', version: 2 });
+        },
+      },
+      lead,
+    );
+    renderApp(session, `/usuarios/${ME.id}/editar`);
+    const user = userEvent.setup();
+
+    const name = await screen.findByLabelText(/^Nombre/);
+    expect(screen.getByLabelText(/^Correo/)).toBeDisabled();
+    expect(screen.getByLabelText(/^Departamento/)).toBeDisabled();
+    expect(screen.getByLabelText(/^Jefe directo/)).toBeDisabled();
+    expect(screen.getByText(/solo puedes cambiar tu nombre/)).toBeInTheDocument();
+    await user.clear(name);
+    await user.type(name, 'Ana P.');
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(patched?.body).toEqual({ version: 1, name: 'Ana P.' }));
+  });
 });
