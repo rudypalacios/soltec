@@ -323,7 +323,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 12;
+        ) === 18;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -339,5 +339,28 @@ abstract class AccessTestCase extends IntegrationTestCase
         $this->connection->executeStatement('DELETE FROM role_permissions WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM role_scopes WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM roles WHERE is_system = 0');
+        $this->resetSettings();
+    }
+
+    /** Puts the single-row settings and the sequences back to what the migration seeds. */
+    private function resetSettings(): void
+    {
+        $this->connection->executeStatement(
+            "UPDATE company SET legal_name = '', trade_name = '', tax_id = '', address = NULL, phone = NULL, "
+            . "email = NULL, timezone = 'America/Guatemala', logo_path = NULL, version = 1",
+        );
+        $this->connection->executeStatement(
+            "UPDATE financial_settings SET currency_code = 'GTQ', vat_rate = 0.12, income_tax_rate = 0.03, "
+            . 'stale_cost_days = 90, quote_validity_days = 15, version = 1',
+        );
+        $seeded = ['client' => ['CLI', 'none'], 'supplier' => ['PRV', 'none'], 'quote' => ['COT', 'month'],
+            'project' => ['PRY', 'month'], 'purchase_order' => ['OC', 'month']];
+        foreach ($seeded as $code => [$prefix, $period]) {
+            $this->connection->executeStatement(
+                'UPDATE sequences SET prefix = :prefix, padding = 4, period = :period, period_key = NULL, '
+                . 'next_value = 1, version = 1 WHERE code = :code',
+                ['code' => $code, 'prefix' => $prefix, 'period' => $period],
+            );
+        }
     }
 }

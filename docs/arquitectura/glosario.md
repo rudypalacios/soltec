@@ -48,7 +48,7 @@ Los términos del negocio están en español y el código en inglés. Este glosa
 
 | Español | Inglés | Ruta web |
 |---|---|---|
-| configuración general | Tablas de una sola fila por tema (ADR-0016): `financial_settings`, `security_settings`, `mail_settings` | `/configuracion` |
+| configuración general | Tablas de una sola fila por tema (ADR-0016): `financial_settings`, `security_settings` (el remitente del correo vive en el `.env`) | `/configuracion` |
 | datos de la empresa | `Company` · `company` (una sola fila) | |
 | IVA | `vat_rate` | |
 | ISR | `income_tax_rate` | |

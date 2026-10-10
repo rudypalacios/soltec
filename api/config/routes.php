@@ -18,6 +18,10 @@ use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
 use Soltec\Modules\Access\Http\UserController;
 use Soltec\Modules\Organization\Http\DepartmentController;
+use Soltec\Modules\Settings\Http\BrandingController;
+use Soltec\Modules\Settings\Http\CompanyController;
+use Soltec\Modules\Settings\Http\FinancialSettingsController;
+use Soltec\Modules\Settings\Http\SequenceController;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
 // Every /v1 route declares its access rule in the "permission" argument: `public`, `authenticated` or
@@ -75,6 +79,24 @@ return static function (App $app): void {
             ->setArgument('permission', 'departments.deactivate');
         $group->post('/departments/{departmentId}/reactivate', [DepartmentController::class, 'reactivate'])
             ->setArgument('permission', 'departments.deactivate');
+
+        $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
+        $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');
+        $group->get('/settings/company', [CompanyController::class, 'show'])
+            ->setArgument('permission', 'company.view');
+        $group->patch('/settings/company', [CompanyController::class, 'update'])
+            ->setArgument('permission', 'company.edit');
+        $group->put('/settings/company/logo', [CompanyController::class, 'uploadLogo'])
+            ->setArgument('permission', 'company.edit');
+        $group->delete('/settings/company/logo', [CompanyController::class, 'deleteLogo'])
+            ->setArgument('permission', 'company.edit');
+        $group->get('/settings/financial', [FinancialSettingsController::class, 'show'])
+            ->setArgument('permission', 'financial_settings.view');
+        $group->patch('/settings/financial', [FinancialSettingsController::class, 'update'])
+            ->setArgument('permission', 'financial_settings.edit');
+        $group->get('/sequences', [SequenceController::class, 'list'])->setArgument('permission', 'sequences.view');
+        $group->patch('/sequences/{code}', [SequenceController::class, 'update'])
+            ->setArgument('permission', 'sequences.edit');
 
         $group->get('/resources', [CatalogController::class, 'resources'])->setArgument('permission', 'roles.view');
         $group->get('/permissions', [CatalogController::class, 'permissions'])->setArgument('permission', 'roles.view');

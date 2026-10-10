@@ -25,7 +25,7 @@ erDiagram
     DEVICES |o--o{ AUDIT_LOGS : ""
 ```
 
-Entidades sin relaciones (configuración y reglas de una sola fila o sembradas): `company`, `financial_settings`, `security_settings`, `mail_settings`, `sequences`, `margin_levels`.
+Entidades sin relaciones (configuración y reglas de una sola fila o sembradas): `company`, `financial_settings`, `security_settings`, `sequences`, `margin_levels`.
 
 ---
 
@@ -144,31 +144,34 @@ El jefe directo vive en `users.manager_id`; el departamento no tiene jefe propio
 
 ## 03 Configuración general
 
-Tablas de una sola fila (`singleton`, ver README). Cada cambio se audita. Los límites son del código.
+Tablas de una sola fila (`singleton`, ver README), creadas por la rebanada 1.3 con `id`, `created_at`, `updated_at` y `version` (sin `deleted_at`: no se desactivan). Cada cambio se audita y los límites son del código. El remitente del correo **no** es una tabla: vive en el `.env` ([ADR-0019](../../adr/0019-correlativos-logo-y-remitente.md)).
 
 ### `company`
+Se siembra vacía: ningún dato de un cliente va en el código.
 
 | Columna | Tipo | Nulo |
 |---|---|---|
-| `legal_name`, `trade_name` | `VARCHAR(190)` | no |
-| `tax_id` (NIT) | `VARCHAR(30)` | no |
-| `tax_regime_id` | `BINARY(16)` | sí (FK `tax_regimes`, Hito 2) |
+| `legal_name`, `trade_name` | `VARCHAR(190)` | no (vacío hasta configurarla) |
+| `tax_id` (NIT) | `VARCHAR(30)` | no (vacío hasta configurarla) |
+| `tax_regime_id` | `BINARY(16)` | sí (FK `tax_regimes`, Hito 2; la columna llega con él) |
 | `address`, `phone`, `email` | `VARCHAR(255)` / `VARCHAR(40)` / `VARCHAR(190)` | sí |
-| `logo_path` | `VARCHAR(255)` | sí |
+| `timezone` | `VARCHAR(50)` | no (`America/Guatemala`). Calendario de los correlativos |
+| `logo_path` | `VARCHAR(255)` | sí. `branding/logo-<hash>.webp` bajo `storage/` |
 
 ### `financial_settings`
 
 | Columna | Tipo | Valor inicial |
 |---|---|---|
-| `currency_code` | `CHAR(3)` | `GTQ` |
+| `currency_code` | `CHAR(3)` | `GTQ` (solo lectura, P1) |
 | `vat_rate` | `DECIMAL(6,5)` | `0.12000` |
 | `income_tax_rate` | `DECIMAL(6,5)` | `0.03000` |
-| `stale_cost_days` | `SMALLINT UNSIGNED` | por definir |
+| `stale_cost_days` | `SMALLINT UNSIGNED` | `90` (provisional, `TODO`) |
 | `quote_validity_days` | `SMALLINT UNSIGNED` | `15` |
 
-Límites: `0 ≤ vat_rate < 1`, `0 ≤ income_tax_rate < 1` (ADR-0011).
+Límites: `0 ≤ vat_rate < 1`, `0 ≤ income_tax_rate < 1` (ADR-0011), `1 ≤ stale_cost_days ≤ 3650`, `1 ≤ quote_validity_days ≤ 365`. La API entrega las tasas como texto (`"0.12000"`), nunca como número de punto flotante.
 
 ### `security_settings`
+**Pendiente (rebanada 1.5):** hasta entonces estos valores son constantes de `SecurityPolicy`.
 
 | Columna | Defecto | Límite |
 |---|---|---|
@@ -179,28 +182,21 @@ Límites: `0 ≤ vat_rate < 1`, `0 ≤ income_tax_rate < 1` (ADR-0011).
 | `password_expiry_days` | 90 | |
 | `password_min_length` | 12 | solo se puede subir |
 
-### `mail_settings`
-Solo el remitente; las credenciales SMTP viven en el `.env` (ADR-0013).
-
-| Columna | Tipo |
-|---|---|
-| `from_name` | `VARCHAR(100)` |
-| `from_address` | `VARCHAR(190)` |
-| `reply_to_address` | `VARCHAR(190)` NULL |
-
 ### `sequences` (tabla de sistema)
-Numeración única y a prueba de concurrencia (proyectos, cotizaciones, OC, clientes, proveedores…). PK `code`.
+Numeración única y a prueba de concurrencia (clientes, proveedores, cotizaciones, proyectos, órdenes de compra…). PK `code`. La crea la migración del módulo que emite el documento; la rebanada 1.3 siembra las cinco conocidas.
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `code` | `VARCHAR(50)` | `project`, `quote`, `purchase_order`, … |
-| `prefix` | `VARCHAR(10)` | |
-| `padding` | `TINYINT UNSIGNED` | Ceros a la izquierda |
-| `include_year` | `TINYINT(1)` | Si el número lleva el año y se reinicia cada año |
-| `year` | `SMALLINT UNSIGNED` NULL | Año del contador actual |
+| `code` | `VARCHAR(50)` | `client`, `supplier`, `quote`, `project`, `purchase_order` |
+| `name` | `VARCHAR(100)` | Texto para la pantalla |
+| `prefix` | `VARCHAR(10)` | Letras y dígitos |
+| `padding` | `TINYINT UNSIGNED` | Ceros a la izquierda (no recorta) |
+| `period` | `ENUM('none','year','month')` | Cuándo el contador vuelve a 1 |
+| `period_key` | `CHAR(4)` NULL | Período del último número: `2026` o `2610` (AAMM) |
 | `next_value` | `BIGINT UNSIGNED` | |
+| `created_at`, `updated_at`, `version` | | `version` solo cambia al editar la regla, no al emitir |
 
-Reserva atómica: `UPDATE sequences SET next_value = LAST_INSERT_ID(next_value + 1) WHERE code = ?`, dentro de la transacción que crea el documento. Es única aunque dos peticiones coincidan; si la transacción se revierte puede quedar un hueco (no es consecutiva).
+Reserva atómica en una sola sentencia, dentro de la transacción que crea el documento (ADR-0019): el número vuelve con el rollback, así que **no hay huecos**; el costo es que las altas del mismo tipo hacen cola hasta el commit. El período no cambia una vez emitido un número y el contador solo sube.
 
 ---
 

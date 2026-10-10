@@ -44,6 +44,8 @@ tags:
     description: Roles (perfiles) with their permission matrix and data scopes.
   - name: Departments
     description: Departments of the organization. The direct manager of each user lives in the user.
+  - name: Settings
+    description: Company data and logo, tax rates, and the numbering of documents.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
 paths:
@@ -945,6 +947,284 @@ paths:
           $ref: '#/components/responses/Forbidden'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/branding:
+    get:
+      operationId: getBranding
+      summary: The company's name and logo version.
+      description:
+        Public, because the sign-in screen shows the company before anyone has a session. Exposes nothing else of
+        the company. With no name configured yet, `trade_name` is empty and the web app shows the product's own mark.
+      tags:
+        - Settings
+      x-permission: public
+      security: []
+      responses:
+        '200':
+          description: The branding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Branding'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/branding/logo:
+    get:
+      operationId: getBrandingLogo
+      summary: The company's logo.
+      description:
+        A WebP image of at most 512 px on its longer side. Public like `/v1/branding`. The response carries an `ETag`
+        (the logo version); a client that sends it back in `If-None-Match` gets 304 instead of the image.
+      tags:
+        - Settings
+      x-permission: public
+      security: []
+      responses:
+        '200':
+          description: The logo.
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '304':
+          description: The client's copy is current.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/settings/company:
+    get:
+      operationId: getCompany
+      summary: The company's data.
+      description: The only company of the instance (one instance per company).
+      tags:
+        - Settings
+      x-permission: company.view
+      responses:
+        '200':
+          description: The company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateCompany
+      summary: Update the company's data.
+      description:
+        All fields are sent every time (the form is the unit of change). A stale version answers 409 `conflict`.
+        The logo has its own operations.
+      tags:
+        - Settings
+      x-permission: company.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyUpdate'
+      responses:
+        '200':
+          description: The updated company.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/settings/company/logo:
+    put:
+      operationId: setCompanyLogo
+      summary: Upload the company's logo.
+      description:
+        The request body is the image itself (PNG, JPEG or WebP, at most 1 MB and 8 megapixels), not a form. The
+        type is read from the content, whatever `Content-Type` says. SVG is refused. The image is decoded and
+        saved again as WebP of at most 512 px, which drops any metadata. Errors on field `logo` are `required`,
+        `too_large`, `unsupported_type` and `invalid`.
+      tags:
+        - Settings
+      x-permission: company.edit
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: The company with its new logo version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    delete:
+      operationId: deleteCompanyLogo
+      summary: Remove the company's logo.
+      description: Idempotent. The web app goes back to the product's own mark.
+      tags:
+        - Settings
+      x-permission: company.edit
+      responses:
+        '200':
+          description: The company without a logo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/settings/financial:
+    get:
+      operationId: getFinancialSettings
+      summary: Tax rates and business-rule periods.
+      tags:
+        - Settings
+      x-permission: financial_settings.view
+      responses:
+        '200':
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateFinancialSettings
+      summary: Update tax rates and business-rule periods.
+      description:
+        Documents already issued keep the values they were issued with. The currency is not editable (P1). A stale
+        version answers 409 `conflict`.
+      tags:
+        - Settings
+      x-permission: financial_settings.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinancialSettingsUpdate'
+      responses:
+        '200':
+          description: The updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/sequences:
+    get:
+      operationId: listSequences
+      summary: The numbering rules of the documents.
+      description:
+        One per kind of document (quotes, projects...). They are created by the migration of the module that issues
+        the documents, so there is no create or delete.
+      tags:
+        - Settings
+      x-permission: sequences.view
+      responses:
+        '200':
+          description: The sequences, by name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SequenceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/sequences/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z_]+$'
+    patch:
+      operationId: updateSequence
+      summary: Change a numbering rule.
+      description:
+        Prefix, padding and period apply to the numbers issued from now on; existing numbers never change. To keep
+        numbers unique the period cannot change once a number was issued (422 `period` `locked`) and the counter can
+        only go up (422 `next_value` `too_low`). A stale version answers 409 `conflict`.
+      tags:
+        - Settings
+      x-permission: sequences.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SequenceUpdate'
+      responses:
+        '200':
+          description: The updated sequence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sequence'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
 components:
   securitySchemes:
     bearerAuth:
@@ -1238,7 +1518,7 @@ components:
           type: string
           description:
             Stable code such as `required`, `invalid`, `too_short`, `too_long`, `taken`, `not_found`,
-            `out_of_range`, `current_password_incorrect`, `cycle` (a manager who reports to the user), `out_of_scope` (the
+            `out_of_range`, `too_large` and `unsupported_type` (an uploaded image), `locked` (a period that can no longer change), `too_low` (a counter that would go down), `current_password_incorrect`, `cycle` (a manager who reports to the user), `out_of_scope` (the
             user would end up outside the caller's data scope).
         message:
           type: string
@@ -1696,3 +1976,248 @@ components:
               type: string
               minLength: 1
               maxLength: 100
+    Branding:
+      type: object
+      required:
+        - trade_name
+        - logo_version
+      properties:
+        trade_name:
+          type: string
+          description: Empty until the company is configured.
+        logo_version:
+          type: string
+          nullable: true
+          description: Changes whenever the logo does; null without a logo. Use it to cache the image (`?v=`).
+    Company:
+      type: object
+      required:
+        - legal_name
+        - trade_name
+        - tax_id
+        - address
+        - phone
+        - email
+        - timezone
+        - logo_version
+        - created_at
+        - updated_at
+        - version
+      properties:
+        legal_name:
+          type: string
+        trade_name:
+          type: string
+        tax_id:
+          type: string
+          description: NIT.
+        address:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        timezone:
+          type: string
+          description: IANA time zone. Document numbers change period at midnight of this zone.
+          example: America/Guatemala
+        logo_version:
+          type: string
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    CompanyUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - legal_name
+            - trade_name
+            - tax_id
+            - timezone
+          properties:
+            legal_name:
+              type: string
+              minLength: 1
+              maxLength: 190
+            trade_name:
+              type: string
+              minLength: 1
+              maxLength: 190
+            tax_id:
+              type: string
+              minLength: 1
+              maxLength: 30
+            address:
+              type: string
+              nullable: true
+              maxLength: 255
+            phone:
+              type: string
+              nullable: true
+              maxLength: 40
+            email:
+              type: string
+              format: email
+              nullable: true
+              maxLength: 190
+            timezone:
+              type: string
+    Rate:
+      type: string
+      pattern: '^0\.\d{5}$'
+      description: A rate from 0 up to (not including) 1, as a string so no float is involved. "0.12000" is 12 %.
+    FinancialSettings:
+      type: object
+      required:
+        - currency_code
+        - vat_rate
+        - income_tax_rate
+        - stale_cost_days
+        - quote_validity_days
+        - created_at
+        - updated_at
+        - version
+      properties:
+        currency_code:
+          type: string
+          example: GTQ
+          description: Read-only (P1).
+        vat_rate:
+          $ref: '#/components/schemas/Rate'
+        income_tax_rate:
+          $ref: '#/components/schemas/Rate'
+        stale_cost_days:
+          type: integer
+          description: Days after which a product's cost counts as out of date.
+        quote_validity_days:
+          type: integer
+          description: Days a quote stays valid.
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    FinancialSettingsUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - vat_rate
+            - income_tax_rate
+            - stale_cost_days
+            - quote_validity_days
+          properties:
+            vat_rate:
+              type: string
+              description: Up to five decimals, from "0" to "0.99999".
+              example: '0.12'
+            income_tax_rate:
+              type: string
+              description: Up to five decimals, from "0" to "0.99999".
+              example: '0.03'
+            stale_cost_days:
+              type: integer
+              minimum: 1
+              maximum: 3650
+            quote_validity_days:
+              type: integer
+              minimum: 1
+              maximum: 365
+    SequencePeriod:
+      type: string
+      enum:
+        - none
+        - year
+        - month
+      description:
+        When the counter starts again at 1. `year` writes `2026`, `month` writes `2610` (October 2026) in the
+        number, for example `COT-2610-0001`.
+    Sequence:
+      type: object
+      required:
+        - code
+        - name
+        - prefix
+        - padding
+        - period
+        - next_value
+        - period_locked
+        - example
+        - updated_at
+        - version
+      properties:
+        code:
+          type: string
+          example: quote
+        name:
+          type: string
+        prefix:
+          type: string
+        padding:
+          type: integer
+          description: Minimum digits of the counter, filled with zeros.
+        period:
+          $ref: '#/components/schemas/SequencePeriod'
+        next_value:
+          type: integer
+          description:
+            The counter as stored. When the period has rolled over since the last number, the next document
+            starts again at 1 (see `example`).
+        period_locked:
+          type: boolean
+          description: True once a number was issued; the period can no longer change.
+        example:
+          type: string
+          description: The number the next document will get, calculated by the server and not reserved.
+          example: COT-2610-0001
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    SequenceList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sequence'
+    SequenceUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - prefix
+            - padding
+            - period
+            - next_value
+          properties:
+            prefix:
+              type: string
+              minLength: 1
+              maxLength: 10
+              description: Letters and digits; lower case is stored in upper case.
+            padding:
+              type: integer
+              minimum: 1
+              maximum: 10
+            period:
+              $ref: '#/components/schemas/SequencePeriod'
+            next_value:
+              type: integer
+              minimum: 1
+              description: Cannot be lower than the current counter.

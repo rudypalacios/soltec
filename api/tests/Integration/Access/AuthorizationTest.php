@@ -199,6 +199,8 @@ final class AuthorizationTest extends AccessTestCase
         $app = $this->app;
         $anonymousAllowed = [
             'GET /v1/health',
+            'GET /v1/branding',
+            'GET /v1/branding/logo',
             'POST /v1/auth/login',
             'POST /v1/auth/refresh',
             'POST /v1/auth/invitations/accept',
