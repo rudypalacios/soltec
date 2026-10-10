@@ -13,6 +13,7 @@ import {
 import { ApiError, type components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
@@ -101,6 +102,7 @@ export function DepartmentsPage() {
       actions.push({
         key: 'rename',
         label: 'Renombrar',
+        icon: ACTION_ICONS.rename,
         onSelect: () => setEditing(department),
       });
     }
@@ -108,6 +110,7 @@ export function DepartmentsPage() {
       actions.push({
         key: 'toggle',
         label: department.is_active ? 'Desactivar' : 'Reactivar',
+        icon: department.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
         tone: department.is_active ? 'danger' : undefined,
         onSelect: () => setPending({ department, activate: !department.is_active, open: true }),
       });

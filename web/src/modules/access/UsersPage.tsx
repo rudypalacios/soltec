@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, MenuItem, TextField, Typography } from '@mui/
 import type { components } from '@soltec/shared';
 import { useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
@@ -62,11 +63,17 @@ export function UsersPage() {
   const actionsFor = (user: User): RowAction[] => {
     const actions: RowAction[] = [];
     if (can('users', 'edit')) {
-      actions.push({ key: 'edit', label: 'Editar', to: `/usuarios/${user.id}/editar` });
+      actions.push({
+        key: 'edit',
+        label: 'Editar',
+        icon: ACTION_ICONS.edit,
+        to: `/usuarios/${user.id}/editar`,
+      });
       if (user.invitation_pending) {
         actions.push({
           key: 'invite',
           label: 'Reenviar invitación',
+          icon: ACTION_ICONS.resend,
           onSelect: () => void resendInvitation(user),
         });
       }
@@ -75,6 +82,7 @@ export function UsersPage() {
       actions.push({
         key: 'toggle',
         label: user.is_active ? 'Desactivar' : 'Reactivar',
+        icon: user.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
         tone: user.is_active ? 'danger' : undefined,
         onSelect: () => setPending({ user, activate: !user.is_active }),
       });
@@ -214,7 +222,7 @@ function RoleChips({ user }: { user: User }) {
 }
 
 const COLUMNS: DataColumn<User>[] = [
-  { id: 'name', header: 'Nombre', mobile: 'title', minWidth: 200, render: (user) => user.name },
+  { id: 'name', header: 'Nombre', mobile: 'title', minWidth: 160, render: (user) => user.name },
   { id: 'email', header: 'Correo', mobile: 'subtitle', render: (user) => user.email },
   {
     id: 'roles',
@@ -245,7 +253,6 @@ const COLUMNS: DataColumn<User>[] = [
     id: 'last_login',
     header: 'Último acceso',
     mobile: 'meta',
-    nowrap: true,
     render: (user) => formatMoment(user.last_login_at),
   },
 ];

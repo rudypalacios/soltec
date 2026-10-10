@@ -1,12 +1,14 @@
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { Button, IconButton, Menu, MenuItem } from '@mui/material';
-import { useState } from 'react';
+import { Button, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
+import { useState, type ReactElement } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
 /** What a row can do. A link (`to`) navigates; anything else runs `onSelect`. */
 export interface RowAction {
   key: string;
   label: string;
+  /** Next to the label, from `ACTION_ICONS`. It is decoration: the label says what the action does. */
+  icon?: ReactElement;
   to?: string;
   onSelect?: () => void;
   /** Marks an action that is hard to undo (deactivate): shown in the error colour. */
@@ -27,6 +29,7 @@ export function ActionButton({
     <Button
       size="small"
       color={action.tone === 'danger' ? 'error' : 'primary'}
+      startIcon={action.icon}
       aria-label={`${action.label}: ${rowName}`}
       sx={touch ? { minHeight: 44 } : undefined}
       {...(action.to ? { component: RouterLink, to: action.to } : { onClick: action.onSelect })}
@@ -53,7 +56,8 @@ export function ActionMenu({ actions, rowName }: { actions: RowAction[]; rowName
         {actions.map((action) =>
           action.to ? (
             <MenuItem key={action.key} component={RouterLink} to={action.to}>
-              {action.label}
+              {action.icon ? <ListItemIcon>{action.icon}</ListItemIcon> : null}
+              <ListItemText>{action.label}</ListItemText>
             </MenuItem>
           ) : (
             <MenuItem
@@ -64,7 +68,10 @@ export function ActionMenu({ actions, rowName }: { actions: RowAction[]; rowName
                 action.onSelect?.();
               }}
             >
-              {action.label}
+              {action.icon ? (
+                <ListItemIcon sx={{ color: 'inherit' }}>{action.icon}</ListItemIcon>
+              ) : null}
+              <ListItemText>{action.label}</ListItemText>
             </MenuItem>
           ),
         )}

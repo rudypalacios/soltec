@@ -3,6 +3,7 @@ import { Alert, Button, Chip, Snackbar } from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
@@ -84,10 +85,12 @@ export function RolesPage() {
   const canEdit = can('roles', 'edit');
 
   const actionsFor = (role: Role): RowAction[] => {
+    const editable = canEdit && !role.is_system;
     const actions: RowAction[] = [
       {
         key: 'open',
-        label: canEdit && !role.is_system ? 'Editar' : 'Ver',
+        label: editable ? 'Editar' : 'Ver',
+        icon: editable ? ACTION_ICONS.edit : ACTION_ICONS.view,
         to: `/perfiles/${role.id}`,
       },
     ];
@@ -95,6 +98,7 @@ export function RolesPage() {
       actions.push({
         key: 'toggle',
         label: role.is_active ? 'Desactivar' : 'Reactivar',
+        icon: role.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
         tone: role.is_active ? 'danger' : undefined,
         onSelect: () => setPending({ role, activate: !role.is_active }),
       });
