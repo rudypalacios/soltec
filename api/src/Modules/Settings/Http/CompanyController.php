@@ -7,7 +7,7 @@ namespace Soltec\Modules\Settings\Http;
 use DateTimeZone;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\StreamInterface;
+use Soltec\Kernel\Http\BodyReader;
 use Soltec\Kernel\Http\Input;
 use Soltec\Kernel\Http\Json;
 use Soltec\Kernel\Http\ValidationException;
@@ -69,19 +69,9 @@ final class CompanyController
         if (($body->getSize() ?? 0) > LogoImage::MAX_BYTES) {
             throw ValidationException::field('logo', 'too_large');
         }
-        $company = $this->company->setLogo(ActorContext::fromRequest($request), $this->readUpload($body));
+        $company = $this->company->setLogo(ActorContext::fromRequest($request), BodyReader::read($body, LogoImage::MAX_BYTES));
 
         return Json::write($response, $company->toApi());
-    }
-
-    /** At most one byte over the limit is read, enough for the validation to tell the upload is too large. */
-    private function readUpload(StreamInterface $body): string
-    {
-        if ($body->isSeekable()) {
-            $body->rewind();
-        }
-
-        return $body->read(LogoImage::MAX_BYTES + 1);
     }
 
     public function deleteLogo(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
