@@ -14,6 +14,8 @@ const PROBLEM_MESSAGES: Record<string, string> = {
   conflict: 'Otra persona cambió este registro. Recarga la página e inténtalo de nuevo.',
   last_admin: 'Debe quedar al menos un administrador activo.',
   system_role_immutable: 'Los perfiles de sistema no se pueden modificar.',
+  department_in_use:
+    'No se puede desactivar: el departamento tiene usuarios activos. Asígnalos a otro departamento primero.',
   link_invalid:
     'Este enlace ya no sirve: ya se usó o se envió uno más reciente. Pide que te lo envíen de nuevo.',
   link_expired: 'Este enlace venció. Pide que te lo envíen de nuevo.',
@@ -36,6 +38,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   not_found: 'No existe o no está disponible.',
   out_of_range: 'Está fuera del rango permitido.',
   current_password_incorrect: 'La contraseña actual no es correcta.',
+  cycle: 'Esa persona depende de este usuario: no puede ser su jefe.',
 };
 
 /**

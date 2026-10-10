@@ -14,16 +14,25 @@ use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Uuid;
+use Soltec\Modules\Access\Domain\NamedRef;
+use Soltec\Modules\Access\Domain\UserFilter;
 use Soltec\Modules\Access\Domain\UserRecord;
 
-/** Reads and writes `users` and `user_roles`. Ids cross the database as hex (see Uuid). */
+/**
+ * Reads and writes `users` and `user_roles`, with the department and the direct manager of each user. Ids cross the
+ * database as hex (see Uuid).
+ */
 final class UserRepository
 {
     public const RESOURCE = 'users';
 
     private const COLUMNS = 'LOWER(HEX(u.id)) AS id, u.type, u.name, u.email, u.password_hash, '
         . 'u.password_changed_at, u.must_change_password, u.failed_attempts, u.locked_until, u.last_login_at, '
-        . 'u.created_at, u.updated_at, u.version, u.deleted_at';
+        . 'u.created_at, u.updated_at, u.version, u.deleted_at, '
+        . 'LOWER(HEX(u.department_id)) AS department_id, d.name AS department_name, '
+        . 'LOWER(HEX(u.manager_id)) AS manager_id, m.name AS manager_name';
+    private const FROM = 'users u LEFT JOIN departments d ON d.id = u.department_id '
+        . 'LEFT JOIN users m ON m.id = u.manager_id';
 
     public function __construct(private readonly Connection $connection)
     {
@@ -32,9 +41,7 @@ final class UserRepository
     /** @param CurrentUser|null $scope when given, a user outside the caller's data scope is not found */
     public function find(string $id, ?CurrentUser $scope = null): ?UserRecord
     {
-        $query = $this->connection->createQueryBuilder()
-            ->select(self::COLUMNS)
-            ->from('users', 'u')
+        $query = $this->withNames($this->connection->createQueryBuilder()->select(self::COLUMNS))
             ->where('u.id = UNHEX(:id)')
             ->setParameter('id', Uuid::toHex($id));
         if ($scope !== null) {
@@ -49,39 +56,23 @@ final class UserRepository
     public function findActiveByEmail(string $email): ?UserRecord
     {
         $row = $this->connection->fetchAssociative(
-            'SELECT ' . self::COLUMNS . ' FROM users u WHERE u.active_email = :email',
+            'SELECT ' . self::COLUMNS . ' FROM ' . self::FROM . ' WHERE u.active_email = :email',
             ['email' => $email],
         );
 
         return $row === false ? null : $this->withRoles($this->hydrate($row));
     }
 
-    /**
-     * @param string $status active, inactive or all
-     * @return array{records: list<UserRecord>, total: int}
-     */
-    public function search(
-        CurrentUser $scope,
-        ?string $text,
-        string $status,
-        ?string $type,
-        ?string $roleId,
-        Pagination $page,
-    ): array {
-        $filtered = fn (QueryBuilder $query): QueryBuilder => $this->applyFilters(
-            $query,
-            $scope,
-            $text,
-            $status,
-            $type,
-            $roleId,
-        );
+    /** @return array{records: list<UserRecord>, total: int} */
+    public function search(CurrentUser $scope, UserFilter $filter, Pagination $page): array
+    {
+        $filtered = fn (QueryBuilder $query): QueryBuilder => $this->applyFilters($query, $scope, $filter);
 
         $total = $filtered($this->connection->createQueryBuilder()->select('COUNT(*)')->from('users', 'u'))
             ->executeQuery()
             ->fetchOne();
 
-        $rows = $filtered($this->connection->createQueryBuilder()->select(self::COLUMNS)->from('users', 'u'))
+        $rows = $filtered($this->withNames($this->connection->createQueryBuilder()->select(self::COLUMNS)))
             ->orderBy('u.name')
             ->addOrderBy('u.id')
             ->setFirstResult($page->offset())
@@ -104,12 +95,17 @@ final class UserRepository
         ?string $passwordHash,
         bool $mustChangePassword,
         DateTimeImmutable $now,
+        ?string $departmentId = null,
+        ?string $managerId = null,
     ): void {
         $this->connection->executeStatement(
             'INSERT INTO users (id, type, name, email, password_hash, password_changed_at, must_change_password, '
-            . 'created_at, updated_at) '
-            . 'VALUES (UNHEX(:id), :type, :name, :email, :hash, :changed_at, :must_change, :now, :now)',
+            . 'department_id, manager_id, created_at, updated_at) '
+            . 'VALUES (UNHEX(:id), :type, :name, :email, :hash, :changed_at, :must_change, '
+            . 'UNHEX(:department_id), UNHEX(:manager_id), :now, :now)',
             [
+                'department_id' => self::hexOrNull($departmentId),
+                'manager_id' => self::hexOrNull($managerId),
                 'id' => Uuid::toHex($id),
                 'type' => $type,
                 'name' => $name,
@@ -132,19 +128,85 @@ final class UserRepository
     }
 
     /** @return bool false when the version is stale or the user does not exist */
-    public function updateProfile(string $id, int $version, string $name, string $email, DateTimeImmutable $now): bool
-    {
+    public function updateProfile(
+        string $id,
+        int $version,
+        string $name,
+        string $email,
+        ?string $departmentId,
+        ?string $managerId,
+        DateTimeImmutable $now,
+    ): bool {
         return $this->connection->executeStatement(
-            'UPDATE users SET name = :name, email = :email, updated_at = :now, version = version + 1 '
+            'UPDATE users SET name = :name, email = :email, department_id = UNHEX(:department_id), '
+            . 'manager_id = UNHEX(:manager_id), updated_at = :now, version = version + 1 '
             . 'WHERE id = UNHEX(:id) AND version = :version',
             [
                 'id' => Uuid::toHex($id),
                 'version' => $version,
                 'name' => $name,
                 'email' => $email,
+                'department_id' => self::hexOrNull($departmentId),
+                'manager_id' => self::hexOrNull($managerId),
                 'now' => Timestamps::toDb($now),
             ],
         ) === 1;
+    }
+
+    /**
+     * The management hierarchy of every internal user, active or not, in the shape Team expects.
+     *
+     * @return list<array{id: string, manager_id: string|null, department_id: string|null}>
+     */
+    public function hierarchy(): array
+    {
+        return array_map(
+            static fn (array $row): array => [
+                'id' => Uuid::fromHex(Row::string($row, 'id')),
+                'manager_id' => self::idOrNull($row, 'manager_id'),
+                'department_id' => self::idOrNull($row, 'department_id'),
+            ],
+            $this->connection->fetchAllAssociative(
+                'SELECT LOWER(HEX(id)) AS id, LOWER(HEX(manager_id)) AS manager_id, '
+                . "LOWER(HEX(department_id)) AS department_id FROM users WHERE type = 'internal'",
+            ),
+        );
+    }
+
+    /**
+     * Whether the department exists and is active. The shared lock keeps it from being deactivated until the
+     * transaction that assigns it ends, so a department never ends up inactive with active members.
+     */
+    public function departmentIsActive(string $departmentId): bool
+    {
+        return $this->connection->fetchOne(
+            'SELECT 1 FROM departments WHERE id = UNHEX(:id) AND deleted_at IS NULL LOCK IN SHARE MODE',
+            ['id' => Uuid::toHex($departmentId)],
+        ) !== false;
+    }
+
+    /**
+     * A row of the management hierarchy, locked until the end of the transaction so two changes of manager cannot
+     * build a cycle between them, and the manager cannot be deactivated while they are being assigned.
+     *
+     * @return array{type: string, is_active: bool, manager_id: string|null}|null
+     */
+    public function lockHierarchyNode(string $id): ?array
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT type, deleted_at, LOWER(HEX(manager_id)) AS manager_id FROM users WHERE id = UNHEX(:id) FOR UPDATE',
+            ['id' => Uuid::toHex($id)],
+        );
+        if ($row === false) {
+            return null;
+        }
+        $managerHex = Row::nullableString($row, 'manager_id');
+
+        return [
+            'type' => Row::string($row, 'type'),
+            'is_active' => Row::nullableString($row, 'deleted_at') === null,
+            'manager_id' => $managerHex === null ? null : Uuid::fromHex($managerHex),
+        ];
     }
 
     /** Deactivates (a date) or reactivates (null); a reactivated account starts without lock or failed attempts. */
@@ -258,35 +320,70 @@ final class UserRepository
         ) > 0;
     }
 
-    private function applyFilters(
-        QueryBuilder $query,
-        CurrentUser $scope,
-        ?string $text,
-        string $status,
-        ?string $type,
-        ?string $roleId,
-    ): QueryBuilder {
+    private function applyFilters(QueryBuilder $query, CurrentUser $scope, UserFilter $filter): QueryBuilder
+    {
         ScopedQuery::restrict($query, $scope, self::RESOURCE, 'u.id');
-        if ($status === 'active') {
+        if ($filter->status === 'active') {
             $query->andWhere('u.deleted_at IS NULL');
-        } elseif ($status === 'inactive') {
+        } elseif ($filter->status === 'inactive') {
             $query->andWhere('u.deleted_at IS NOT NULL');
         }
-        if ($text !== null && $text !== '') {
+        if ($filter->text !== null && $filter->text !== '') {
             $query
                 ->andWhere('(u.name LIKE :text OR u.email LIKE :text)')
-                ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
+                ->setParameter('text', '%' . addcslashes($filter->text, '%_\\') . '%');
         }
-        if ($type !== null) {
-            $query->andWhere('u.type = :type')->setParameter('type', $type);
+        if ($filter->type !== null) {
+            $query->andWhere('u.type = :type')->setParameter('type', $filter->type);
         }
-        if ($roleId !== null) {
+        if ($filter->roleId !== null) {
             $query
                 ->andWhere('EXISTS (SELECT 1 FROM user_roles f WHERE f.user_id = u.id AND f.role_id = UNHEX(:role_id))')
-                ->setParameter('role_id', Uuid::toHex($roleId));
+                ->setParameter('role_id', Uuid::toHex($filter->roleId));
+        }
+        if ($filter->departmentId !== null) {
+            $query->andWhere('u.department_id = UNHEX(:department_id)')
+                ->setParameter('department_id', Uuid::toHex($filter->departmentId));
+        }
+        if ($filter->excludeIds !== []) {
+            $placeholders = [];
+            foreach ($filter->excludeIds as $index => $id) {
+                $placeholders[] = sprintf('UNHEX(:exclude_%d)', $index);
+                $query->setParameter('exclude_' . $index, Uuid::toHex($id));
+            }
+            $query->andWhere(sprintf('u.id NOT IN (%s)', implode(', ', $placeholders)));
         }
 
         return $query;
+    }
+
+    private function withNames(QueryBuilder $query): QueryBuilder
+    {
+        return $query
+            ->from('users', 'u')
+            ->leftJoin('u', 'departments', 'd', 'd.id = u.department_id')
+            ->leftJoin('u', 'users', 'm', 'm.id = u.manager_id');
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function idOrNull(array $row, string $column): ?string
+    {
+        $hex = Row::nullableString($row, $column);
+
+        return $hex === null ? null : Uuid::fromHex($hex);
+    }
+
+    private static function hexOrNull(?string $id): ?string
+    {
+        return $id === null ? null : Uuid::toHex($id);
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function ref(array $row, string $prefix): ?NamedRef
+    {
+        $hex = Row::nullableString($row, $prefix . '_id');
+
+        return $hex === null ? null : new NamedRef(Uuid::fromHex($hex), Row::string($row, $prefix . '_name'));
     }
 
     /** @param array<string, mixed> $row */
@@ -307,6 +404,8 @@ final class UserRepository
             Row::date($row, 'updated_at'),
             Row::int($row, 'version'),
             Row::nullableDate($row, 'deleted_at'),
+            self::ref($row, 'department'),
+            self::ref($row, 'manager'),
         );
     }
 

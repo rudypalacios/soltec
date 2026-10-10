@@ -147,6 +147,31 @@ abstract class AccessTestCase extends IntegrationTestCase
         return $id;
     }
 
+    protected function createDepartment(string $name, bool $active = true): string
+    {
+        $id = Uuid::v7();
+        $this->connection->executeStatement(
+            'INSERT INTO departments (id, name, created_at, updated_at, deleted_at) '
+            . 'VALUES (UNHEX(:id), :name, NOW(3), NOW(3), :deleted_at)',
+            ['id' => Uuid::toHex($id), 'name' => $name, 'deleted_at' => $active ? null : '2026-01-01 00:00:00.000'],
+        );
+
+        return $id;
+    }
+
+    /** Puts a user in a department and under a manager, straight in the database. */
+    protected function placeUser(string $userId, ?string $departmentId, ?string $managerId = null): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE users SET department_id = UNHEX(:department), manager_id = UNHEX(:manager) WHERE id = UNHEX(:id)',
+            [
+                'id' => Uuid::toHex($userId),
+                'department' => $departmentId === null ? null : Uuid::toHex($departmentId),
+                'manager' => $managerId === null ? null : Uuid::toHex($managerId),
+            ],
+        );
+    }
+
     protected function adminRoleId(): string
     {
         return $this->service(RoleRepository::class)->findIdByCode('admin') ?? self::fail('The admin role is missing.');
@@ -298,13 +323,16 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 8;
+        ) === 12;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
     private function clearData(): void
     {
-        foreach (['audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'users'] as $table) {
+        // The hierarchy points users at users: unlink it before deleting them.
+        $this->connection->executeStatement('UPDATE users SET manager_id = NULL');
+        $tables = ['audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'users', 'departments'];
+        foreach ($tables as $table) {
             $this->connection->executeStatement('DELETE FROM ' . $table);
         }
         $custom = 'role_id IN (SELECT id FROM roles WHERE is_system = 0)';

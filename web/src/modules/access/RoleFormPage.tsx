@@ -81,7 +81,7 @@ function matrixOf(
   }
   const scopes: Record<string, MatrixScope> = {};
   for (const [resource, scope] of Object.entries(role.scopes)) {
-    if (scope === 'own' || scope === 'all') {
+    if (scope === 'own' || scope === 'team' || scope === 'all') {
       scopes[resource] = scope;
     }
   }
@@ -194,7 +194,8 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
         />
         <Typography variant="body2" color="text.secondary">
           «Solo lo propio» limita a cada persona a sus propios registros (en Usuarios, a su propia
-          cuenta); «Todo» le da acceso a los de todos.
+          cuenta). «Su equipo» suma los de quienes dependen de ella, directa o indirectamente, y los
+          de su departamento. «Todo» le da acceso a los de todos.
         </Typography>
         <Alert severity="warning" variant="outlined">
           Dar permisos sobre «Usuarios» o «Perfiles» equivale casi a ser administrador: quien edite

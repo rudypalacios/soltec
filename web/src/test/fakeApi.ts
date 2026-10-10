@@ -15,7 +15,11 @@ export const ME = {
   type: 'internal' as const,
   name: 'Ana Pérez',
   email: 'ana@example.com',
-  roles: [{ id: '0192f1c2-7d3a-7a11-8f2e-0000000000a1', code: 'admin', name: 'Administrador' }],
+  roles: [{ id: '0192f1c2-7d3a-7a11-8f2e-0000000000a1', code: 'admin', name: 'Administrador' }] as {
+    id: string;
+    code: string | null;
+    name: string;
+  }[],
   permissions: {
     users: ['view', 'create', 'edit', 'deactivate'],
     roles: ['view', 'create', 'edit', 'deactivate'],

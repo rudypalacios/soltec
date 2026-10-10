@@ -19,15 +19,19 @@ final class ProblemResponder
     {
     }
 
-    /** @param list<array{field: string, code: string}>|null $errors the wrong fields of a validation failure */
+    /**
+     * @param list<array{field: string, code: string}>|null $errors the wrong fields of a validation failure
+     * @param array<string, int|string|bool> $extensions extra members (RFC 9457), such as a count the client shows
+     */
     public function respond(
         int $status,
         string $code,
         string $title,
         ?string $detail = null,
         ?array $errors = null,
+        array $extensions = [],
     ): ResponseInterface {
-        $payload = ['type' => 'about:blank', 'title' => $title, 'status' => $status, 'code' => $code];
+        $payload = ['type' => 'about:blank', 'title' => $title, 'status' => $status, 'code' => $code] + $extensions;
         if ($detail !== null) {
             $payload['detail'] = $detail;
         }

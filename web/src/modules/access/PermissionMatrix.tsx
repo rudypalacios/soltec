@@ -21,7 +21,7 @@ export interface CatalogEntry {
   name: string;
 }
 
-export type MatrixScope = 'own' | 'all';
+export type MatrixScope = 'own' | 'team' | 'all';
 
 export interface MatrixValue {
   /** Granted actions by resource code. */
@@ -40,6 +40,7 @@ interface PermissionMatrixProps {
 
 const SCOPE_OPTIONS: { value: MatrixScope; label: string }[] = [
   { value: 'own', label: 'Solo lo propio' },
+  { value: 'team', label: 'Su equipo' },
   { value: 'all', label: 'Todo' },
 ];
 

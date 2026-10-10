@@ -46,12 +46,12 @@ Usuarios internos y externos (clientes de la empresa, solo lectura). El tipo dec
 | `failed_attempts` | `TINYINT UNSIGNED` | no | Contador atómico: `UPDATE … SET failed_attempts = failed_attempts + 1` |
 | `locked_until` | `DATETIME(3)` | sí | Bloqueo tras los intentos permitidos; al vencer, el contador parte de cero |
 | `last_login_at` | `DATETIME(3)` | sí | |
-| `department_id` | `BINARY(16)` | sí | FK `departments`. Obligatorio para internos (regla en el código) |
-| `manager_id` | `BINARY(16)` | sí | FK `users` (jefe directo). No puede ser el propio usuario ni formar un ciclo (regla en el código) |
+| `department_id` | `BINARY(16)` | sí | FK `departments`. Solo internos. Opcional en la API (el primer administrador no tiene); el formulario web lo pide |
+| `manager_id` | `BINARY(16)` | sí | FK `users` (jefe directo). Solo internos. Otro usuario interno activo, sin formar un ciclo (regla en el código) |
 | `client_id` | `BINARY(16)` | sí | FK `clients` (Hito 2). Obligatorio para externos: es su alcance de datos |
 | `contact_id` | `BINARY(16)` | sí | FK `contacts` (Hito 2). Persona del cliente a la que pertenece la cuenta |
 
-Las FK a `clients` y `contacts` se crean con las migraciones del Hito 2; hasta entonces las columnas existen sin llave.
+Las FK a `clients` y `contacts` se crean con las migraciones del Hito 2; hasta entonces las columnas existen sin llave. La de `departments` llegó con la rebanada 1.2.
 Índices: `uq_users_active_email (active_email)`, `idx_users_department (department_id)`, `idx_users_manager (manager_id)`, `idx_users_client (client_id)`, `idx_users_updated (updated_at)`.
 
 ### `roles`
@@ -138,7 +138,7 @@ Tokens de un solo uso de los enlaces del correo: invitación de cualquier usuari
 |---|---|---|
 | `name` | `VARCHAR(100)` | Único entre activos (`active_name`) |
 
-El jefe directo vive en `users.manager_id`; el departamento no tiene jefe propio. **Equipo** de un usuario (alcance `team`): él mismo, sus subordinados directos e indirectos por `manager_id` y los miembros de su departamento. *(Definición propuesta, por confirmar.)*
+El jefe directo vive en `users.manager_id`; el departamento no tiene jefe propio. **Equipo** de un usuario (alcance `team`): él mismo, sus subordinados directos e indirectos por `manager_id` y los miembros de su departamento (confirmado en la rebanada 1.2). Un departamento con usuarios activos no se desactiva (`409 department_in_use`, con `active_user_count`).
 
 ---
 

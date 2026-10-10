@@ -155,6 +155,17 @@ final class Input
         return count(array_unique($ids)) === count($ids) ? $ids : $this->reject($field, 'invalid');
     }
 
+    /** A UUID, or null when absent, null or empty (for optional references and filters). */
+    public function nullableUuid(string $field): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_string($value) && Uuid::isValid($value) ? $value : $this->reject($field, 'invalid');
+    }
+
     /** The `version` the client read; at least 1. */
     public function version(string $field = 'version'): ?int
     {

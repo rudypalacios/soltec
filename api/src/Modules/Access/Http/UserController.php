@@ -9,10 +9,11 @@ use Psr\Http\Message\ServerRequestInterface;
 use Soltec\Kernel\Clock;
 use Soltec\Kernel\Http\Input;
 use Soltec\Kernel\Http\Json;
-use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Application\CredentialService;
+use Soltec\Modules\Access\Application\OrganizationChange;
 use Soltec\Modules\Access\Application\UserService;
+use Soltec\Modules\Access\Domain\UserFilter;
 use Soltec\Modules\Access\Domain\UserRecord;
 
 /** /v1/users */
@@ -33,19 +34,16 @@ final class UserController
         $text = $query->nullableText('q', 100);
         $status = $query->choice('status', ['active', 'inactive', 'all'], 'active');
         $type = $query->choice('type', ['internal', 'external'], '');
-        $roleParam = $request->getQueryParams()['role_id'] ?? null;
-        if ($roleParam !== null && (!is_string($roleParam) || !Uuid::isValid($roleParam))) {
-            $query->fail('role_id', 'invalid');
-        }
+        $roleId = $query->nullableUuid('role_id');
+        $departmentId = $query->nullableUuid('department_id');
+        $eligibleManagerFor = $query->nullableUuid('eligible_manager_for');
         $page = $query->pagination();
         $query->done();
 
         $result = $this->users->list(
             $this->caller($request),
-            $text,
-            (string) $status,
-            $type === '' ? null : $type,
-            is_string($roleParam) ? $roleParam : null,
+            new UserFilter($text, (string) $status, $type === '' ? null : $type, $roleId, $departmentId),
+            $eligibleManagerFor,
             $page,
         );
 
@@ -61,6 +59,8 @@ final class UserController
         $name = $input->text('name', 1, 150);
         $email = $input->email('email');
         $roleIds = $input->uuidList('role_ids');
+        $departmentId = $input->nullableUuid('department_id');
+        $managerId = $input->nullableUuid('manager_id');
         $input->done();
 
         $created = $this->users->create(
@@ -69,6 +69,8 @@ final class UserController
             (string) $name,
             (string) $email,
             $roleIds ?? [],
+            $departmentId,
+            $managerId,
         );
 
         return Json::write(
@@ -107,6 +109,12 @@ final class UserController
         $name = $input->has('name') ? $input->text('name', 1, 150) : null;
         $email = $input->has('email') ? $input->email('email') : null;
         $roleIds = $input->has('role_ids') ? $input->uuidList('role_ids') : null;
+        $organization = new OrganizationChange(
+            $input->has('department_id'),
+            $input->nullableUuid('department_id'),
+            $input->has('manager_id'),
+            $input->nullableUuid('manager_id'),
+        );
         $input->done();
 
         $user = $this->users->update(
@@ -117,6 +125,7 @@ final class UserController
             $name,
             $email,
             $roleIds,
+            $organization,
         );
 
         return Json::write($response, $this->present($user));

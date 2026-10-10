@@ -10,16 +10,18 @@ use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Kernel\Auth\CurrentUserLoader;
 use Soltec\Kernel\Auth\DataScope;
 use Soltec\Kernel\Auth\RoleRef;
+use Soltec\Kernel\Auth\Team;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Uuid;
 
 /**
  * Builds the CurrentUser from the database on every request: roles, then the union of their permissions and the
- * widest scope per resource. A deactivated user, a revoked device or an inactive role grants nothing.
+ * widest scope per resource, and the team when some scope is `team`. A deactivated user, a revoked device or an
+ * inactive role grants nothing.
  */
 final class PermissionLoader implements CurrentUserLoader
 {
-    public function __construct(private readonly Connection $connection)
+    public function __construct(private readonly Connection $connection, private readonly UserRepository $users)
     {
     }
 
@@ -63,6 +65,8 @@ final class PermissionLoader implements CurrentUserLoader
             );
         }
 
+        $scopes = $this->scopes($roleHexIds);
+
         return new CurrentUser(
             $userId,
             $deviceId,
@@ -71,8 +75,9 @@ final class PermissionLoader implements CurrentUserLoader
             Row::string($user, 'email'),
             $roles,
             $this->permissions($roleHexIds),
-            $this->scopes($roleHexIds),
+            $scopes,
             $restricted,
+            in_array(DataScope::Team, $scopes, true) ? Team::members($userId, $this->users->hierarchy()) : [],
         );
     }
 

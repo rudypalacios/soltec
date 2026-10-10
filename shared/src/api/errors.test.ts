@@ -20,6 +20,13 @@ describe('toApiError', () => {
     expect(error.fieldErrors).toEqual({ email: 'taken', 'device.platform': 'invalid' });
   });
 
+  it('keeps the extra members of the problem for the codes that carry them', () => {
+    const error = toApiError(response(409), { code: 'department_in_use', active_user_count: 3 });
+
+    expect(error.details.active_user_count).toBe(3);
+    expect(toApiError(response(502), 'not json').details).toEqual({});
+  });
+
   it('turns a body that is not a problem (a proxy error page) into "unexpected"', () => {
     expect(toApiError(response(502), '<html>Bad gateway</html>').code).toBe('unexpected');
     expect(toApiError(response(500), undefined).code).toBe('unexpected');

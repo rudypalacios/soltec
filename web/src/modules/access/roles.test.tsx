@@ -212,6 +212,27 @@ describe('creating a role', () => {
     expect(created?.body).toMatchObject({ scopes: { users: 'all' } });
   });
 
+  it('offers the team scope', async () => {
+    let created: Call | undefined;
+    const { session } = createTestSession({
+      ...catalogs,
+      'POST /v1/roles': (call) => {
+        created = call;
+        return Response.json({ ...SALES }, { status: 201 });
+      },
+    });
+    renderApp(session, '/perfiles/nuevo');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/^Nombre/), 'Supervisión');
+    await user.click(screen.getByRole('checkbox', { name: 'Ver Usuarios' }));
+    await user.click(screen.getByRole('combobox', { name: 'Alcance de Usuarios' }));
+    await user.click(await screen.findByRole('option', { name: 'Su equipo' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(created?.body).toMatchObject({ scopes: { users: 'team' } }));
+  });
+
   it('cannot choose the scope of a module with no permission', async () => {
     const { session } = createTestSession(catalogs);
     renderApp(session, '/perfiles/nuevo');

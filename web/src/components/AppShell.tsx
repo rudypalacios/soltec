@@ -3,6 +3,7 @@ import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
 import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
+import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import {
   AppBar,
@@ -50,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/perfiles',
     icon: <ManageAccountsOutlined />,
     permission: { resource: 'roles', action: 'view' },
+  },
+  {
+    label: 'Departamentos',
+    path: '/departamentos',
+    icon: <AccountTreeOutlined />,
+    permission: { resource: 'departments', action: 'view' },
   },
 ];
 

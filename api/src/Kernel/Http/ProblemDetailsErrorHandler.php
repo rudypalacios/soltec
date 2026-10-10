@@ -63,6 +63,7 @@ final class ProblemDetailsErrorHandler implements ErrorHandlerInterface
             $exception->title,
             $exception->detail,
             $exception instanceof ValidationException ? $exception->errors : null,
+            $exception->extensions,
         );
 
         return $exception->status === 401 ? $response->withHeader('WWW-Authenticate', 'Bearer') : $response;

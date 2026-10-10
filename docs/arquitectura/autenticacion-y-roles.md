@@ -71,10 +71,12 @@ Si la contraseña venció o `must_change_password` es verdadero (cuenta creada o
 ## 7. Permisos y alcance
 
 - **Permiso**: par (recurso, acción) en `role_permissions`. Acciones: `view`, `create`, `edit`, `deactivate` y las que haga falta (`approve`…), como datos. Un usuario con varios roles tiene la unión de sus permisos.
-- **Alcance** por (rol, recurso) en `role_scopes`; sin fila, `own`. *Rebanada 1.1: solo se aceptan `own` y `all`; `team` llega con los departamentos (1.2) y `client` con el portal. Un alcance guardado que aún no se implementa no abre datos: no coincide con nada.* Con varios roles gana el más amplio: `all` > `team` > `own`. `client` solo existe para roles externos y es el único alcance que pueden tener.
+- **Alcance** por (rol, recurso) en `role_scopes`; sin fila, `own`. *Desde la rebanada 1.2 se aceptan `own`, `team` y `all`; `client` llega con el portal. Un alcance guardado que aún no se implementa no abre datos: no coincide con nada.* Con varios roles gana el más amplio: `all` > `team` > `own`. `client` solo existe para roles externos y es el único alcance que pueden tener.
 - **Aplicación**: cada repositorio declara la columna que indica a quién pertenece cada fila (`clients.seller_id`, `tasks.assignee_id`, `tickets.client_id`…). `ScopedQuery` agrega el filtro: `own` → esa columna = usuario; `team` → pertenece a alguien del equipo; `all` → sin filtro; `client` → la columna de cliente = `users.client_id`. Nadie escribe ese filtro a mano.
-- **Equipo**: el usuario, sus subordinados directos e indirectos (`manager_id`) y los miembros de su departamento (definición por confirmar). Se calcula una vez por petición.
+- **Equipo**: el usuario, sus subordinados directos e indirectos (`manager_id`) y los miembros de su departamento. Solo existe para usuarios internos: un usuario externo no tiene departamento ni jefe. `PermissionLoader` lo calcula una vez por petición, y solo si algún alcance es `team`: lee la jerarquía de los usuarios internos (activos o no, para que un jefe desactivado no corte la cadena) y la recorre en PHP con `Team::members` (MySQL 5.7 no tiene CTE recursivo). `ScopedQuery` filtra con `IN (…)`.
 - Para operaciones sobre un registro puntual, el alcance también se comprueba: un id fuera del alcance responde 404, no 403, para no revelar que existe.
+- **Nadie deja un registro fuera de su propio alcance** al crearlo o moverlo, porque lo perdería en ese momento. En usuarios: con `team`, el usuario debe quedar en el departamento de quien llama o bajo alguien de su equipo (`422 out_of_scope`); con `own` no se crea a nadie (403).
+- **En su propia cuenta**, quien no es administrador solo cambia su nombre (la contraseña tiene su ruta). Correo, perfiles, departamento y jefe son de solo lectura (403): cambiarse de departamento le abriría el equipo de otro.
 
 ## 7.1 Protección contra quedarse fuera
 
@@ -127,7 +129,7 @@ Cada paso con sus pruebas y su parte del contrato OpenAPI. La rebanada 1.1 (acce
 
 | Tema | Supuesto |
 |---|---|
-| Definición de **equipo** | El usuario, sus subordinados por jefe directo y su departamento |
+| Definición de **equipo** | Confirmada en la rebanada 1.2: el usuario, sus subordinados por jefe directo y su departamento |
 | **Roles de negocio** (P5) | Los crea el administrador; solo se siembran `admin` y `external_client` |
 | **Ventana de gracia** del refresh entre pestañas | 10 segundos (confirmada en la rebanada 1.1) |
 | **Límite por IP** en el login | Solo bloqueo por cuenta en esta etapa; el límite por IP se evalúa si hace falta |
