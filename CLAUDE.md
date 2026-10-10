@@ -50,6 +50,7 @@ Vas a planear y construir, por hitos, un sistema CRM-ERP desde cero. Antes de es
 - Decisiones relevantes de arquitectura se registran como ADR breves en `docs/adr/`, con alternativas y consecuencias.
 - Idioma: los endpoints de la API y todo el código (identificadores, comentarios, mensajes de log) en inglés; las rutas de las pantallas de la web y los textos de la interfaz en español. Detalle en `docs/arquitectura/estructura-del-repositorio.md`, sección 4.
 - Commits y PR explican el *por qué*. Los cambios que afectan cómo se corre o estructura el proyecto actualizan el README en el mismo cambio.
+- Los informes de la sesión y el cuerpo de los PR **no cuentan lo que salió bien ni el entorno donde se probó** (versión local de MySQL, cuántas pruebas pasaron, que el lint quedó limpio): el CI ya lo muestra. Dicen el porqué del cambio, lo que el revisor debe decidir o revisar, lo que falló o no se pudo comprobar y lo que queda pendiente.
 
 ## 2. Hito 0 — Planeación y scaffolding (antes de programar funcionalidades)
 
