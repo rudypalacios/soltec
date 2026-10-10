@@ -912,7 +912,7 @@ paths:
       operationId: listMarginLevels
       summary: List margin levels.
       description:
-        Ordered for display. Inactive levels are hidden unless status says otherwise. The list is short, so it is not
+        Ordered by margin, lowest first. Inactive levels are hidden unless status says otherwise. The list is short, so it is not
         paginated. Levels have no data scope of their own; whoever may view them sees all of them.
       tags:
         - Margin levels
@@ -2239,7 +2239,6 @@ components:
             - name
             - rate
             - is_default
-            - sort_order
             - is_active
           properties:
             name:
@@ -2249,10 +2248,6 @@ components:
             is_default:
               type: boolean
               description: Exactly one active level is the default.
-            sort_order:
-              type: integer
-              minimum: 0
-              description: Display order; new levels go last.
             is_active:
               type: boolean
     MarginLevelList:

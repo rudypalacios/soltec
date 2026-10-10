@@ -354,17 +354,16 @@ abstract class AccessTestCase extends IntegrationTestCase
             . 'stale_cost_days = 90, quote_validity_days = 15, version = 1',
         );
         $this->connection->executeStatement('DELETE FROM margin_levels');
-        $levels = [['Margen 33 %', '0.33000', 1, 1], ['Margen 35 %', '0.35000', 0, 2]];
-        foreach ($levels as [$name, $rate, $default, $order]) {
+        $levels = [['Margen 33 %', '0.33000', 1], ['Margen 35 %', '0.35000', 0]];
+        foreach ($levels as [$name, $rate, $default]) {
             $this->connection->executeStatement(
-                'INSERT INTO margin_levels (id, name, rate, is_default, sort_order, created_at, updated_at) '
-                . 'VALUES (UNHEX(:id), :name, :rate, :is_default, :sort_order, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
+                'INSERT INTO margin_levels (id, name, rate, is_default, created_at, updated_at) '
+                . 'VALUES (UNHEX(:id), :name, :rate, :is_default, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
                 [
                     'id' => Uuid::toHex(Uuid::v7()),
                     'name' => $name,
                     'rate' => $rate,
                     'is_default' => $default,
-                    'sort_order' => $order,
                 ],
             );
         }

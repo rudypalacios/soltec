@@ -211,9 +211,8 @@ Niveles de margen de contribución (MC; PM10 «MCP»). El precio de catálogo no
 | `rate` | `DECIMAL(6,5)` | `0 ≤ rate < 1` |
 | `is_default` | `TINYINT(1)` | |
 | `default_marker` | `TINYINT(1)` | Generada: `IF(is_default = 1 AND deleted_at IS NULL, 1, NULL)`; índice único: **un solo nivel por defecto activo** |
-| `sort_order` | `SMALLINT UNSIGNED` | |
 
-El nivel por defecto no se puede desactivar mientras lo sea (`409 default_margin_level`): primero otro pasa a serlo con `set-default`, que mueve la marca en una sola transacción. Los cambios que mueven el default bloquean todas las filas (son pocas), para que dos a la vez no dejen cero ni dos. La rebanada 1.4 siembra «Margen 33 %» (por defecto) y «Margen 35 %». `sort_order` se asigna al crear (último + 1) y todavía no se edita.
+El nivel por defecto no se puede desactivar mientras lo sea (`409 default_margin_level`): primero otro pasa a serlo con `set-default`, que mueve la marca en una sola transacción. Los cambios que mueven el default bloquean todas las filas (son pocas), para que dos a la vez no dejen cero ni dos. La rebanada 1.4 siembra «Margen 33 %» (por defecto) y «Margen 35 %». La lista se ordena por margen ascendente (luego nombre); no hay orden manual.
 
 El nivel **no** va en el producto ni en el proveedor: es habitual de cada cliente (`clients.margin_level_id`, Hito 2) y se congela en la línea de cotización (Hito 4).
 

@@ -42,6 +42,24 @@ final class MarginLevelsTest extends SettingsTestCase
         self::assertSame([true, false], array_column($levels, 'is_default'));
     }
 
+    public function testListsLevelsByMarginAscendingWhateverTheOrderTheyWereCreatedIn(): void
+    {
+        $this->create('Alto', '0.5');
+        $this->create('Bajo', '0.1');
+        $this->create('Medio B', '0.4');
+        $this->create('Medio A', '0.4');
+
+        self::assertSame(
+            ['Bajo', 'Margen 33 %', 'Margen 35 %', 'Medio A', 'Medio B', 'Alto'],
+            array_column($this->levels(), 'name'),
+            'By margin, then by name.',
+        );
+        // The inactive ones keep the same order.
+        $this->api('POST', '/margin-levels/' . $this->idOf('Bajo') . '/deactivate', $this->adminToken);
+        $this->api('POST', '/margin-levels/' . $this->idOf('Alto') . '/deactivate', $this->adminToken);
+        self::assertSame(['Bajo', 'Alto'], array_column($this->levels('?status=inactive'), 'name'));
+    }
+
     public function testCreatesALevelThatIsNotTheDefaultAndAuditsIt(): void
     {
         $level = $this->create('  Mayorista  ', '0.2');
@@ -50,7 +68,6 @@ final class MarginLevelsTest extends SettingsTestCase
         self::assertSame('0.20000', $level['rate']);
         self::assertFalse($level['is_default']);
         self::assertTrue($level['is_active']);
-        self::assertSame(3, $level['sort_order']);
         self::assertSame(1, $level['version']);
 
         $audit = $this->auditEntries('margin_levels', $this->text($level, 'id'));

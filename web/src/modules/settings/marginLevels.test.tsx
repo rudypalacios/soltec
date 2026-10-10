@@ -21,7 +21,6 @@ const STANDARD = {
   name: 'Margen 33 %',
   rate: '0.33000',
   is_default: true,
-  sort_order: 1,
   is_active: true,
   version: 1,
   ...STAMPS,
@@ -32,7 +31,6 @@ const HIGHER = {
   name: 'Margen 35 %',
   rate: '0.35000',
   is_default: false,
-  sort_order: 2,
 };
 
 const PRICE_33 = {

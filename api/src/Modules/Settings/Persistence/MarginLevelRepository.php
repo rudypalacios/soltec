@@ -14,7 +14,7 @@ use Soltec\Modules\Settings\Domain\MarginLevelRecord;
 /** Reads and writes `margin_levels`. Ids cross the database as hex (see Uuid). */
 final class MarginLevelRepository
 {
-    private const COLUMNS = 'LOWER(HEX(id)) AS id, name, rate, is_default, sort_order, created_at, updated_at, '
+    private const COLUMNS = 'LOWER(HEX(id)) AS id, name, rate, is_default, created_at, updated_at, '
         . 'version, deleted_at';
 
     public function __construct(private readonly Connection $connection)
@@ -51,6 +51,8 @@ final class MarginLevelRepository
     }
 
     /**
+     * Ordered by margin, lowest first: the order a person compares prices in.
+     *
      * @param string $status active, inactive or all
      * @return list<MarginLevelRecord>
      */
@@ -62,29 +64,21 @@ final class MarginLevelRepository
             default => '',
         };
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT ' . self::COLUMNS . ' FROM margin_levels' . $where . ' ORDER BY sort_order, rate, id',
+            'SELECT ' . self::COLUMNS . ' FROM margin_levels' . $where . ' ORDER BY rate, name, id',
         );
 
         return array_map($this->hydrate(...), $rows);
     }
 
-    public function nextSortOrder(): int
-    {
-        $max = $this->connection->fetchOne('SELECT MAX(sort_order) FROM margin_levels');
-
-        return min(65535, (is_numeric($max) ? (int) $max : 0) + 1);
-    }
-
-    public function insert(string $id, string $name, string $rate, int $sortOrder, DateTimeImmutable $now): void
+    public function insert(string $id, string $name, string $rate, DateTimeImmutable $now): void
     {
         $this->connection->executeStatement(
-            'INSERT INTO margin_levels (id, name, rate, sort_order, created_at, updated_at) '
-            . 'VALUES (UNHEX(:id), :name, :rate, :sort_order, :now, :now)',
+            'INSERT INTO margin_levels (id, name, rate, created_at, updated_at) '
+            . 'VALUES (UNHEX(:id), :name, :rate, :now, :now)',
             [
                 'id' => Uuid::toHex($id),
                 'name' => $name,
                 'rate' => $rate,
-                'sort_order' => $sortOrder,
                 'now' => Timestamps::toDb($now),
             ],
         );
@@ -137,7 +131,6 @@ final class MarginLevelRepository
             Row::string($row, 'name'),
             Row::string($row, 'rate'),
             Row::int($row, 'is_default') === 1,
-            Row::int($row, 'sort_order'),
             Row::date($row, 'created_at'),
             Row::date($row, 'updated_at'),
             Row::int($row, 'version'),

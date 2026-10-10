@@ -59,7 +59,7 @@ final class MarginLevelService
         $id = Uuid::v7();
         try {
             $this->connection->transactional(function () use ($actor, $id, $name, $rate): void {
-                $this->levels->insert($id, $name, $rate, $this->levels->nextSortOrder(), $this->clock->now());
+                $this->levels->insert($id, $name, $rate, $this->clock->now());
                 $this->audit->record($actor, 'create', self::ENTITY, $id, null, [
                     'name' => $name,
                     'rate' => $rate,

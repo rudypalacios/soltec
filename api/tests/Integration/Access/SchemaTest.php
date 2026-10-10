@@ -7,6 +7,8 @@ namespace Soltec\Tests\Integration\Access;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Soltec\Kernel\Db\Row;
+use Soltec\Kernel\Deploy\MigrationRunner;
+use Soltec\Kernel\Paths;
 use Soltec\Kernel\Uuid;
 
 /** What the migrations promise: seeded catalogs, uniqueness among active rows and no physical deletes. */
@@ -79,6 +81,27 @@ final class SchemaTest extends AccessTestCase
         self::assertSame($adminBefore, $this->adminRoleId());
         self::assertSame(22, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(7, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
+    }
+
+    public function testDroppingTheMarginLevelSortOrderWorksWhetherOrNotTheColumnIsThere(): void
+    {
+        $columns = fn (): array => $this->connection->fetchFirstColumn(
+            'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() '
+            . "AND TABLE_NAME = 'margin_levels'",
+        );
+        self::assertNotContains('sort_order', $columns());
+
+        // `staging` ran the first version of the table, which still had the column.
+        $this->connection->executeStatement(
+            'ALTER TABLE margin_levels ADD COLUMN sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0',
+        );
+        foreach ([1, 2] as $run) {
+            $this->connection->executeStatement('DELETE FROM phinxlog WHERE version = 20261010000004');
+            $applied = (new MigrationRunner($this->connection, new Paths(dirname(__DIR__, 3)), $this->config))->apply();
+            self::assertCount(1, $applied, "run $run");
+            self::assertNotContains('sort_order', $columns(), "run $run");
+        }
+        self::assertSame(2, $this->countRows('SELECT COUNT(*) FROM margin_levels'));
     }
 
     public function testAccountTokensAreUniqueByHashAndKeepTheirUser(): void
