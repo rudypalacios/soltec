@@ -10,6 +10,7 @@ import {
 import { ApiError } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
+import { FormActions } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessages, problemMessage } from './messages';
 import {
@@ -201,8 +202,8 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
           Dar permisos sobre «Usuarios» o «Perfiles» equivale casi a ser administrador: quien edite
           perfiles puede ampliar el suyo.
         </Alert>
-        <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
-          <Button component={RouterLink} to="/perfiles">
+        <FormActions>
+          <Button variant="outlined" color="inherit" component={RouterLink} to="/perfiles">
             {readOnly ? 'Volver' : 'Cancelar'}
           </Button>
           {readOnly ? null : (
@@ -210,7 +211,7 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
               Guardar
             </Button>
           )}
-        </Stack>
+        </FormActions>
       </Stack>
     </>
   );

@@ -2,6 +2,7 @@ import { Alert, Autocomplete, Button, Chip, Paper, Stack, TextField } from '@mui
 import type { components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import {
   DepartmentSelect,
@@ -100,7 +101,9 @@ export function UserCreatePage() {
               <Button variant="contained" component={RouterLink} to="/usuarios">
                 Volver a usuarios
               </Button>
-              <Button onClick={startAnother}>Crear otro usuario</Button>
+              <Button variant="outlined" color="inherit" onClick={startAnother}>
+                Crear otro usuario
+              </Button>
             </Stack>
           </Stack>
         </Paper>
@@ -111,59 +114,55 @@ export function UserCreatePage() {
   return (
     <>
       <PageHeader title="Nuevo usuario" />
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 560 }}>
-        <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
-          {failure ? <Alert severity="error">{failure}</Alert> : null}
-          <TextField
-            label="Nombre"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            error={Boolean(fieldErrors.name)}
-            helperText={fieldErrors.name}
-            required
-            fullWidth
-            autoFocus
-          />
-          <TextField
-            label="Correo"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            error={Boolean(fieldErrors.email)}
-            helperText={
-              fieldErrors.email ?? 'Aquí llegará la invitación para elegir su contraseña.'
+      <FormPage onSubmit={(event) => void submit(event)}>
+        {failure ? <Alert severity="error">{failure}</Alert> : null}
+        <TextField
+          label="Nombre"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          error={Boolean(fieldErrors.name)}
+          helperText={fieldErrors.name}
+          required
+          fullWidth
+          autoFocus
+        />
+        <TextField
+          label="Correo"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          error={Boolean(fieldErrors.email)}
+          helperText={fieldErrors.email ?? 'Aquí llegará la invitación para elegir su contraseña.'}
+          required
+          fullWidth
+        />
+        <RoleSelect selected={selected} onChange={setSelected} error={fieldErrors.role_ids} />
+        <DepartmentSelect
+          value={department}
+          onChange={setDepartment}
+          choices={departmentChoices}
+          error={fieldErrors.department_id}
+        />
+        <ManagerSelect value={manager} onChange={setManager} error={fieldErrors.manager_id} />
+        <FormActions>
+          <Button variant="outlined" color="inherit" component={RouterLink} to="/usuarios">
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={
+              create.isPending ||
+              !name ||
+              !email ||
+              selected.length === 0 ||
+              (departmentChoices.required && department === null)
             }
-            required
-            fullWidth
-          />
-          <RoleSelect selected={selected} onChange={setSelected} error={fieldErrors.role_ids} />
-          <DepartmentSelect
-            value={department}
-            onChange={setDepartment}
-            choices={departmentChoices}
-            error={fieldErrors.department_id}
-          />
-          <ManagerSelect value={manager} onChange={setManager} error={fieldErrors.manager_id} />
-          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1}>
-            <Button component={RouterLink} to="/usuarios">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={
-                create.isPending ||
-                !name ||
-                !email ||
-                selected.length === 0 ||
-                (departmentChoices.required && department === null)
-              }
-            >
-              Crear y enviar invitación
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
+          >
+            Crear y enviar invitación
+          </Button>
+        </FormActions>
+      </FormPage>
     </>
   );
 }

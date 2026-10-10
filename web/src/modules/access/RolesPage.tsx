@@ -1,34 +1,19 @@
 import AddIcon from '@mui/icons-material/Add';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Paper,
-  Snackbar,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, Chip, Snackbar } from '@mui/material';
 import type { components } from '@soltec/shared';
-import { useDeferredValue, useState } from 'react';
+import { useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataList, type DataColumn } from '../../components/DataList';
+import { FilterBar } from '../../components/FilterBar';
 import { PageHeader } from '../../components/PageHeader';
-import { useIsMobile } from '../../components/useIsMobile';
+import type { RowAction } from '../../components/RowActions';
+import { ActiveBadge } from '../../components/StatusBadge';
+import { StatusFilter } from '../../components/StatusFilter';
+import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from './messages';
 import { useCan } from './SessionContext';
-import { StatusFilter, type StatusValue } from './StatusFilter';
 import { useRoles, useSetRoleActive } from './useRoles';
 
 type Role = components['schemas']['Role'];
@@ -39,14 +24,34 @@ const ACTIVE_CONFLICTS = {
     'No se puede desactivar: hay usuarios activos con este perfil. Cámbiales el perfil primero.',
 };
 
+const COLUMNS: DataColumn<Role>[] = [
+  { id: 'name', header: 'Nombre', mobile: 'title', minWidth: 160, render: (role) => role.name },
+  {
+    id: 'description',
+    header: 'Descripción',
+    mobile: 'subtitle',
+    render: (role) => role.description ?? '',
+  },
+  {
+    id: 'type',
+    header: 'Tipo',
+    mobile: 'meta',
+    nowrap: true,
+    render: (role) => (role.is_system ? <Chip size="small" label="Sistema" /> : 'Personalizado'),
+  },
+  {
+    id: 'status',
+    header: 'Estado',
+    mobile: 'badge',
+    nowrap: true,
+    render: (role) => <ActiveBadge active={role.is_active} />,
+  },
+];
+
 export function RolesPage() {
-  const isMobile = useIsMobile();
   const can = useCan();
   const location = useLocation();
-  const [text, setText] = useState('');
-  const deferredText = useDeferredValue(text);
-  const [status, setStatus] = useState<StatusValue>('active');
-  const [page, setPage] = useState(0);
+  const filters = useListFilters();
   const [pending, setPending] = useState<{ role: Role; activate: boolean } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(() => {
@@ -55,9 +60,9 @@ export function RolesPage() {
   });
 
   const roles = useRoles({
-    q: deferredText.trim() || undefined,
-    status,
-    page: page + 1,
+    q: filters.query,
+    status: filters.status,
+    page: filters.page + 1,
     per_page: PER_PAGE,
   });
   const setActive = useSetRoleActive();
@@ -79,6 +84,28 @@ export function RolesPage() {
   const canDeactivate = can('roles', 'deactivate');
   const canEdit = can('roles', 'edit');
 
+  const actionsFor = (role: Role): RowAction[] => {
+    const editable = canEdit && !role.is_system;
+    const actions: RowAction[] = [
+      {
+        key: 'open',
+        label: editable ? 'Editar' : 'Ver',
+        icon: editable ? ACTION_ICONS.edit : ACTION_ICONS.view,
+        to: `/perfiles/${role.id}`,
+      },
+    ];
+    if (canDeactivate && !role.is_system) {
+      actions.push({
+        key: 'toggle',
+        label: role.is_active ? 'Desactivar' : 'Reactivar',
+        icon: role.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
+        tone: role.is_active ? 'danger' : undefined,
+        onSelect: () => setPending({ role, activate: !role.is_active }),
+      });
+    }
+    return actions;
+  };
+
   return (
     <>
       <PageHeader
@@ -97,25 +124,13 @@ export function RolesPage() {
         }
       />
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-        <TextField
-          label="Buscar por nombre"
-          type="search"
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            setPage(0);
-          }}
-          sx={{ flexGrow: 1, maxWidth: { sm: 360 } }}
-        />
-        <StatusFilter
-          value={status}
-          onChange={(value) => {
-            setStatus(value);
-            setPage(0);
-          }}
-        />
-      </Stack>
+      <FilterBar
+        searchLabel="Buscar por nombre"
+        search={filters.text}
+        onSearchChange={filters.setText}
+      >
+        <StatusFilter value={filters.status} onChange={filters.setStatus} />
+      </FilterBar>
 
       {actionError ? (
         <Alert severity="error" onClose={() => setActionError(null)} sx={{ mb: 2 }}>
@@ -123,74 +138,22 @@ export function RolesPage() {
         </Alert>
       ) : null}
 
-      {roles.isPending ? (
-        <CircularProgress aria-label="Cargando perfiles" />
-      ) : roles.isError ? (
-        <Alert severity="error">{problemMessage(roles.error)}</Alert>
-      ) : roles.data.data.length === 0 ? (
-        <Alert severity="info">No hay perfiles con esos filtros.</Alert>
-      ) : isMobile ? (
-        <Stack spacing={1.5} aria-label="Lista de perfiles">
-          {roles.data.data.map((role) => (
-            <RoleCard
-              key={role.id}
-              role={role}
-              canEdit={canEdit}
-              canDeactivate={canDeactivate}
-              onToggle={() => setPending({ role, activate: !role.is_active })}
-            />
-          ))}
-        </Stack>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small" aria-label="Lista de perfiles">
-            <TableHead>
-              <TableRow>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Descripción</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {roles.data.data.map((role) => (
-                <TableRow key={role.id} hover>
-                  <TableCell>{role.name}</TableCell>
-                  <TableCell>{role.description ?? ''}</TableCell>
-                  <TableCell>
-                    {role.is_system ? <Chip size="small" label="Sistema" /> : 'Personalizado'}
-                  </TableCell>
-                  <TableCell>
-                    <ActiveChip role={role} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <RoleActions
-                      role={role}
-                      canEdit={canEdit}
-                      canDeactivate={canDeactivate}
-                      onToggle={() => setPending({ role, activate: !role.is_active })}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {roles.data ? (
-        <TablePagination
-          component="div"
-          count={roles.data.meta.total}
-          page={page}
-          onPageChange={(_, next) => setPage(next)}
-          rowsPerPage={PER_PAGE}
-          rowsPerPageOptions={[]}
-          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-          sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
-        />
-      ) : null}
+      <DataList
+        label="Lista de perfiles"
+        noun="perfiles"
+        columns={COLUMNS}
+        rows={roles.data?.data}
+        error={roles.isError ? problemMessage(roles.error) : null}
+        getRowId={(role) => role.id}
+        getRowName={(role) => role.name}
+        getActions={actionsFor}
+        pagination={{
+          page: filters.page,
+          perPage: PER_PAGE,
+          total: roles.data?.meta.total ?? 0,
+          onPageChange: filters.setPage,
+        }}
+      />
 
       <ConfirmDialog
         open={pending !== null}
@@ -201,6 +164,7 @@ export function RolesPage() {
             : `El perfil «${pending?.role.name ?? ''}» dejará de poder asignarse. Sus datos se conservan.`
         }
         confirmLabel={pending?.activate ? 'Reactivar' : 'Desactivar'}
+        destructive={pending?.activate === false}
         busy={setActive.isPending}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
@@ -212,82 +176,5 @@ export function RolesPage() {
         message={flash}
       />
     </>
-  );
-}
-
-function ActiveChip({ role }: { role: Role }) {
-  return role.is_active ? (
-    <Chip size="small" color="success" variant="outlined" label="Activo" />
-  ) : (
-    <Chip size="small" label="Inactivo" />
-  );
-}
-
-function RoleActions({
-  role,
-  canEdit,
-  canDeactivate,
-  onToggle,
-}: {
-  role: Role;
-  canEdit: boolean;
-  canDeactivate: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-      <Button
-        size="small"
-        component={RouterLink}
-        to={`/perfiles/${role.id}`}
-        aria-label={`${canEdit && !role.is_system ? 'Editar' : 'Ver'} ${role.name}`}
-      >
-        {canEdit && !role.is_system ? 'Editar' : 'Ver'}
-      </Button>
-      {canDeactivate && !role.is_system ? (
-        <Button
-          size="small"
-          color={role.is_active ? 'error' : 'primary'}
-          onClick={onToggle}
-          aria-label={`${role.is_active ? 'Desactivar' : 'Reactivar'} ${role.name}`}
-        >
-          {role.is_active ? 'Desactivar' : 'Reactivar'}
-        </Button>
-      ) : null}
-    </Box>
-  );
-}
-
-function RoleCard(props: {
-  role: Role;
-  canEdit: boolean;
-  canDeactivate: boolean;
-  onToggle: () => void;
-}) {
-  const { role } = props;
-  return (
-    <Card variant="outlined">
-      <CardContent sx={{ '&:last-child': { pb: 1.5 } }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
-        >
-          <Typography sx={{ fontWeight: 600 }}>{role.name}</Typography>
-          <Stack direction="row" spacing={0.5}>
-            {role.is_system ? <Chip size="small" label="Sistema" /> : null}
-            <ActiveChip role={role} />
-          </Stack>
-        </Stack>
-        {role.description ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {role.description}
-          </Typography>
-        ) : null}
-        <Box sx={{ mt: 1, ml: -1 }}>
-          <RoleActions {...props} />
-        </Box>
-      </CardContent>
-    </Card>
   );
 }

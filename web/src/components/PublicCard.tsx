@@ -1,5 +1,6 @@
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
+import { Brand } from './Brand';
 
 /** The frame of the screens that need no session (sign in, invitation, password recovery): a centred card. */
 export function PublicCard({
@@ -14,12 +15,17 @@ export function PublicCard({
   return (
     <Box
       sx={{
-        display: 'grid',
-        placeItems: { xs: 'start center', sm: 'center' },
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: { sm: 'center' },
+        gap: 3,
         minHeight: '100vh',
         p: 2,
+        pt: { xs: 5, sm: 2 },
       }}
     >
+      <Brand />
       <Card sx={{ width: '100%', maxWidth: 400 }} elevation={0} variant="outlined">
         <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
           <Typography variant="h5" component="h1">

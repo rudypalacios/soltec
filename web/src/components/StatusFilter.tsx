@@ -8,7 +8,7 @@ const OPTIONS: { value: StatusValue; label: string }[] = [
   { value: 'all', label: 'Todos' },
 ];
 
-/** The filter every list of this module shares: whether to show active, inactive or all records. */
+/** The filter every list shares: whether to show active, inactive or all records. Its width is `FilterBar`'s job. */
 export function StatusFilter({
   value,
   onChange,
@@ -22,7 +22,6 @@ export function StatusFilter({
       label="Estado"
       value={value}
       onChange={(event) => onChange(event.target.value as StatusValue)}
-      sx={{ minWidth: { sm: 160 } }}
     >
       {OPTIONS.map((option) => (
         <MenuItem key={option.value} value={option.value}>

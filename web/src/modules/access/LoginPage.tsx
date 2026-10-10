@@ -49,7 +49,7 @@ export function LoginPage() {
   };
 
   return (
-    <PublicCard title="Soltec" subtitle="Inicia sesión para continuar">
+    <PublicCard title="Iniciar sesión" subtitle="Entra con tu correo y tu contraseña.">
       <Stack component="form" spacing={2.5} onSubmit={(event) => void submit(event)} noValidate>
         {failure ? <Alert severity="error">{failure}</Alert> : null}
         <TextField
