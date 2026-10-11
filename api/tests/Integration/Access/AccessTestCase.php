@@ -334,7 +334,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 24;
+        ) === 25;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -347,6 +347,7 @@ abstract class AccessTestCase extends IntegrationTestCase
             $this->connection->executeStatement('DELETE FROM ' . $table);
         }
         $custom = 'role_id IN (SELECT id FROM roles WHERE is_system = 0)';
+        $this->connection->executeStatement('DELETE FROM role_widgets WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM role_permissions WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM role_scopes WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM roles WHERE is_system = 0');

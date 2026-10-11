@@ -10,6 +10,7 @@ use Soltec\Kernel\Http\Input;
 use Soltec\Kernel\Http\Json;
 use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Application\RoleService;
+use Soltec\Modules\Access\Domain\WidgetCatalog;
 
 /** /v1/roles */
 final class RoleController
@@ -45,6 +46,7 @@ final class RoleController
         $userType = $input->choice('user_type', ['internal', 'external']);
         $permissions = $input->object('permissions');
         $scopes = $input->object('scopes');
+        $widgets = $input->choiceList('widgets', WidgetCatalog::codes(), required: false);
         $input->done();
 
         $role = $this->roles->create(
@@ -54,6 +56,7 @@ final class RoleController
             (string) $userType,
             $permissions ?? [],
             $scopes ?? [],
+            $widgets ?? [],
         );
 
         return Json::write($response, $role->toApi(), 201);
@@ -75,6 +78,7 @@ final class RoleController
         $description = $input->nullableText('description', 255);
         $permissions = $input->has('permissions') ? $input->object('permissions') : null;
         $scopes = $input->has('scopes') ? $input->object('scopes') : null;
+        $widgets = $input->has('widgets') ? $input->choiceList('widgets', WidgetCatalog::codes()) : null;
         $input->done();
 
         $role = $this->roles->update(
@@ -86,6 +90,7 @@ final class RoleController
             $input->has('description'),
             $permissions,
             $scopes,
+            $widgets,
         );
 
         return Json::write($response, $role->toApi());

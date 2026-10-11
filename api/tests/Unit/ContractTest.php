@@ -7,6 +7,7 @@ namespace Soltec\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Soltec\Kernel\Bootstrap;
 use Soltec\Kernel\Config;
+use Soltec\Modules\Access\Domain\WidgetCatalog;
 use Symfony\Component\Yaml\Yaml;
 
 /** Keeps the route table and contract/openapi.yaml in step: no undocumented route, no ghost path. */
@@ -47,6 +48,21 @@ final class ContractTest extends TestCase
         }
 
         self::assertSame([], $missing, 'Operations without a valid x-permission.');
+    }
+
+    public function testTheWidgetCodesOfTheContractAreTheOnesTheServerKnows(): void
+    {
+        $contract = Yaml::parseFile(dirname(__DIR__, 3) . '/contract/openapi.yaml');
+        self::assertIsArray($contract);
+        $components = $contract['components'] ?? null;
+        self::assertIsArray($components);
+        $schemas = $components['schemas'] ?? null;
+        self::assertIsArray($schemas);
+        $widgetCode = $schemas['WidgetCode'] ?? null;
+        self::assertIsArray($widgetCode);
+
+        // The web registry is typed by this enum: a code that is not here cannot be assigned or drawn.
+        self::assertSame(WidgetCatalog::codes(), $widgetCode['enum'] ?? null);
     }
 
     public function testEveryRouteDeclaresTheAccessRuleOfItsContractOperation(): void

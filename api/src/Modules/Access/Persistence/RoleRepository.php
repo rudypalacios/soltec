@@ -191,6 +191,41 @@ final class RoleRepository
         }
     }
 
+    /**
+     * Replaces the widgets of a role, in the order given.
+     *
+     * @param list<string> $widgets
+     */
+    public function replaceWidgets(string $roleId, array $widgets): void
+    {
+        $this->connection->executeStatement('DELETE FROM role_widgets WHERE role_id = UNHEX(:id)', [
+            'id' => Uuid::toHex($roleId),
+        ]);
+        foreach ($widgets as $index => $code) {
+            $this->connection->executeStatement(
+                'INSERT INTO role_widgets (role_id, widget_code, position) VALUES (UNHEX(:id), :code, :position)',
+                ['id' => Uuid::toHex($roleId), 'code' => $code, 'position' => $index + 1],
+            );
+        }
+    }
+
+    /**
+     * The widgets of the active roles of a user: each one once, in the position of the role that puts it first.
+     *
+     * @return list<string>
+     */
+    public function widgetsOfUser(string $userId): array
+    {
+        $codes = $this->connection->fetchFirstColumn(
+            'SELECT rw.widget_code FROM role_widgets rw JOIN user_roles ur ON ur.role_id = rw.role_id '
+            . 'JOIN roles r ON r.id = rw.role_id WHERE ur.user_id = UNHEX(:id) AND r.deleted_at IS NULL '
+            . 'GROUP BY rw.widget_code ORDER BY MIN(rw.position), rw.widget_code',
+            ['id' => Uuid::toHex($userId)],
+        );
+
+        return array_map(Row::scalarString(...), $codes);
+    }
+
     public function countActiveUsers(string $roleId): int
     {
         $count = $this->connection->fetchOne(
@@ -279,10 +314,22 @@ final class RoleRepository
                 = Row::string($row, 'scope');
         }
 
+        $widgets = [];
+        foreach (
+            $this->connection->executeQuery(
+                'SELECT LOWER(HEX(role_id)) AS role_id, widget_code FROM role_widgets '
+                . 'WHERE role_id IN (' . $in . ') ORDER BY position',
+                $hexIds,
+            )->fetchAllAssociative() as $row
+        ) {
+            $widgets[Uuid::fromHex(Row::string($row, 'role_id'))][] = Row::string($row, 'widget_code');
+        }
+
         return array_map(
             static fn (RoleRecord $role): RoleRecord => $role->withMatrix(
                 $permissions[$role->id] ?? [],
                 $scopes[$role->id] ?? [],
+                $widgets[$role->id] ?? [],
             ),
             $roles,
         );

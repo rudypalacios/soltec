@@ -6,6 +6,7 @@ namespace Soltec\Modules\Access\Application;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Kernel\Clock;
 use Soltec\Kernel\Http\ApiException;
 use Soltec\Kernel\Http\Pagination;
@@ -39,6 +40,16 @@ final class RoleService
         return $this->roles->search($text, $status, $userType, $page);
     }
 
+    /**
+     * The widgets of the signed-in user's home screen: those of their active roles, each once, in order.
+     *
+     * @return list<string>
+     */
+    public function dashboardFor(CurrentUser $user): array
+    {
+        return $this->roles->widgetsOfUser($user->id);
+    }
+
     public function get(string $id): RoleRecord
     {
         return $this->roles->find($id) ?? throw ApiException::notFound();
@@ -47,6 +58,7 @@ final class RoleService
     /**
      * @param array<array-key, mixed> $permissions
      * @param array<array-key, mixed> $scopes
+     * @param list<string> $widgets codes of WidgetCatalog, already checked
      */
     public function create(
         ActorContext $actor,
@@ -55,6 +67,7 @@ final class RoleService
         string $userType,
         array $permissions,
         array $scopes,
+        array $widgets = [],
     ): RoleRecord {
         [$permissions, $scopes, $errors] = $this->parseMatrix($permissions, $scopes);
         if ($userType !== 'internal') {
@@ -66,15 +79,26 @@ final class RoleService
 
         $id = Uuid::v7();
         try {
-            $save = function () use ($actor, $id, $name, $description, $userType, $permissions, $scopes): void {
+            $save = function () use (
+                $actor,
+                $id,
+                $name,
+                $description,
+                $userType,
+                $permissions,
+                $scopes,
+                $widgets,
+            ): void {
                 $this->roles->insert($id, $name, $description, $userType, $this->clock->now());
                 $this->roles->replaceMatrix($id, $permissions, $scopes);
+                $this->roles->replaceWidgets($id, $widgets);
                 $this->audit->record($actor, 'create', self::ENTITY, $id, null, [
                     'name' => $name,
                     'description' => $description,
                     'user_type' => $userType,
                     'permissions' => $permissions,
                     'scopes' => $scopes,
+                    'widgets' => $widgets,
                 ]);
             };
             $this->connection->transactional($save);
@@ -88,6 +112,7 @@ final class RoleService
     /**
      * @param array<array-key, mixed>|null $permissions when sent, replaces the whole set
      * @param array<array-key, mixed>|null $scopes when sent, replaces the whole set
+     * @param list<string>|null $widgets when sent, replaces the whole list (codes of WidgetCatalog, already checked)
      * @throws ApiException 404, 409 `system_role_immutable` or `conflict`
      */
     public function update(
@@ -99,6 +124,7 @@ final class RoleService
         bool $descriptionSent,
         ?array $permissions,
         ?array $scopes,
+        ?array $widgets = null,
     ): RoleRecord {
         [$parsedPermissions, $parsedScopes, $errors] = $this->parseMatrix($permissions ?? [], $scopes ?? []);
         if ($errors !== []) {
@@ -115,6 +141,7 @@ final class RoleService
                 $descriptionSent,
                 $permissions,
                 $scopes,
+                $widgets,
                 $parsedPermissions,
                 $parsedScopes,
             ): void {
@@ -133,6 +160,11 @@ final class RoleService
                     $this->roles->replaceMatrix($id, $newPermissions, $newScopes);
                 }
 
+                $newWidgets = $widgets ?? $role->widgets;
+                if ($widgets !== null) {
+                    $this->roles->replaceWidgets($id, $newWidgets);
+                }
+
                 $before = [];
                 $after = [];
                 $changes = [
@@ -140,6 +172,7 @@ final class RoleService
                     'description' => [$role->description, $newDescription],
                     'permissions' => [$role->permissions, $newPermissions],
                     'scopes' => [$role->scopes, $newScopes],
+                    'widgets' => [$role->widgets, $newWidgets],
                 ];
                 foreach ($changes as $field => [$old, $new]) {
                     if ($old !== $new) {

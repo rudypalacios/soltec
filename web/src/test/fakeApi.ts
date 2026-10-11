@@ -70,6 +70,9 @@ export function createTestSession(
         : problem(401, 'token_invalid'),
     'GET /v1/me': () => Response.json(me),
     'GET /v1/branding': () => Response.json({ trade_name: '', logo_version: null }),
+    // The home screen of a profile that shows both widgets, as every profile did before it was configurable.
+    'GET /v1/dashboard': () =>
+      Response.json({ data: [{ code: 'quick_links' }, { code: 'service_status' }] }),
     'GET /v1/health': () => Response.json({ status: 'ok', checks: { database: 'ok' } }),
     ...handlers,
   };

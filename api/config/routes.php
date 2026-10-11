@@ -11,9 +11,11 @@ use Soltec\Kernel\Http\Controller\HealthController;
 use Soltec\Kernel\Http\Controller\MailTestController;
 use Soltec\Kernel\Http\Controller\RequirementsController;
 use Soltec\Kernel\Http\DeployTokenMiddleware;
+use Soltec\Modules\Access\Http\AuditLogController;
 use Soltec\Modules\Access\Http\AuthController;
 use Soltec\Modules\Access\Http\CatalogController;
 use Soltec\Modules\Access\Http\CredentialController;
+use Soltec\Modules\Access\Http\DashboardController;
 use Soltec\Modules\Access\Http\DeviceController;
 use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
@@ -50,6 +52,9 @@ return static function (App $app): void {
         $group->post('/auth/password/reset', [CredentialController::class, 'resetPassword'])
             ->setArgument('permission', 'public');
         $group->get('/me', [MeController::class, 'show'])->setArgument('permission', 'authenticated');
+        $group->get('/dashboard', [DashboardController::class, 'show'])->setArgument('permission', 'authenticated');
+        $group->get('/widgets', [DashboardController::class, 'catalog'])->setArgument('permission', 'roles.view');
+        $group->get('/audit-logs', [AuditLogController::class, 'list'])->setArgument('permission', 'audit_logs.view');
         $group->get('/me/devices', [DeviceController::class, 'list'])->setArgument('permission', 'authenticated');
         $group->delete('/me/devices/{deviceId}', [DeviceController::class, 'revoke'])
             ->setArgument('permission', 'authenticated');

@@ -1,13 +1,15 @@
 import {
   Alert,
   Button,
+  Checkbox,
   CircularProgress,
+  FormControlLabel,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { ApiError } from '@soltec/shared';
+import { ApiError, type components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { FormActions } from '../../components/FormPage';
@@ -20,7 +22,15 @@ import {
   type MatrixValue,
 } from './PermissionMatrix';
 import { useCan } from './SessionContext';
-import { useAccessCatalogs, useCreateRole, useRole, useUpdateRole } from './useRoles';
+import {
+  useAccessCatalogs,
+  useCreateRole,
+  useRole,
+  useUpdateRole,
+  useWidgetCatalog,
+} from './useRoles';
+
+type WidgetCode = components['schemas']['WidgetCode'];
 
 /** The order people expect to read the verbs in; any other verb a later module adds goes after them. */
 const ACTION_ORDER = ['view', 'create', 'edit', 'deactivate'];
@@ -44,11 +54,12 @@ export function RoleFormPage() {
   const { roleId } = useParams();
   const role = useRole(roleId);
   const catalogs = useAccessCatalogs();
+  const widgets = useWidgetCatalog();
 
-  if (catalogs.resources.isError || catalogs.permissions.isError) {
+  if (catalogs.resources.isError || catalogs.permissions.isError || widgets.isError) {
     return (
       <Alert severity="error">
-        {problemMessage(catalogs.resources.error ?? catalogs.permissions.error)}
+        {problemMessage(catalogs.resources.error ?? catalogs.permissions.error ?? widgets.error)}
       </Alert>
     );
   }
@@ -58,6 +69,7 @@ export function RoleFormPage() {
   if (
     catalogs.resources.isPending ||
     catalogs.permissions.isPending ||
+    widgets.isPending ||
     (roleId !== undefined && role.isPending)
   ) {
     return <CircularProgress aria-label="Cargando el perfil" />;
@@ -70,6 +82,7 @@ export function RoleFormPage() {
       role={role.data}
       resources={catalogs.resources.data.data}
       actions={[...catalogs.permissions.data.data].sort(byActionOrder)}
+      widgetCatalog={widgets.data.data}
     />
   );
 }
@@ -93,9 +106,10 @@ interface RoleFormProps {
   role: Awaited<ReturnType<typeof useRole>['data']>;
   resources: { code: string; name: string }[];
   actions: { code: string; name: string }[];
+  widgetCatalog: components['schemas']['WidgetCatalog']['data'];
 }
 
-function RoleForm({ role, resources, actions }: RoleFormProps) {
+function RoleForm({ role, resources, actions, widgetCatalog }: RoleFormProps) {
   const navigate = useNavigate();
   const can = useCan();
   const create = useCreateRole();
@@ -103,6 +117,10 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
   const [name, setName] = useState(role?.name ?? '');
   const [description, setDescription] = useState(role?.description ?? '');
   const [matrix, setMatrix] = useState<MatrixValue>(() => matrixOf(role));
+  // A new profile starts with the whole home screen: an empty one would greet its people with nothing.
+  const [widgets, setWidgets] = useState<WidgetCode[]>(
+    () => role?.widgets ?? widgetCatalog.map((widget) => widget.code),
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -119,11 +137,29 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
       name: name.trim(),
       description: description.trim() === '' ? null : description.trim(),
     };
+    // What the profile already showed keeps its order; what was just ticked goes after it.
+    const kept = (role?.widgets ?? []).filter((code) => widgets.includes(code));
+    const added = widgetCatalog
+      .map((w) => w.code)
+      .filter((code) => widgets.includes(code) && !kept.includes(code));
+    const orderedWidgets = [...kept, ...added];
     try {
       if (role) {
-        await update.mutateAsync({ version: role.version, ...details, permissions, scopes });
+        await update.mutateAsync({
+          version: role.version,
+          ...details,
+          permissions,
+          scopes,
+          widgets: orderedWidgets,
+        });
       } else {
-        await create.mutateAsync({ ...details, user_type: 'internal', permissions, scopes });
+        await create.mutateAsync({
+          ...details,
+          user_type: 'internal',
+          permissions,
+          scopes,
+          widgets: orderedWidgets,
+        });
       }
       navigate('/perfiles', { state: { flash: 'Perfil guardado.' } });
     } catch (error) {
@@ -193,6 +229,44 @@ function RoleForm({ role, resources, actions }: RoleFormProps) {
           onChange={setMatrix}
           disabled={readOnly}
         />
+        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 0.5 }}>
+            Panel de inicio
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Lo que ven en su pantalla de inicio quienes tienen este perfil.
+          </Typography>
+          <Stack>
+            {widgetCatalog.map((widget) => (
+              <FormControlLabel
+                key={widget.code}
+                control={
+                  <Checkbox
+                    checked={widgets.includes(widget.code)}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      setWidgets((current) =>
+                        event.target.checked
+                          ? [...current, widget.code]
+                          : current.filter((code) => code !== widget.code),
+                      )
+                    }
+                  />
+                }
+                label={
+                  <>
+                    {widget.name}
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      {' · '}
+                      {widget.description}
+                    </Typography>
+                  </>
+                }
+                sx={{ py: 0.5, alignItems: 'flex-start', '& .MuiCheckbox-root': { py: 0.5 } }}
+              />
+            ))}
+          </Stack>
+        </Paper>
         <Typography variant="body2" color="text.secondary">
           «Solo lo propio» limita a cada persona a sus propios registros (en Usuarios, a su propia
           cuenta). «Su equipo» suma los de quienes dependen de ella, directa o indirectamente, y los

@@ -11,7 +11,7 @@ import {
   type NamedRef,
 } from '../organization/OrganizationFields';
 import { fieldMessages, problemMessage } from './messages';
-import { useCurrentUser } from './SessionContext';
+import { useCan, useCurrentUser } from './SessionContext';
 import { RoleSelect, USER_FIELD_MESSAGES, type RoleChoice } from './UserCreatePage';
 import { useUpdateUser, useUser } from './useUsers';
 
@@ -43,6 +43,7 @@ export function UserEditPage() {
 function UserEditForm({ user }: { user: User }) {
   const navigate = useNavigate();
   const me = useCurrentUser();
+  const can = useCan();
   const update = useUpdateUser(user.id);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
@@ -87,7 +88,16 @@ function UserEditForm({ user }: { user: User }) {
 
   return (
     <>
-      <PageHeader title="Editar usuario" />
+      <PageHeader
+        title="Editar usuario"
+        actions={
+          can('audit_logs', 'view') ? (
+            <Button component={RouterLink} to={`/auditoria?tipo=users&registro=${user.id}`}>
+              Ver historial
+            </Button>
+          ) : null
+        }
+      />
       <FormPage onSubmit={(event) => void submit(event)}>
         {failure ? <Alert severity="error">{failure}</Alert> : null}
         {!user.is_active ? (

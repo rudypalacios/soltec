@@ -310,8 +310,8 @@ final class RolesTest extends AccessTestCase
 
         self::assertSame(
             [
-                'company', 'departments', 'financial_settings', 'margin_levels', 'roles', 'security_settings',
-                'sequences', 'users',
+                'audit_logs', 'company', 'departments', 'financial_settings', 'margin_levels', 'roles',
+                'security_settings', 'sequences', 'users',
             ],
             $this->columnAt($resources, 'code', 'data'),
         );
