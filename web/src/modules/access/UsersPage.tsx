@@ -13,10 +13,10 @@ import { ActiveBadge, StatusBadge } from '../../components/StatusBadge';
 import { StatusFilter } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
 import { useDepartmentChoices } from '../organization/OrganizationFields';
-import { formatMoment } from './formatting';
+import { formatMoment, formatUntil } from './formatting';
 import { problemMessage } from './messages';
 import { useCan, useCurrentUser } from './SessionContext';
-import { useResendInvitation, useSetUserActive, useUsers } from './useUsers';
+import { useResendInvitation, useSetUserActive, useUnlockUser, useUsers } from './useUsers';
 
 type User = components['schemas']['User'];
 const PER_PAGE = 25;
@@ -49,6 +49,7 @@ export function UsersPage() {
   });
   const setActive = useSetUserActive();
   const resend = useResendInvitation();
+  const unlock = useUnlockUser();
 
   const resendInvitation = async () => {
     if (!pendingResend) {
@@ -66,6 +67,17 @@ export function UsersPage() {
     }
   };
 
+  const unlockUser = async (user: User) => {
+    setActionError(null);
+    setNotice(null);
+    try {
+      await unlock.mutateAsync(user.id);
+      setNotice(`${user.name} ya puede iniciar sesión de nuevo.`);
+    } catch (error) {
+      setActionError(problemMessage(error));
+    }
+  };
+
   const actionsFor = (user: User): RowAction[] => {
     const actions: RowAction[] = [];
     if (can('users', 'edit')) {
@@ -75,6 +87,14 @@ export function UsersPage() {
         icon: ACTION_ICONS.edit,
         to: `/usuarios/${user.id}/editar`,
       });
+      if (user.locked_until) {
+        actions.push({
+          key: 'unlock',
+          label: 'Desbloquear',
+          icon: ACTION_ICONS.unlock,
+          onSelect: () => void unlockUser(user),
+        });
+      }
       if (user.invitation_pending) {
         actions.push({
           key: 'invite',
@@ -215,6 +235,17 @@ export function UsersPage() {
 }
 
 function StatusCell({ user }: { user: User }) {
+  if (user.is_active && user.locked_until) {
+    // Two short lines: one long badge would take the whole width of a card and squeeze the name out.
+    return (
+      <Box>
+        <StatusBadge tone="warning" label="Bloqueado" />
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          hasta {formatUntil(user.locked_until)}
+        </Typography>
+      </Box>
+    );
+  }
   return user.is_active && user.invitation_pending ? (
     <StatusBadge tone="warning" label="Invitación pendiente" />
   ) : (

@@ -95,17 +95,6 @@ abstract class SettingsTestCase extends AccessTestCase
         return Uuid::fromHex($hex);
     }
 
-    /** A user whose only role gives the listed permissions. */
-    protected function tokenWith(string $resource, string ...$permissions): string
-    {
-        $matrix = [$resource => array_values($permissions)];
-        $name = 'Limited ' . $resource . ' ' . bin2hex(random_bytes(3));
-        $role = $this->createRole($name, $matrix, [$resource => 'all']);
-        $user = $this->createUser('limited-' . bin2hex(random_bytes(3)) . '@example.com', [$role]);
-
-        return $this->tokenFor($user['id']);
-    }
-
     private function removeDirectory(string $directory): void
     {
         foreach (glob($directory . '/{,.}*', GLOB_BRACE) ?: [] as $entry) {

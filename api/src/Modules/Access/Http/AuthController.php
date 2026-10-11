@@ -16,13 +16,16 @@ use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Application\AuthService;
 use Soltec\Modules\Access\Application\TokenResult;
-use Soltec\Modules\Access\Domain\SecurityPolicy;
+use Soltec\Modules\Access\Persistence\SecuritySettingsRepository;
 
 /** POST /v1/auth/login, /refresh, /logout and /password/change. */
 final class AuthController
 {
-    public function __construct(private readonly AuthService $auth, private readonly RefreshCookie $cookie)
-    {
+    public function __construct(
+        private readonly AuthService $auth,
+        private readonly RefreshCookie $cookie,
+        private readonly SecuritySettingsRepository $security,
+    ) {
     }
 
     public function login(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -38,7 +41,14 @@ final class AuthController
         $input->absorb($device);
         $input->done();
 
-        $result = $this->auth->login((string) $email, (string) $password, (string) $platform, $deviceName, $deviceId);
+        $result = $this->auth->login(
+            ActorContext::fromRequest($request),
+            (string) $email,
+            (string) $password,
+            (string) $platform,
+            $deviceName,
+            $deviceId,
+        );
 
         return $this->tokens($response, $result);
     }
@@ -55,7 +65,7 @@ final class AuthController
 
     public function logout(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $this->auth->logout($this->user($request));
+        $this->auth->logout($this->user($request), ActorContext::fromRequest($request));
 
         return $this->cookie->clear($response->withStatus(204));
     }
@@ -92,7 +102,7 @@ final class AuthController
 
         if ($result->refreshToken !== null) {
             if ($result->platform === 'web') {
-                $maxAge = SecurityPolicy::WEB_IDLE_MINUTES * 60;
+                $maxAge = $this->security->get()->webIdleMinutes * 60;
                 $response = $this->cookie->set($response, $result->refreshToken, $maxAge);
             } else {
                 $payload['refresh_token'] = $result->refreshToken;

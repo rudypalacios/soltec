@@ -7,6 +7,7 @@ import { useApiClient } from '../access/SessionContext';
 type CompanyUpdate = components['schemas']['CompanyUpdate'];
 type FinancialSettingsUpdate = components['schemas']['FinancialSettingsUpdate'];
 type SequenceUpdate = components['schemas']['SequenceUpdate'];
+type SecuritySettingsUpdate = components['schemas']['SecuritySettingsUpdate'];
 
 /** The image of the company's logo. The version in the query string makes a new logo a new URL for the cache. */
 export function brandingLogoUrl(version: string): string {
@@ -124,5 +125,25 @@ export function useSaveSequence() {
     mutationFn: async ({ code, body }: { code: string; body: SequenceUpdate }) =>
       unwrap(await apiClient.PATCH('/v1/sequences/{code}', { params: { path: { code } }, body })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sequences'] }),
+  });
+}
+
+export function useSecuritySettings() {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['security-settings'],
+    queryFn: async () => unwrap(await apiClient.GET('/v1/settings/security')),
+    // The form works on a copy of what was read: a background refresh must not replace what is being typed.
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSaveSecuritySettings() {
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: SecuritySettingsUpdate) =>
+      unwrap(await apiClient.PATCH('/v1/settings/security', { body })),
+    onSuccess: (settings) => queryClient.setQueryData(['security-settings'], settings),
   });
 }

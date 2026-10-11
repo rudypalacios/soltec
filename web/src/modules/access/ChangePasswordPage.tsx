@@ -3,16 +3,8 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
-import { fieldMessages, problemMessage } from './messages';
+import { fieldMessages, passwordFieldMessages, problemMessage } from './messages';
 import { useSession, useSessionState } from './SessionContext';
-
-const NEW_PASSWORD_MESSAGES = {
-  new_password: {
-    too_short: 'Debe tener al menos 12 caracteres.',
-    too_long: 'Debe tener 72 caracteres como máximo.',
-    invalid: 'No puede ser igual a tu correo ni a tu contraseña actual.',
-  },
-};
 
 export function ChangePasswordPage() {
   const session = useSession();
@@ -50,7 +42,16 @@ export function ChangePasswordPage() {
       setRepeat('');
       setDone(true);
     } catch (error) {
-      setFieldErrors(fieldMessages(error, NEW_PASSWORD_MESSAGES));
+      setFieldErrors(
+        fieldMessages(
+          error,
+          passwordFieldMessages(
+            'new_password',
+            error,
+            'No puede ser igual a tu correo ni a tu contraseña actual.',
+          ),
+        ),
+      );
       setFailure(problemMessage(error));
     } finally {
       setSubmitting(false);

@@ -172,6 +172,17 @@ abstract class AccessTestCase extends IntegrationTestCase
         );
     }
 
+    /** A user whose only role gives the listed permissions. */
+    protected function tokenWith(string $resource, string ...$permissions): string
+    {
+        $matrix = [$resource => array_values($permissions)];
+        $name = 'Limited ' . $resource . ' ' . bin2hex(random_bytes(3));
+        $role = $this->createRole($name, $matrix, [$resource => 'all']);
+        $user = $this->createUser('limited-' . bin2hex(random_bytes(3)) . '@example.com', [$role]);
+
+        return $this->tokenFor($user['id']);
+    }
+
     protected function adminRoleId(): string
     {
         return $this->service(RoleRepository::class)->findIdByCode('admin') ?? self::fail('The admin role is missing.');
@@ -323,7 +334,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 22;
+        ) === 24;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -352,6 +363,10 @@ abstract class AccessTestCase extends IntegrationTestCase
         $this->connection->executeStatement(
             "UPDATE financial_settings SET currency_code = 'GTQ', vat_rate = 0.12, income_tax_rate = 0.03, "
             . 'stale_cost_days = 90, quote_validity_days = 15, version = 1',
+        );
+        $this->connection->executeStatement(
+            'UPDATE security_settings SET web_idle_minutes = 30, mobile_refresh_days = 30, max_failed_attempts = 3, '
+            . 'lockout_minutes = 15, password_expiry_days = 90, password_min_length = 12, version = 1',
         );
         $this->connection->executeStatement('DELETE FROM margin_levels');
         $levels = [['Margen 33 %', '0.33000', 1], ['Margen 35 %', '0.35000', 0]];

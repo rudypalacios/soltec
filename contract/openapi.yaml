@@ -311,6 +311,54 @@ paths:
           $ref: '#/components/responses/Forbidden'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/me/devices:
+    get:
+      operationId: listMyDevices
+      summary: The devices where the signed-in user has a session open.
+      description:
+        A device is listed while it holds a refresh token that is neither revoked nor expired; the device making the
+        call is always listed, flagged `current`. Most recently seen first. Only the caller's own devices are ever
+        returned.
+      tags:
+        - Me
+      x-permission: authenticated
+      responses:
+        '200':
+          description: The devices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/me/devices/{deviceId}:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    delete:
+      operationId: revokeMyDevice
+      summary: Close the session of one of the user's own devices.
+      description:
+        Revokes the device and every refresh token it holds; its access token stops working at the next request.
+        Closing the current device is the same as signing out. A device that is unknown, someone else's or already
+        closed answers 404, so the id of another person's device is never confirmed.
+      tags:
+        - Me
+      x-permission: authenticated
+      responses:
+        '204':
+          description: Session closed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/users:
     get:
       operationId: listUsers
@@ -495,6 +543,34 @@ paths:
           $ref: '#/components/responses/MailFailed'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/users/{userId}/unlock:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      operationId: unlockUser
+      summary: Remove the lock and the failed-attempt counter of a user.
+      description:
+        For someone locked out by failed attempts, without waiting for the lock to expire. Idempotent, so an account
+        with no failed attempts is returned as it is. A user outside the caller's scope answers 404. Only an administrator
+        may touch an administrator (403 `forbidden`). The unlock is recorded in the audit log.
+      tags:
+        - Users
+      x-permission: users.edit
+      responses:
+        '200':
+          description: The user, no longer locked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         default:
           $ref: '#/components/responses/Unexpected'
   /v1/users/{userId}/deactivate:
@@ -1407,6 +1483,63 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/settings/security:
+    get:
+      operationId: getSecuritySettings
+      summary: Lockout, password and session parameters.
+      description:
+        The values the sign-in uses. Failed attempts before a lock and how long it lasts, password expiry and minimum
+        length, and how long a session lasts.
+      tags:
+        - Settings
+      x-permission: security_settings.view
+      responses:
+        '200':
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateSecuritySettings
+      summary: Update the lockout, password and session parameters.
+      description:
+        Every parameter is sent, each within its limits (`out_of_range` otherwise). A change applies from the next
+        event that reads it. Sessions already open keep the expiry they were issued with, existing passwords stay
+        valid under a longer minimum, and a shorter password expiry counts from the day the password was set. A stale
+        version answers 409 `conflict`. Changes are recorded in the audit log with the previous values.
+      tags:
+        - Settings
+      x-permission: security_settings.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettingsUpdate'
+      responses:
+        '200':
+          description: The updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/sequences:
     get:
       operationId: listSequences
@@ -1527,6 +1660,12 @@ components:
         $ref: '#/components/schemas/Uuid'
     RoleId:
       name: roleId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    DeviceId:
+      name: deviceId
       in: path
       required: true
       schema:
@@ -1760,6 +1899,9 @@ components:
         active_user_count:
           type: integer
           description: With `department_in_use`, how many active users the department still has.
+        password_min_length:
+          type: integer
+          description: With a field error on a password, the minimum length the company requires.
     FieldError:
       type: object
       required:
@@ -2482,6 +2624,120 @@ components:
               type: integer
               minimum: 1
               maximum: 365
+    Device:
+      type: object
+      required:
+        - id
+        - platform
+        - name
+        - last_seen_at
+        - created_at
+        - current
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        platform:
+          type: string
+          enum:
+            - web
+            - android
+            - ios
+        name:
+          type: string
+          nullable: true
+          description: What the device called itself at sign-in, for the person to recognize it.
+        last_seen_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        current:
+          type: boolean
+          description: The device making this call.
+    DeviceList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+    SecuritySettings:
+      type: object
+      required:
+        - web_idle_minutes
+        - mobile_refresh_days
+        - max_failed_attempts
+        - lockout_minutes
+        - password_expiry_days
+        - password_min_length
+        - created_at
+        - updated_at
+        - version
+      properties:
+        web_idle_minutes:
+          type: integer
+          description: Minutes without activity after which a web session ends (5 to 1440).
+        mobile_refresh_days:
+          type: integer
+          description: Days a mobile session lasts before signing in again (1 to 90).
+        max_failed_attempts:
+          type: integer
+          description: Wrong passwords in a row that lock the account (3 to 20).
+        lockout_minutes:
+          type: integer
+          description: How long a lock lasts (1 to 1440).
+        password_expiry_days:
+          type: integer
+          description: Days after which a password must be changed (30 to 365).
+        password_min_length:
+          type: integer
+          description: Minimum characters of a new password. It can only go up from 12 (12 to 72).
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    SecuritySettingsUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - web_idle_minutes
+            - mobile_refresh_days
+            - max_failed_attempts
+            - lockout_minutes
+            - password_expiry_days
+            - password_min_length
+          properties:
+            web_idle_minutes:
+              type: integer
+              minimum: 5
+              maximum: 1440
+            mobile_refresh_days:
+              type: integer
+              minimum: 1
+              maximum: 90
+            max_failed_attempts:
+              type: integer
+              minimum: 3
+              maximum: 20
+            lockout_minutes:
+              type: integer
+              minimum: 1
+              maximum: 1440
+            password_expiry_days:
+              type: integer
+              minimum: 30
+              maximum: 365
+            password_min_length:
+              type: integer
+              minimum: 12
+              maximum: 72
     SequencePeriod:
       type: string
       enum:

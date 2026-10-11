@@ -346,6 +346,89 @@ describe('creating a user', () => {
   });
 });
 
+describe('locked users', () => {
+  const LOCKED = { ...OTHER, locked_until: '2026-10-09T18:30:00.000Z' };
+
+  it('marks who is locked and unlocks them without asking', async () => {
+    let unlocked = false;
+    const { session } = createTestSession({
+      ...list(LOCKED),
+      [`POST /v1/users/${LOCKED.id}/unlock`]: () => {
+        unlocked = true;
+        return Response.json({ ...LOCKED, locked_until: null });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    expect(await screen.findByText('Bloqueado')).toBeInTheDocument();
+    expect(screen.getByText(/^hasta /)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+
+    await waitFor(() => expect(unlocked).toBe(true));
+    expect(
+      await screen.findByText('Luis Gómez ya puede iniciar sesión de nuevo.'),
+    ).toBeInTheDocument();
+  });
+
+  it('offers to unlock only a user who is locked', async () => {
+    const { session } = createTestSession(list(OTHER));
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Desbloquear' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Bloqueado')).not.toBeInTheDocument();
+  });
+
+  it('does not offer it to whoever may not edit users', async () => {
+    const reader = { ...ME, permissions: { users: ['view'] }, scopes: { users: 'all' } };
+    const { session } = createTestSession(list(LOCKED), reader);
+    renderApp(session, '/usuarios');
+
+    expect(await screen.findByText('Bloqueado')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Acciones de Luis Gómez' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says why the server refused', async () => {
+    const { session } = createTestSession({
+      ...list(LOCKED),
+      [`POST /v1/users/${LOCKED.id}/unlock`]: () => problem(403, 'forbidden'),
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+
+    expect(await screen.findByText('No tienes permiso para hacer esto.')).toBeInTheDocument();
+  });
+
+  it('works from the card on a phone', async () => {
+    setViewportWidth(390);
+    let unlocked = false;
+    const { session } = createTestSession({
+      ...list(LOCKED),
+      [`POST /v1/users/${LOCKED.id}/unlock`]: () => {
+        unlocked = true;
+        return Response.json({ ...LOCKED, locked_until: null });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+
+    await waitFor(() => expect(unlocked).toBe(true));
+  });
+});
+
 describe('pending invitations', () => {
   const PENDING = { ...OTHER, invitation_pending: true, password_changed_at: null };
 

@@ -3,16 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { PublicCard } from '../../components/PublicCard';
 import { LOGIN_PATH } from './guards';
-import { fieldMessages, problemMessage } from './messages';
+import { fieldMessages, passwordFieldMessages, problemMessage } from './messages';
 import { useAcceptInvitation, useResetPassword } from './useCredentials';
-
-const PASSWORD_MESSAGES = {
-  password: {
-    too_short: 'Debe tener al menos 12 caracteres.',
-    too_long: 'Debe tener 72 caracteres como máximo.',
-    invalid: 'No puede ser igual a tu correo.',
-  },
-};
 
 /**
  * The token travels in the fragment of the link (`#token=...`), which browsers never send to a server. It is read
@@ -71,7 +63,10 @@ function SetPasswordForm({
       await submit({ token: token ?? '', password });
       setDone(true);
     } catch (error) {
-      const fields = fieldMessages(error, PASSWORD_MESSAGES);
+      const fields = fieldMessages(
+        error,
+        passwordFieldMessages('password', error, 'No puede ser igual a tu correo.'),
+      );
       setFieldErrors(fields);
       setFailure(Object.keys(fields).length === 0 ? problemMessage(error) : null);
     }

@@ -132,6 +132,18 @@ final class UserController
     }
 
     /** @param array<string, string> $args */
+    public function unlock(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $user = $this->users->unlock(
+            $this->caller($request),
+            ActorContext::fromRequest($request),
+            $this->pathId($args, 'userId'),
+        );
+
+        return Json::write($response, $this->present($user));
+    }
+
+    /** @param array<string, string> $args */
     public function deactivate(
         ServerRequestInterface $request,
         ResponseInterface $response,

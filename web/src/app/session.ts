@@ -1,4 +1,5 @@
 import { AuthSession } from '@soltec/shared';
+import { describeBrowser } from '../adapters/deviceName';
 import { localDeviceIdStore } from '../adapters/localDeviceIdStore';
 import { API_PATH } from './apiPath';
 
@@ -9,6 +10,6 @@ import { API_PATH } from './apiPath';
 export const session = new AuthSession({
   baseUrl: `${window.location.origin}${API_PATH}`,
   platform: 'web',
-  deviceName: 'Navegador web',
+  deviceName: describeBrowser(navigator.userAgent),
   deviceStore: localDeviceIdStore,
 });

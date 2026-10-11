@@ -309,7 +309,10 @@ final class RolesTest extends AccessTestCase
         $permissions = $this->json($this->api('GET', '/permissions', $this->adminToken));
 
         self::assertSame(
-            ['company', 'departments', 'financial_settings', 'margin_levels', 'roles', 'sequences', 'users'],
+            [
+                'company', 'departments', 'financial_settings', 'margin_levels', 'roles', 'security_settings',
+                'sequences', 'users',
+            ],
             $this->columnAt($resources, 'code', 'data'),
         );
         self::assertSame(['create', 'deactivate', 'edit', 'view'], $this->columnAt($permissions, 'code', 'data'));

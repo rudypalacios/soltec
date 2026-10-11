@@ -9,6 +9,7 @@ use Doctrine\DBAL\Connection;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
+use Soltec\Modules\Access\Domain\DeviceRecord;
 
 /** Reads and writes `devices` and `refresh_tokens`: the sessions behind the access tokens. */
 final class SessionRepository
@@ -26,6 +27,57 @@ final class SessionRepository
         );
 
         return $found === false ? null : $deviceId;
+    }
+
+    /**
+     * The devices where the user has a live session: not revoked and holding a refresh token that is neither revoked
+     * nor expired. A browser that was simply closed long ago is not a session. The device making the call is always
+     * listed, most recently seen first.
+     *
+     * @return list<DeviceRecord>
+     */
+    public function listSessions(string $userId, string $currentDeviceId, DateTimeImmutable $now): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT LOWER(HEX(d.id)) AS id, d.platform, d.name, d.last_seen_at, d.created_at FROM devices d '
+            . 'WHERE d.user_id = UNHEX(:user_id) AND d.revoked_at IS NULL AND (d.id = UNHEX(:current) OR EXISTS ('
+            . 'SELECT 1 FROM refresh_tokens t WHERE t.device_id = d.id AND t.revoked_at IS NULL '
+            . 'AND t.expires_at > :now)) ORDER BY d.last_seen_at DESC, d.created_at DESC',
+            [
+                'user_id' => Uuid::toHex($userId),
+                'current' => Uuid::toHex($currentDeviceId),
+                'now' => Timestamps::toDb($now),
+            ],
+        );
+
+        return array_map(static function (array $row) use ($currentDeviceId): DeviceRecord {
+            $id = Uuid::fromHex(Row::string($row, 'id'));
+
+            return new DeviceRecord(
+                $id,
+                Row::string($row, 'platform'),
+                Row::nullableString($row, 'name'),
+                Row::nullableDate($row, 'last_seen_at'),
+                Row::date($row, 'created_at'),
+                $id === $currentDeviceId,
+            );
+        }, $rows);
+    }
+
+    /** @return array{platform: string, name: string|null}|null null when it is unknown, someone else's or revoked */
+    public function findOwnDevice(string $userId, string $deviceId): ?array
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT platform, name FROM devices WHERE id = UNHEX(:id) AND user_id = UNHEX(:user_id) '
+            . 'AND revoked_at IS NULL FOR UPDATE',
+            ['id' => Uuid::toHex($deviceId), 'user_id' => Uuid::toHex($userId)],
+        );
+
+        if ($row === false) {
+            return null;
+        }
+
+        return ['platform' => Row::string($row, 'platform'), 'name' => Row::nullableString($row, 'name')];
     }
 
     public function createDevice(string $userId, string $platform, ?string $name, DateTimeImmutable $now): string

@@ -73,10 +73,10 @@ final class UserRecord
         return $this->lockedUntil !== null && $this->lockedUntil > $now;
     }
 
-    public function passwordExpired(DateTimeImmutable $now): bool
+    public function passwordExpired(DateTimeImmutable $now, int $expiryDays): bool
     {
         return $this->passwordChangedAt === null
-            || $this->passwordChangedAt->modify(sprintf('+%d days', SecurityPolicy::PASSWORD_EXPIRY_DAYS)) <= $now;
+            || $this->passwordChangedAt->modify(sprintf('+%d days', $expiryDays)) <= $now;
     }
 
     public function hasAdminRole(): bool

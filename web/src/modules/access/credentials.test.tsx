@@ -110,6 +110,26 @@ describe('accepting an invitation', () => {
     expect(screen.queryByText('Debe tener al menos 12 caracteres.')).not.toBeInTheDocument();
   });
 
+  it('names the minimum length the company requires, as the server reports it', async () => {
+    const { session } = createTestSession(
+      {
+        'POST /v1/auth/invitations/accept': () =>
+          problem(422, 'validation_failed', [{ field: 'password', code: 'too_short' }], {
+            password_min_length: 16,
+          }),
+      },
+      NO_SESSION,
+    );
+    renderApp(session, route);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/^Contraseña nueva/), 'short');
+    await user.type(screen.getByLabelText(/^Repite la contraseña/), 'short');
+    await user.click(screen.getByRole('button', { name: 'Activar cuenta' }));
+
+    expect(await screen.findByText('Debe tener al menos 16 caracteres.')).toBeInTheDocument();
+  });
+
   it('shows what the server rejected under the password', async () => {
     const { session } = createTestSession(
       {

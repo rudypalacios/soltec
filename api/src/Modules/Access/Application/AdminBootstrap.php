@@ -11,6 +11,7 @@ use Soltec\Modules\Access\Domain\PasswordHasher;
 use Soltec\Modules\Access\Domain\PasswordPolicy;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Access\Persistence\RoleRepository;
+use Soltec\Modules\Access\Persistence\SecuritySettingsRepository;
 use Soltec\Modules\Access\Persistence\UserRepository;
 
 /**
@@ -29,6 +30,7 @@ final class AdminBootstrap
         private readonly RoleRepository $roles,
         private readonly PasswordHasher $hasher,
         private readonly AuditLogger $audit,
+        private readonly SecuritySettingsRepository $security,
     ) {
     }
 
@@ -54,9 +56,9 @@ final class AdminBootstrap
         return mb_strlen($name) > 150 ? AdminBootstrapException::NAME_TOO_LONG : null;
     }
 
-    public static function passwordError(string $password, string $email): ?string
+    public function passwordError(string $password, string $email): ?string
     {
-        $violation = PasswordPolicy::violation($password, $email);
+        $violation = PasswordPolicy::violation($password, $email, $this->passwordMinLength());
 
         return $violation === null ? null : AdminBootstrapException::PASSWORD_PREFIX . $violation;
     }
@@ -72,7 +74,7 @@ final class AdminBootstrap
         $this->assertCanCreate();
         $email = mb_strtolower(trim($email));
         $name = trim($name) === '' ? self::DEFAULT_NAME : trim($name);
-        $reason = self::emailError($email) ?? self::nameError($name) ?? self::passwordError($password, $email);
+        $reason = self::emailError($email) ?? self::nameError($name) ?? $this->passwordError($password, $email);
         if ($reason !== null) {
             throw new AdminBootstrapException($reason);
         }
@@ -93,6 +95,12 @@ final class AdminBootstrap
                 'source' => $source,
             ]);
         });
+    }
+
+    /** The minimum the company configured, to tell the person at the terminal what is expected. */
+    public function passwordMinLength(): int
+    {
+        return $this->security->get()->passwordMinLength;
     }
 
     private function adminRoleId(): string

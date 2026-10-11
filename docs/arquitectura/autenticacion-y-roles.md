@@ -39,7 +39,7 @@ Convierte el [ADR-0012](../adr/0012-autenticacion-y-autorizacion.md) en un dise�
 - Opaco, 32 bytes aleatorios; en `refresh_tokens` solo se guarda su SHA-256.
 - **Rotación**: cada refresco emite uno nuevo y revoca el anterior. Si llega uno ya revocado, se revocan todos los de ese dispositivo (señal de robo).
 - Web: cookie `httpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`. El mismo origen evita CORS, y `SameSite=Strict` junto a un cuerpo JSON cubre el CSRF. Móvil: el token viaja en el cuerpo y en un puerto de almacenamiento seguro.
-- Dos pestañas pueden refrescar a la vez: una ventana de gracia de **10 segundos** tras la rotación evita que la segunda se tome por robo. Solo vale para el token que llega por cookie (la web, donde el navegador comparte la cookie ya renovada); un token enviado en el cuerpo (móvil) que se reusa se trata siempre como robo. La web se mantiene abierta mientras haya actividad: cada refresco extiende 30 minutos de inactividad; el móvil dura 30 días. *Constantes en `SecurityPolicy` hasta la rebanada 1.3, que las lee de `security_settings`.*
+- Dos pestañas pueden refrescar a la vez: una ventana de gracia de **10 segundos** tras la rotación evita que la segunda se tome por robo. Solo vale para el token que llega por cookie (la web, donde el navegador comparte la cookie ya renovada); un token enviado en el cuerpo (móvil) que se reusa se trata siempre como robo. La web se mantiene abierta mientras haya actividad: cada refresco extiende 30 minutos de inactividad; el móvil dura 30 días. *Estos plazos, el bloqueo y la contraseña se leen de `security_settings` (rebanada 1.5, `GET`/`PATCH /v1/settings/security`).*
 
 ## 5. Endpoints (insumo del contrato OpenAPI)
 
@@ -55,8 +55,9 @@ Todos bajo `/api/v1`. Errores en `application/problem+json` con un `code` establ
 | `POST /auth/password/change` | autenticada, incluso con token restringido | Cambia la contraseña conociendo la actual y cierra la sesión de los demás dispositivos |
 | `POST /auth/invitations/accept` | pública (token de un solo uso) | Un usuario externo fija su contraseña |
 | `GET /me` | autenticada | Usuario, roles, permisos efectivos y alcances |
-| `GET /me/devices`, `DELETE /me/devices/{id}` | autenticada | Ver y cerrar sesión en un dispositivo propio |
-| `POST /users/{id}/unlock` | `users.edit` | Quita el bloqueo por intentos fallidos |
+| `GET /me/devices`, `DELETE /me/devices/{id}` | autenticada | Ver y cerrar sesión en un dispositivo propio. Se listan los que tienen un refresh vivo, más el actual; uno ajeno o ya cerrado responde 404 |
+| `POST /users/{id}/unlock` | `users.edit` | Quita el bloqueo y el contador de intentos fallidos; respeta el alcance y la regla de que solo un administrador toca a otro. Idempotente |
+| `GET/PATCH /settings/security` | `security_settings.view/edit` | Parámetros de bloqueo, contraseña y sesión |
 | `GET/POST /users`, `GET/PATCH /users/{id}` | `users.view/create/edit` | Administración de usuarios |
 | `POST /users/{id}/deactivate`, `/reactivate`, `/invite` | `users.deactivate`, `users.edit` | Desactivar (revoca sesiones), reactivar, reenviar invitación |
 | `GET/POST /roles`, `GET/PATCH /roles/{id}` | `roles.*` | Roles con su matriz de permisos y alcances |

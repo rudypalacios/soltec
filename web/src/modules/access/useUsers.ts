@@ -77,3 +77,14 @@ export function useSetUserActive() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 }
+
+/** Removes the lock of a user who failed to sign in too many times; the list refreshes afterwards. */
+export function useUnlockUser() {
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) =>
+      unwrap(await apiClient.POST('/v1/users/{userId}/unlock', { params: { path: { userId } } })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
