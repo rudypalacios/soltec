@@ -27,3 +27,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0017](0017-credenciales-por-enlace-de-correo.md) | Invitación y recuperación de contraseña por enlace de correo | Aceptada |
 | [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Aceptada |
 | [0019](0019-correlativos-logo-y-remitente.md) | Correlativos atómicos, logo de la empresa y remitente en el `.env` | Aceptada |
+| [0020](0020-pruebas-e2e.md) | Pruebas E2E con Playwright contra un servidor desechable | Aceptada |

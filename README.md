@@ -37,6 +37,7 @@ npm run dev                     # http://localhost:5173
 |---|---|
 | API: estilo, análisis estático y pruebas | `cd api && composer check` |
 | Web y `shared`: lint, contrato, tipos, pruebas y build | `npm run lint && npm run lint:contract && npm run typecheck && npm test && npm run build` |
+| E2E (Playwright; exige MySQL con una base `soltec_e2e` y el usuario `soltec`, ver [ADR-0020](docs/adr/0020-pruebas-e2e.md)) | `npm run e2e` (todo) o, con la web ya construida, `cd e2e && npx playwright test --only-changed=origin/develop` |
 
 Las pruebas de integración de la API borran todas las tablas de la base de datos configurada, por eso exigen que su nombre termine en `_test` (por defecto `soltec_test`, ver `api/phpunit.xml`).
 
