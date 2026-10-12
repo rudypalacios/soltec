@@ -8,11 +8,11 @@ El workflow **Deploy** se dispara solo:
 
 | Evento | Qué hace |
 |---|---|
-| Cualquier PR (al abrirlo y con cada push) | Corre las pruebas. **No despliega.** |
+| Cualquier PR (al abrirlo y con cada push) | Corre las pruebas. **No despliega.** Los PR de trabajo van contra `develop` ([ADR-0021](adr/0021-flujo-de-ramas-con-develop.md)); en ellos también corre el E2E ([ADR-0020](adr/0020-pruebas-e2e.md)). |
 | PR con la etiqueta `pre-deploy` | Corre las pruebas y despliega en `staging` (`test.musicos-catolicos.com`), con cada push mientras la tenga. Al ponerle la etiqueta despliega en el acto. |
-| `main` (el squash merge de un PR) | Corre las pruebas y despliega en `production` (`soltec.musicos-catolicos.com`). |
+| `main` (el PR de release `develop → main`, con commit de fusión) | Corre las pruebas y despliega en `production` (`soltec.musicos-catolicos.com`). |
 
-La etiqueta la pone quien revisa, así decide qué se prueba en `staging`: un cambio solo de texto no necesita desplegarse. Una rama sin PR no dispara nada. Un PR con conflictos con su base tampoco (GitHub no lo ejecuta hasta resolverlos).
+La etiqueta la pone quien revisa, así decide qué se prueba en `staging`: un cambio solo de texto no necesita desplegarse. Una rama sin PR no dispara nada. Fusionar un PR en `develop` no despliega: solo corre el E2E completo. Un PR con conflictos con su base tampoco (GitHub no lo ejecuta hasta resolverlos).
 
 También puede lanzarse a mano (Actions → Deploy → *Run workflow*): sobre una rama distinta de `main` despliega en `staging` sin pedir la etiqueta, y desde `main` vuelve a desplegar producción. `staging` es compartido: tiene el código del último PR que se desplegó, y las migraciones de una rama sin fusionar quedan aplicadas en la base de `staging`. Por cada despliegue:
 
@@ -77,9 +77,10 @@ No se usa protección de directorio de cPanel: el acceso lo controla el login de
 
 **Cómo se evita desplegar al entorno equivocado.** Los nombres son los mismos en los dos entornos (`FTP_PASSWORD`, `DEPLOY_TOKEN`...), pero cada *Environment* guarda su propio valor y el workflow toma los del entorno que corresponde a la rama; un prefijo por entorno (`TEST_FTP_PASSWORD`) obligaría a escoger el nombre con lógica en el workflow, que es justo donde se cometería el error. Las reglas que sí protegen:
 
+- **`staging` acepta las ramas de los PR** (*Deployment branches and tags*: *All branches*, o *Selected* con el patrón de nombres de rama que se use).
 - **`production` solo acepta `main`.** En *Environments → production → Deployment branches and tags* elige *Selected branches* y agrega `main`. Con eso ninguna otra rama puede desplegar a producción aunque el workflow se equivoque.
 - **Todo va en el Environment, nada en *Repository secrets* ni *Repository variables*.** Un secret a nivel de repositorio lo ven todos los entornos; si falta uno en el Environment, el workflow tomaría el del repositorio sin avisar.
-- **`production` con *Required reviewers*** (opcional): como producción despliega sola al fusionar, esto agrega una aprobación manual antes de subir. Sin él, el merge a `main` publica directamente.
+- **`production` con *Required reviewers*** (opcional): como producción despliega sola al fusionar el release, esto agrega una aprobación manual antes de subir. Sin él, el merge a `main` publica directamente.
 - El log del smoke test muestra la URL a la que apunta; verifícala antes de aprobar.
 
 ### 2.3 El token de despliegue
@@ -137,7 +138,7 @@ Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). No e
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.
-2. Abre un PR con una rama que no sea `main` y ponle la etiqueta `pre-deploy` (o lanza *Actions → Deploy → Run workflow* sobre la rama): despliega a `staging`. La etiqueta debe existir en el repositorio; si no, créala en *Issues → Labels*.
+2. Abre un PR contra `develop` y ponle la etiqueta `pre-deploy` (o lanza *Actions → Deploy → Run workflow* sobre la rama): despliega a `staging`. La etiqueta debe existir en el repositorio; si no, créala en *Issues → Labels*.
 3. En el log, el paso **Apply migrations** (el primero) responde 404 y se tolera; el segundo debe responder `200` con la migración aplicada.
 4. El paso **Smoke test** debe terminar en verde y mostrar el diagnóstico.
 5. Abre `https://test.musicos-catolicos.com`: debe verse la pantalla vacía con «El servicio está en línea».
