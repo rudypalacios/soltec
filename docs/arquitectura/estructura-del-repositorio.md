@@ -23,7 +23,9 @@ soltec/
 │   ├── workflows/            tests.yml (reutilizable) · deploy.yml (test y producción)
 │   └── scripts/              migrate.sh
 ├── contract/                 contrato de la API (fuente única, ADR-0006)
-│   ├── openapi.yaml          un solo archivo; se divide en paths/ y schemas/ solo si deja de ser manejable
+│   ├── openapi.yaml          raíz: info, seguridad, etiquetas y lo compartido entre módulos
+│   ├── modules/              un documento parcial (paths y components) por área; cada rebanada edita el suyo
+│   ├── bundle.mjs            une la raíz y los módulos en dist/openapi.yaml (no se versiona)
 │   └── test-vectors/         casos de prueba compartidos entre PHP y TypeScript
 ├── api/                      backend PHP 8.3 + Slim 4
 │   ├── composer.json · phpcs.xml · phpstan.neon.dist · phpunit.xml · .env.example

@@ -1,0 +1,177 @@
+paths:
+  /v1/audit-logs:
+    get:
+      operationId: listAuditLogs
+      summary: Read the audit log, newest first.
+      description:
+        The only route over the audit log, and it only reads. Entries are filtered by who did it, what kind of record,
+        which record, which action and a time range (inclusive). It is read with a cursor, not pages, because the log
+        only grows. Pass the `next_cursor` of a response as `cursor` to get the older entries; it is null on the last
+        page. The reader's scope applies to the actor of each entry. `own` shows what they did and `all` shows
+        everything, including what the system did. Passwords and tokens are never in an entry.
+      tags:
+        - Audit
+      x-permission: audit_logs.view
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: entity_type
+          in: query
+          required: false
+          description: The table of the record, for example `users` or `roles`.
+          schema:
+            type: string
+            maxLength: 50
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+        - name: from
+          in: query
+          required: false
+          description: Oldest moment to include, as the API writes timestamps (UTC).
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: to
+          in: query
+          required: false
+          description: Newest moment to include. It cannot be before `from`.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          description: The opaque `next_cursor` of the previous response. A cursor that was not issued answers 422.
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        '200':
+          description: A page of entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntryPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  schemas:
+    AuditEntry:
+      type: object
+      required:
+        - id
+        - occurred_at
+        - user
+        - device_id
+        - action
+        - entity_type
+        - entity_id
+        - entity_label
+        - entity_label_is_current
+        - before
+        - after
+        - ip_address
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+        user:
+          type: object
+          nullable: true
+          description: Who did it. Null when the system did, or an anonymous caller (the lock after failed attempts).
+          required:
+            - id
+            - name
+            - name_is_current
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+              description: The person's name when the entry was written.
+            name_is_current:
+              type: boolean
+              description: True for an entry written before names were stored, whose `name` is the one the person has now.
+        device_id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        action:
+          type: string
+          description: For example `create`, `update`, `deactivate`, `login`, `lockout`, `unlock`.
+        entity_type:
+          type: string
+          description: The table of the record the entry is about.
+        entity_id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        entity_label:
+          type: string
+          nullable: true
+          description:
+            The name of the record when the entry was written (a profile that was called «Ventas» then keeps saying
+            so after a rename). Null for records without a name of their own, such as the single-row settings.
+        entity_label_is_current:
+          type: boolean
+          description: True for an entry written before names were stored, whose `entity_label` is the name the record has now.
+        before:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Only the fields that changed, as they were.
+        after:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Only the fields that changed, as they are now.
+        ip_address:
+          type: string
+          nullable: true
+    AuditEntryPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+        meta:
+          type: object
+          required:
+            - limit
+            - next_cursor
+          properties:
+            limit:
+              type: integer
+            next_cursor:
+              type: string
+              nullable: true
+              description: Pass it as `cursor` for the older entries; null on the last page.

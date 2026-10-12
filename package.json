@@ -13,10 +13,11 @@
   },
   "scripts": {
     "generate": "npm run generate --workspace @soltec/shared",
-    "lint": "eslint . && prettier --check \"shared/**/*.ts\" \"e2e/**/*.ts\" \"web/**/*.{ts,tsx,json,html}\" \"contract/*.yaml\" \"*.json\"",
-    "lint:contract": "spectral lint contract/openapi.yaml --fail-severity=warn",
+    "lint": "eslint . && prettier --check \"shared/**/*.ts\" \"e2e/**/*.ts\" \"web/**/*.{ts,tsx,json,html}\" \"contract/**/*.yaml\" \"*.json\"",
+    "contract:bundle": "node contract/bundle.mjs",
+    "lint:contract": "npm run contract:bundle && spectral lint contract/dist/openapi.yaml --fail-severity=warn",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node --test \"contract/*.test.mjs\"",
     "build": "npm run build --workspace @soltec/web",
     "dev": "npm run dev --workspace @soltec/web",
     "e2e": "npm run build && npm run e2e --workspace @soltec/e2e"
@@ -28,7 +29,8 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.19.0"
+    "typescript-eslint": "^8.19.0",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "vite": "^6.0.6"

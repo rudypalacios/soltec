@@ -6,3 +6,4 @@ db
 docs
 package-lock.json
 **/generated
+contract/dist

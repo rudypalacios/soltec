@@ -1,0 +1,123 @@
+paths:
+  /v1/me:
+    get:
+      operationId: getMe
+      summary: Get the signed-in user with roles, effective permissions and scopes.
+      description:
+        Permissions are the union of all the user's roles, read from the database on every request, so
+        a role change applies at the next call. With several roles the widest scope wins (all, then team, then own).
+        The web app uses it to hide menus; the server is the real control. With a restricted token it answers 403
+        `password_change_required`.
+      tags:
+        - Me
+      x-permission: authenticated
+      responses:
+        '200':
+          description: The user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/me/devices:
+    get:
+      operationId: listMyDevices
+      summary: The devices where the signed-in user has a session open.
+      description:
+        A device is listed while it holds a refresh token that is neither revoked nor expired; the device making the
+        call is always listed, flagged `current`. Most recently seen first. Only the caller's own devices are ever
+        returned.
+      tags:
+        - Me
+      x-permission: authenticated
+      responses:
+        '200':
+          description: The devices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/me/devices/{deviceId}:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    delete:
+      operationId: revokeMyDevice
+      summary: Close the session of one of the user's own devices.
+      description:
+        Revokes the device and every refresh token it holds; its access token stops working at the next request.
+        Closing the current device is the same as signing out. A device that is unknown, someone else's or already
+        closed answers 404, so the id of another person's device is never confirmed.
+      tags:
+        - Me
+      x-permission: authenticated
+      responses:
+        '204':
+          description: Session closed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    Device:
+      type: object
+      required:
+        - id
+        - platform
+        - name
+        - last_seen_at
+        - created_at
+        - current
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        platform:
+          type: string
+          enum:
+            - web
+            - android
+            - ios
+        name:
+          type: string
+          nullable: true
+          description: What the device called itself at sign-in, for the person to recognize it.
+        last_seen_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        current:
+          type: boolean
+          description: The device making this call.
+    DeviceList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'

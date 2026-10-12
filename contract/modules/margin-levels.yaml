@@ -1,0 +1,337 @@
+paths:
+  /v1/margin-levels:
+    get:
+      operationId: listMarginLevels
+      summary: List margin levels.
+      description:
+        Ordered by margin, lowest first. Inactive levels are hidden unless status says otherwise. The list is short, so it is not
+        paginated. Levels have no data scope of their own; whoever may view them sees all of them.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.view
+      parameters:
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: The margin levels.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevelList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createMarginLevel
+      summary: Create a margin level.
+      description:
+        The name must be unique among active levels (422 `taken`). A new level is never the default; use
+        `set-default`.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarginLevelCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/margin-levels/{marginLevelId}:
+    parameters:
+      - $ref: '#/components/parameters/MarginLevelId'
+    get:
+      operationId: getMarginLevel
+      summary: Get a margin level by id.
+      description: Returns the level, active or not.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.view
+      responses:
+        '200':
+          description: The margin level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateMarginLevel
+      summary: Change the name and rate of a margin level.
+      description:
+        Catalog prices are computed, so a new rate changes them at once; quotes already issued keep the price they
+        were issued with. A stale version answers 409 `conflict`; a name used by another active level, 422 `taken`.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarginLevelUpdate'
+      responses:
+        '200':
+          description: The updated margin level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/margin-levels/{marginLevelId}/set-default:
+    parameters:
+      - $ref: '#/components/parameters/MarginLevelId'
+    post:
+      operationId: setDefaultMarginLevel
+      summary: Make a margin level the default.
+      description:
+        The previous default stops being it in the same transaction, so there is always exactly one. A deactivated
+        level cannot be the default (409 `conflict`). Idempotent.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.edit
+      responses:
+        '200':
+          description: The new default margin level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/margin-levels/{marginLevelId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/MarginLevelId'
+    post:
+      operationId: deactivateMarginLevel
+      summary: Deactivate a margin level.
+      description:
+        Logical deactivation. The default level is refused (409 `default_margin_level`); make another the default
+        first. Idempotent.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.deactivate
+      responses:
+        '200':
+          description: The deactivated margin level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/margin-levels/{marginLevelId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/MarginLevelId'
+    post:
+      operationId: reactivateMarginLevel
+      summary: Reactivate a margin level.
+      description: Fails with 422 `validation_failed` if the name is now used by an active level. Idempotent.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.deactivate
+      responses:
+        '200':
+          description: The reactivated margin level.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevel'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/price/calculate:
+    post:
+      operationId: calculatePrice
+      summary: Compute a catalog price from a cost.
+      description:
+        The server is the source of truth for prices (ADR-0014). The cost is the supplier's invoice amount, VAT
+        included. The price uses the current VAT and income tax and the given margin level, or the default one when none
+        is given, and is rounded half up to cents. Nothing is stored. Errors are 422 `validation_failed` on `cost`
+        (`invalid`, or `out_of_range` for a price beyond the supported range) or on `margin_level_id` (`invalid` when it
+        does not exist or is deactivated). Requires the same permission as viewing the levels.
+      tags:
+        - Margin levels
+      x-permission: margin_levels.view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRequest'
+      responses:
+        '200':
+          description: The computed price.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    MarginLevelId:
+      name: marginLevelId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    MarginLevel:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - rate
+            - is_default
+            - is_active
+          properties:
+            name:
+              type: string
+            rate:
+              $ref: '#/components/schemas/Rate'
+            is_default:
+              type: boolean
+              description: Exactly one active level is the default.
+            is_active:
+              type: boolean
+    MarginLevelList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginLevel'
+    MarginLevelCreate:
+      type: object
+      required:
+        - name
+        - rate
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        rate:
+          $ref: '#/components/schemas/Rate'
+    MarginLevelUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/MarginLevelCreate'
+    Amount:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+      description: An amount of money in the company currency, rounded to cents, as a string so no float is involved.
+    PriceRequest:
+      type: object
+      required:
+        - cost
+      properties:
+        cost:
+          type: string
+          pattern: '^\d{1,9}(\.\d{1,4})?$'
+          description: The supplier's invoice amount, VAT included, with up to four decimals.
+        margin_level_id:
+          description: The level to use; the default level when absent or null.
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    PriceResult:
+      type: object
+      required:
+        - margin_level
+        - vat_rate
+        - income_tax_rate
+        - without_vat
+        - with_vat
+      properties:
+        margin_level:
+          type: object
+          required:
+            - id
+            - name
+            - rate
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+            rate:
+              $ref: '#/components/schemas/Rate'
+        vat_rate:
+          $ref: '#/components/schemas/Rate'
+        income_tax_rate:
+          $ref: '#/components/schemas/Rate'
+        without_vat:
+          $ref: '#/components/schemas/Amount'
+        with_vat:
+          $ref: '#/components/schemas/Amount'

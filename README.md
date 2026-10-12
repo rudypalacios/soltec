@@ -43,7 +43,7 @@ Las pruebas de integración de la API borran todas las tablas de la base de dato
 
 ## Contrato de la API
 
-`contract/openapi.yaml` es la fuente única. Los tipos y el cliente de `shared/` se generan con `npm run generate` (no se versionan) y una prueba de la API falla si una ruta `/v1` no está en el contrato o al revés. Los endpoints de despliegue (`/api/system/*`) quedan fuera del contrato público.
+`contract/openapi.yaml` (la raíz) y `contract/modules/*.yaml` (un archivo por área, con sus rutas y componentes) son la fuente única; `npm run contract:bundle` los une en `contract/dist/openapi.yaml`, que no se versiona. Los tipos y el cliente de `shared/` se generan con `npm run generate` (no se versionan) y una prueba de la API falla si una ruta `/v1` no está en el contrato o al revés. Los endpoints de despliegue (`/api/system/*`) quedan fuera del contrato público.
 
 ## Poner en marcha una instancia
 

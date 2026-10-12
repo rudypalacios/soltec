@@ -1,0 +1,336 @@
+paths:
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: Sign in with email and password.
+      description:
+        'Returns a short-lived access token (about 15 minutes) and the user with their effective permissions.
+        On the web the refresh token travels in an httpOnly cookie scoped to /api/v1/auth; on mobile it is returned
+        in the body (`refresh_token`) for secure storage. Wrong email, wrong password and a locked account all answer
+        the same 401 `invalid_credentials`. If the password expired or must be changed, the call succeeds with `password_change_required:
+        true` and a restricted token that only works on POST /v1/auth/password/change. Answers 503 `auth_not_configured`
+        when the server has no JWT secret.'
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: Refresh token cookie (web only). httpOnly, Secure, SameSite=Strict, Path=/api/v1/auth.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Rotate the refresh token and get a new access token.
+      description:
+        The refresh token comes from the cookie (web) or from the body (mobile). Each refresh issues
+        a new refresh token and revokes the previous one. Presenting a token that was already revoked revokes every
+        token of that device (suspected theft), apart from a short grace window that covers two tabs refreshing
+        at once. Answers 401 `token_invalid` or `token_expired`.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      parameters:
+        - name: refresh_token
+          in: cookie
+          required: false
+          description: Refresh token (web).
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New tokens.
+          headers:
+            Set-Cookie:
+              description: Rotated refresh token cookie (web only).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Sign out of the current device.
+      description:
+        Revokes the current device and all its refresh tokens, and clears the cookie. Works with a restricted
+        token, so a user who must change the password can still leave.
+      tags:
+        - Auth
+      x-permission: authenticated
+      x-allows-restricted-token: true
+      responses:
+        '204':
+          description: Signed out.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/password/change:
+    post:
+      operationId: changePassword
+      summary: Change the password of the signed-in user.
+      description:
+        Requires the current password. Works with a restricted token, which is how an initial password
+        gets replaced. The new password must follow the policy (at least 12 characters, at most 72 bytes, different
+        from the email) and different from the current one. A wrong current password answers 422 with the field error
+        `current_password_incorrect`. Every other device of the user is signed out.
+      tags:
+        - Auth
+      x-permission: authenticated
+      x-allows-restricted-token: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      summary: Choose a password with the link of an invitation.
+      description:
+        The token comes from the email sent when the account was created. It works once and for 72 hours;
+        a weak password is rejected without spending it. 400 `link_invalid` (unknown, used, replaced by a newer
+        link, or the account is no longer waiting for an invitation) or `link_expired`. Does not sign the user in.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkPasswordRequest'
+      responses:
+        '204':
+          description: Password set; the user can sign in.
+        '400':
+          $ref: '#/components/responses/LinkRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/password/forgot:
+    post:
+      operationId: forgotPassword
+      summary: Ask for a password recovery email.
+      description:
+        Always answers 204, whether the account exists or not, and the work happens after the response, so
+        neither the body nor the timing reveals it. Only an active account that already accepted its invitation
+        gets an email, at most one per minute; its link works once and for one hour, and a new link invalidates
+        the previous ones.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '204':
+          description: Request accepted.
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/auth/password/reset:
+    post:
+      operationId: resetPassword
+      summary: Choose a new password with the link of a recovery email.
+      description:
+        The account state is checked again when the link is used, so it must be active and have accepted its
+        invitation. Success removes the lock and signs the user out of every device. 400 `link_invalid` or
+        `link_expired`; a weak password is rejected without spending the link.
+      tags:
+        - Auth
+      x-permission: public
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkPasswordRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '400':
+          $ref: '#/components/responses/LinkRejected'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  responses:
+    LinkRejected:
+      description: The email link cannot be used (`link_invalid`, `link_expired`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    DeviceInfo:
+      type: object
+      required:
+        - platform
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          description: Id returned by an earlier login on this device; omit on the first login.
+        platform:
+          type: string
+          enum:
+            - web
+            - android
+            - ios
+        name:
+          type: string
+          maxLength: 100
+          description: Text that helps the user recognize the device.
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+        - device
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 190
+        password:
+          type: string
+          maxLength: 72
+          writeOnly: true
+        device:
+          $ref: '#/components/schemas/DeviceInfo'
+    RefreshRequest:
+      type: object
+      description: Mobile only. On the web the refresh token comes from the cookie and the body is empty.
+      properties:
+        refresh_token:
+          type: string
+          writeOnly: true
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - password_change_required
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          description: Seconds until the access token expires.
+        password_change_required:
+          type: boolean
+          description: True when the token is restricted to POST /v1/auth/password/change.
+        refresh_token:
+          type: string
+          description: Present only when the client is not a web browser (mobile); the web gets a cookie.
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/TokenResponse'
+        - type: object
+          required:
+            - device_id
+            - user
+          properties:
+            device_id:
+              $ref: '#/components/schemas/Uuid'
+            user:
+              $ref: '#/components/schemas/Me'
+    ChangePasswordRequest:
+      type: object
+      required:
+        - current_password
+        - new_password
+      properties:
+        current_password:
+          type: string
+          maxLength: 72
+          writeOnly: true
+        new_password:
+          type: string
+          maxLength: 72
+          writeOnly: true
+    LinkPasswordRequest:
+      type: object
+      required:
+        - token
+        - password
+      properties:
+        token:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: The token in the link of the email (after `#token=`).
+        password:
+          type: string
+          maxLength: 72
+          writeOnly: true
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 190
