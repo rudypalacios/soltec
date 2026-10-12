@@ -27,7 +27,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 
 ## Hito 1 — Fundaciones
 **Se construye por rebanadas verticales:** cada una incluye migraciones, API con tests, contrato OpenAPI de sus rutas y lo mínimo en la web para probarla en `staging`. No se pasa a la siguiente sin la anterior desplegada y probada.
-- [ ] **1.1 Acceso**, en dos PR:
+- [x] **1.1 Acceso**, en dos PR:
   - [x] **API** (`hito-1/acceso-api`): migraciones, siembra del perfil `admin`, `php api/bin/console user:create-admin`, login, refresh con rotación, logout, cambio de contraseña, `/me`, usuarios internos, perfiles, `/resources` y `/permissions`, alcance `own`/`all`, auditoría y las reglas de ADR-0012 (último administrador, nadie se desactiva a sí mismo, solo un administrador da o quita `admin`). Las 19 operaciones del contrato ya no están `x-planned`
   - [x] **Web** (`hito-1/acceso-web`, sobre la rama de la API): login, cambio de contraseña (obligatorio con contraseña temporal), lista y alta de usuarios con desactivar y reactivar, lista, alta y edición de perfiles con su matriz; desktop-first y responsive, verificada a 390 y 1280 px.
   - Fuera de 1.1: departamentos, equipo, configuración, márgenes, recuperar contraseña por correo, usuarios externos, dashboard
@@ -62,16 +62,9 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - Acordado: el login fallido **no** se audita (cualquiera llenaría la tabla con correos inventados); sí el momento del bloqueo. El recurso `dashboard` del ERD se descarta (`GET /dashboard` es de cualquier usuario con sesión y asignar widgets exige `roles.edit`). `security_settings` vive en `Modules/Access`
   - [x] **1.5c Registro en la auditoría** (`hito-1/auditoria-registro`): la columna «Registro» con el nombre del registro afectado, guardado al escribir la entrada (`audit_logs.entity_label`), con enlace a su pantalla (usuarios y perfiles) y «Ver su historial» en el detalle. El nombre de quien actuó se guarda igual (`audit_logs.user_label`). Las entradas anteriores muestran el nombre actual marcado «nombre actual» (en el detalle, para quien actuó)
   - Fuera de 1.5: ver o cerrar las sesiones de otro usuario (desactivarlo ya las cierra), exportar la auditoría, retención o purga de la auditoría (deuda a revisar antes de producción: la tabla solo crece), `push_token`
-Detalle de lo que sigue (referencia, no es orden de trabajo):
-- [ ] Autenticación: login con JWT y refresh por dispositivo, bloqueo por intentos, recuperar contraseña, expiración de contraseña, revocación de sesiones
-- [ ] Autorización: perfiles y permisos por módulo y acción, alcance de datos (propio, equipo, todo), administración de usuarios y perfiles con sus reglas
-- [ ] Modelo de usuarios externos (tipo y cliente asignado); las pantallas llegan en el Hito 9
-- [x] Primer administrador por comando de consola o desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` en el despliegue
-- [x] Departamentos y jerarquía (jefe directo)
-- [ ] Auditoría y desactivación lógica
-- [ ] Configuración general: empresa, IVA, ISR, días de costo, validez de cotización y correlativos (1.3); parámetros de sesión y bloqueo (1.5). El remitente del correo se queda en el `.env`
-- [ ] Niveles de margen y función de precio, con los casos de prueba del ADR-0011
-- [ ] Dashboard base (contenedor y registro de widgets)
+**Hito 1 cerrado (2026-10-12).** Autenticación, autorización, usuarios y perfiles, departamentos, auditoría, configuración general, márgenes y precio, y dashboard base están hechos y desplegados en las rebanadas 1.1 a 1.5.
+- Pasa al Hito 2: las **pruebas de aislamiento por cliente** y el FK `users.client_id → clients` del modelo de usuarios externos. El modelo (tipo y cliente asignado) y la invitación ya existen; no se pueden probar sin la tabla `clients`. Las pantallas del usuario externo siguen siendo del Hito 9.
+- Pendiente del usuario, sin bloquear: confirmar el ADR-0006 y lo anotado en GitHub (más abajo).
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
 
 ## Transversal — Flujo de ramas con `develop` y E2E con Playwright
@@ -87,7 +80,7 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Marcas, áreas (precarga PM9) y grupos
 - [ ] Contactos y proveedores (cascada de desactivación a productos)
 - [ ] Productos simples y paquetes, con alerta de costo desactualizado
-- [ ] Clientes (prospecto y venta, NIT sin duplicados)
+- [ ] Clientes (prospecto y venta, NIT sin duplicados), con el FK `users.client_id` y las pruebas de aislamiento por cliente que quedaron del Hito 1
 - **Fuera:** cotizaciones, conversión automática a cliente, aviso a cotizaciones vigentes, inventario y stock.
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
