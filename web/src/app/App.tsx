@@ -19,6 +19,7 @@ import { AcceptInvitationPage, ResetPasswordPage } from '../modules/access/SetPa
 import { UserCreatePage } from '../modules/access/UserCreatePage';
 import { UserEditPage } from '../modules/access/UserEditPage';
 import { UsersPage } from '../modules/access/UsersPage';
+import { AuditPage } from '../modules/audit/AuditPage';
 import { HomePage } from '../modules/home/HomePage';
 import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
@@ -107,6 +108,14 @@ export function App() {
           element={
             <RequirePermission resource="departments" action="view">
               <DepartmentsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="auditoria"
+          element={
+            <RequirePermission resource="audit_logs" action="view">
+              <AuditPage />
             </RequirePermission>
           }
         />

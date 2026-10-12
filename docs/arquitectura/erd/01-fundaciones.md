@@ -236,14 +236,16 @@ Solo se agrega: nunca se edita ni se borra. Sin `updated_at`, `version` ni `dele
 | `before_data`, `after_data` | `JSON` | sí | Solo los campos que cambiaron; nunca contraseñas ni tokens |
 | `ip_address` | `VARBINARY(16)` | sí | `INET6_ATON` |
 
-Índices: `idx_audit_entity (entity_type, entity_id, occurred_at)`, `idx_audit_user (user_id, occurred_at)`.
+Índices: `idx_audit_entity (entity_type, entity_id, occurred_at)`, `idx_audit_user (user_id, occurred_at)`, `idx_audit_occurred (occurred_at, id)` (leer del más nuevo al más viejo, rebanada 1.5b).
+
+La lee `GET /v1/audit-logs` (`audit_logs.view`): del más nuevo al más viejo, con filtros y un cursor `(occurred_at, id)` en lugar de páginas, porque la tabla solo crece y un desplazamiento se movería con cada entrada nueva. El alcance del lector se aplica al actor (`user_id`): `own` ve lo que hizo, `all` ve todo, incluido lo que hizo el sistema. Ninguna ruta escribe en ella. **No hay retención ni purga** (nada se borra): deuda a revisar antes de producción.
 
 ---
 
 ## 06 Dashboard base
 
 ### `role_widgets`
-Qué widgets ve cada perfil y en qué orden. Los widgets son código (un registro en `shared/`); la tabla guarda la asignación, no el catálogo, y el `widget_code` se valida contra ese registro.
+Qué widgets ve cada perfil y en qué orden (rebanada 1.5b). Los widgets son código: el catálogo es `WidgetCatalog` (PHP), el enum `WidgetCode` del contrato y el registro de componentes de la web, y una prueba mantiene iguales los dos primeros (el tercero está tipado por el enum). La tabla guarda la asignación y el `widget_code` se valida contra el catálogo. `GET /v1/dashboard` devuelve la unión de los widgets de los perfiles activos del usuario, cada uno una vez, en la posición del perfil que lo pone primero. Un widget nunca lleva datos: los pide con los permisos de quien lo ve. La migración da a todos los perfiles existentes los dos widgets que tenía el inicio, para que nadie vea un cambio al desplegar.
 
 | Columna | Tipo | Notas |
 |---|---|---|

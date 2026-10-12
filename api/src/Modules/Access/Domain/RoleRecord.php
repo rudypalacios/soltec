@@ -13,6 +13,7 @@ final class RoleRecord
     /**
      * @param array<string, list<string>> $permissions actions by resource code
      * @param array<string, string> $scopes `own`, `team` or `all` by resource code
+     * @param list<string> $widgets codes of the home screen widgets, in the order they show
      */
     public function __construct(
         public readonly string $id,
@@ -27,14 +28,16 @@ final class RoleRecord
         public readonly ?DateTimeImmutable $deletedAt,
         public readonly array $permissions = [],
         public readonly array $scopes = [],
+        public readonly array $widgets = [],
     ) {
     }
 
     /**
      * @param array<string, list<string>> $permissions
      * @param array<string, string> $scopes
+     * @param list<string> $widgets
      */
-    public function withMatrix(array $permissions, array $scopes): self
+    public function withMatrix(array $permissions, array $scopes, array $widgets): self
     {
         return new self(
             $this->id,
@@ -49,6 +52,7 @@ final class RoleRecord
             $this->deletedAt,
             $permissions,
             $scopes,
+            $widgets,
         );
     }
 
@@ -66,6 +70,7 @@ final class RoleRecord
             // An empty PHP array would encode as a JSON list; the contract says object.
             'permissions' => (object) $this->permissions,
             'scopes' => (object) $this->scopes,
+            'widgets' => $this->widgets,
             'created_at' => Timestamps::toIso($this->createdAt),
             'updated_at' => Timestamps::toIso($this->updatedAt),
             'version' => $this->version,

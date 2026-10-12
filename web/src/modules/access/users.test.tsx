@@ -549,6 +549,27 @@ describe('editing a user', () => {
     ...extra,
   });
 
+  it('links to the history of the user only for whoever may read the audit log', async () => {
+    const withAudit = {
+      ...ME,
+      permissions: { ...ME.permissions, audit_logs: ['view'] },
+      scopes: { ...ME.scopes, audit_logs: 'all' },
+    };
+    const { session } = createTestSession(handlers(), withAudit);
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+
+    const link = await screen.findByRole('link', { name: 'Ver historial' });
+    expect(link).toHaveAttribute('href', `/auditoria?tipo=users&registro=${OTHER.id}`);
+  });
+
+  it('has no link to the history without that permission', async () => {
+    const { session } = createTestSession(handlers());
+    renderApp(session, `/usuarios/${OTHER.id}/editar`);
+
+    await screen.findByLabelText(/^Nombre/);
+    expect(screen.queryByRole('link', { name: 'Ver historial' })).not.toBeInTheDocument();
+  });
+
   it('loads the user, sends only what the form holds with the version, and returns to the list', async () => {
     let patched: Call | undefined;
     const { session } = createTestSession(

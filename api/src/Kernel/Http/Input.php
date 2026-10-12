@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Soltec\Kernel\Http;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Psr\Http\Message\ServerRequestInterface;
 use Soltec\Kernel\Uuid;
 
@@ -155,6 +157,58 @@ final class Input
         return count(array_unique($ids)) === count($ids) ? $ids : $this->reject($field, 'invalid');
     }
 
+    /**
+     * A list of distinct values taken from a closed set, in the order sent (an empty list is allowed).
+     *
+     * @param list<string> $allowed
+     * @return list<string>|null `invalid` for anything that is not a list of distinct strings, `not_found` for a
+     *     value outside the set
+     */
+    public function choiceList(string $field, array $allowed, bool $required = true): ?array
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return $this->missing($field, $required);
+        }
+        if (!is_array($value) || !array_is_list($value)) {
+            return $this->reject($field, 'invalid');
+        }
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                return $this->reject($field, 'invalid');
+            }
+        }
+        /** @var list<string> $value */
+        if (count(array_unique($value)) !== count($value)) {
+            return $this->reject($field, 'invalid');
+        }
+
+        return array_diff($value, $allowed) === [] ? $value : $this->reject($field, 'not_found');
+    }
+
+    /**
+     * A moment as the API writes it (`2026-10-11T14:00:00Z`, with or without milliseconds), or null when absent or
+     * empty.
+     */
+    public function timestamp(string $field): ?DateTimeImmutable
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_string($value)) {
+            foreach (['Y-m-d\TH:i:s.v\Z', 'Y-m-d\TH:i:s\Z'] as $format) {
+                $moment = DateTimeImmutable::createFromFormat($format, $value, new DateTimeZone('UTC'));
+                $errors = DateTimeImmutable::getLastErrors();
+                if ($moment !== false && ($errors === false || $errors['warning_count'] === 0)) {
+                    return $moment;
+                }
+            }
+        }
+
+        return $this->reject($field, 'invalid');
+    }
+
     /** A UUID, or null when absent, null or empty (for optional references and filters). */
     public function nullableUuid(string $field): ?string
     {
@@ -231,6 +285,12 @@ final class Input
         $perPage = $this->positiveInt('per_page', 25, 1, 100);
 
         return new Pagination($page, $perPage);
+    }
+
+    /** `limit` of a list read with a cursor instead of pages: how many entries to return at most. */
+    public function limit(int $default = 50, int $max = 100): int
+    {
+        return $this->positiveInt('limit', $default, 1, $max);
     }
 
     public function fail(string $field, string $code): void

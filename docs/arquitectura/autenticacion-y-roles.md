@@ -57,6 +57,9 @@ Todos bajo `/api/v1`. Errores en `application/problem+json` con un `code` establ
 | `GET /me` | autenticada | Usuario, roles, permisos efectivos y alcances |
 | `GET /me/devices`, `DELETE /me/devices/{id}` | autenticada | Ver y cerrar sesión en un dispositivo propio. Se listan los que tienen un refresh vivo, más el actual; uno ajeno o ya cerrado responde 404 |
 | `POST /users/{id}/unlock` | `users.edit` | Quita el bloqueo y el contador de intentos fallidos; respeta el alcance y la regla de que solo un administrador toca a otro. Idempotente |
+| `GET /dashboard` | autenticada | Los widgets del inicio del usuario (unión de sus perfiles activos) |
+| `GET /widgets` | `roles.view` | Catálogo de widgets asignables; la asignación va en `widgets` del perfil |
+| `GET /audit-logs` | `audit_logs.view` | Auditoría de más nueva a más vieja, con filtros y cursor; solo lectura |
 | `GET/PATCH /settings/security` | `security_settings.view/edit` | Parámetros de bloqueo, contraseña y sesión |
 | `GET/POST /users`, `GET/PATCH /users/{id}` | `users.view/create/edit` | Administración de usuarios |
 | `POST /users/{id}/deactivate`, `/reactivate`, `/invite` | `users.deactivate`, `users.edit` | Desactivar (revoca sesiones), reactivar, reenviar invitación |
@@ -94,7 +97,7 @@ Mismo mecanismo con `users.type = 'external'`: perfiles externos de solo lectura
 ## 9. Datos iniciales y primer administrador
 
 - Una migración siembra `resources`, `permissions` y los roles de sistema: **`admin`** (inmutable, todos los permisos y alcance `all`) y, con el portal (Hito 9), **`external_client`** (solo lectura, alcance `client`). Los demás roles (P5) los crea el administrador desde la interfaz. *Rebanada 1.1: se siembra `admin` y solo los recursos `users` y `roles`; cada rebanada o módulo agrega su recurso con su migración y se lo concede a `admin`.*
-- Recursos del Hito 1: `users`, `roles`, `departments`, `company`, `financial_settings`, `security_settings`, `margin_levels`, `sequences`, `audit_logs`, `dashboard`. Cada módulo posterior agrega los suyos en su migración.
+- Recursos del Hito 1: `users`, `roles`, `departments`, `company`, `financial_settings`, `security_settings`, `margin_levels`, `sequences`, `audit_logs`. No hay recurso `dashboard`: `GET /dashboard` es de cualquier usuario con sesión y asignar widgets a un perfil exige `roles.edit`. Cada módulo posterior agrega los suyos en su migración.
 - **Primer administrador**: dos entradas con el mismo servicio (`AdminBootstrap`), que cumple la política de contraseña y **se niega si ya existe un administrador**. (1) `php api/bin/console user:create-admin` en el terminal; pide correo y contraseña sin eco. (2) Un paso tras las migraciones del despliegue (`PostMigrationStep`) que lee `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `ADMIN_NAME` del `.env`: corre con el PHP del servidor web, sirve cuando el terminal del hosting tiene otra versión de PHP y es seguro en cada despliegue (no hace nada si ya hay administrador). No es una migración porque Phinx la corre una sola vez: si las variables llegaran después, nunca se crearía. No expone ninguna ruta; el `/system/requirements` avisa mientras `ADMIN_PASSWORD` siga en el `.env`.
 
 ## 10. Errores

@@ -38,6 +38,10 @@ tags:
     description: Login, token refresh, password change, invitations and password recovery.
   - name: Me
     description: The signed-in user and their own devices.
+  - name: Dashboard
+    description: The widgets of the home screen and the catalog a role is assigned from.
+  - name: Audit
+    description: Read-only access to the audit log.
   - name: Users
     description: Internal user accounts.
   - name: Roles
@@ -309,6 +313,130 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/dashboard:
+    get:
+      operationId: getDashboard
+      summary: The widgets of the signed-in user's home screen.
+      description:
+        The widgets of the user's active roles, each once, in the position of the role that puts it first. A user
+        with no widget gets an empty list. A widget never carries data; it asks for it with the viewer's own
+        permissions.
+      tags:
+        - Dashboard
+      x-permission: authenticated
+      responses:
+        '200':
+          description: The widgets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardWidgetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/widgets:
+    get:
+      operationId: listWidgets
+      summary: The widgets a role can be assigned.
+      description: Fixed by the application, so a role form can offer them. Read-only.
+      tags:
+        - Dashboard
+      x-permission: roles.view
+      responses:
+        '200':
+          description: The catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/audit-logs:
+    get:
+      operationId: listAuditLogs
+      summary: Read the audit log, newest first.
+      description:
+        The only route over the audit log, and it only reads. Entries are filtered by who did it, what kind of record,
+        which record, which action and a time range (inclusive). It is read with a cursor, not pages, because the log
+        only grows. Pass the `next_cursor` of a response as `cursor` to get the older entries; it is null on the last
+        page. The reader's scope applies to the actor of each entry. `own` shows what they did and `all` shows
+        everything, including what the system did. Passwords and tokens are never in an entry.
+      tags:
+        - Audit
+      x-permission: audit_logs.view
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: entity_type
+          in: query
+          required: false
+          description: The table of the record, for example `users` or `roles`.
+          schema:
+            type: string
+            maxLength: 50
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+        - name: from
+          in: query
+          required: false
+          description: Oldest moment to include, as the API writes timestamps (UTC).
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: to
+          in: query
+          required: false
+          description: Newest moment to include. It cannot be before `from`.
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          description: The opaque `next_cursor` of the previous response. A cursor that was not issued answers 422.
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        '200':
+          description: A page of entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntryPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
   /v1/me/devices:
@@ -2249,6 +2377,7 @@ components:
             - is_active
             - permissions
             - scopes
+            - widgets
           properties:
             code:
               type:
@@ -2271,6 +2400,11 @@ components:
               $ref: '#/components/schemas/PermissionMap'
             scopes:
               $ref: '#/components/schemas/ScopeMap'
+            widgets:
+              type: array
+              description: The home screen widgets of the role, in the order they show.
+              items:
+                $ref: '#/components/schemas/WidgetCode'
     RolePage:
       type: object
       required:
@@ -2306,6 +2440,11 @@ components:
           $ref: '#/components/schemas/PermissionMap'
         scopes:
           $ref: '#/components/schemas/ScopeMap'
+        widgets:
+          type: array
+          description: Home screen widgets, in order and without repeats. Defaults to none.
+          items:
+            $ref: '#/components/schemas/WidgetCode'
     RoleUpdate:
       allOf:
         - $ref: '#/components/schemas/Version'
@@ -2324,6 +2463,11 @@ components:
               $ref: '#/components/schemas/PermissionMap'
             scopes:
               $ref: '#/components/schemas/ScopeMap'
+            widgets:
+              type: array
+              description: When sent, replaces the whole list (an empty one clears it).
+              items:
+                $ref: '#/components/schemas/WidgetCode'
     Department:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'
@@ -2624,6 +2768,125 @@ components:
               type: integer
               minimum: 1
               maximum: 365
+    WidgetCode:
+      type: string
+      description: A widget of the home screen. The web app has a component for each one.
+      enum:
+        - quick_links
+        - service_status
+    DashboardWidgetList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - code
+            properties:
+              code:
+                $ref: '#/components/schemas/WidgetCode'
+    WidgetCatalog:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - code
+              - name
+              - description
+            properties:
+              code:
+                $ref: '#/components/schemas/WidgetCode'
+              name:
+                type: string
+              description:
+                type: string
+    AuditEntry:
+      type: object
+      required:
+        - id
+        - occurred_at
+        - user
+        - device_id
+        - action
+        - entity_type
+        - entity_id
+        - before
+        - after
+        - ip_address
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        occurred_at:
+          $ref: '#/components/schemas/Timestamp'
+        user:
+          type: object
+          nullable: true
+          description: Who did it. Null when the system did, or an anonymous caller (the lock after failed attempts).
+          required:
+            - id
+            - name
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+        device_id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        action:
+          type: string
+          description: For example `create`, `update`, `deactivate`, `login`, `lockout`, `unlock`.
+        entity_type:
+          type: string
+          description: The table of the record the entry is about.
+        entity_id:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          nullable: true
+        before:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Only the fields that changed, as they were.
+        after:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Only the fields that changed, as they are now.
+        ip_address:
+          type: string
+          nullable: true
+    AuditEntryPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+        meta:
+          type: object
+          required:
+            - limit
+            - next_cursor
+          properties:
+            limit:
+              type: integer
+            next_cursor:
+              type: string
+              nullable: true
+              description: Pass it as `cursor` for the older entries; null on the last page.
     Device:
       type: object
       required:

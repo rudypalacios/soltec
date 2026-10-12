@@ -46,6 +46,16 @@ export function useAccessCatalogs() {
   return { resources, permissions };
 }
 
+/** The widgets a profile can put on the home screen. They only change with a deployment. */
+export function useWidgetCatalog() {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['catalogs', 'widgets'],
+    queryFn: async () => unwrap(await apiClient.GET('/v1/widgets')),
+    staleTime: Infinity,
+  });
+}
+
 export function useCreateRole() {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();

@@ -27,6 +27,7 @@ const ADMIN = {
     roles: ['create', 'deactivate', 'edit', 'view'],
   },
   scopes: { users: 'all', roles: 'all' },
+  widgets: ['quick_links', 'service_status'],
 };
 const SALES = {
   ...BASE_ROLE,
@@ -35,6 +36,7 @@ const SALES = {
   description: 'Equipo comercial',
   permissions: { users: ['view'] },
   scopes: { users: 'own' },
+  widgets: ['service_status'],
 };
 const RETIRED = {
   ...SALES,
@@ -59,6 +61,13 @@ const catalogs: Record<string, Handler> = {
         { code: 'deactivate', name: 'Desactivar' },
         { code: 'edit', name: 'Editar' },
         { code: 'view', name: 'Ver' },
+      ],
+    }),
+  'GET /v1/widgets': () =>
+    Response.json({
+      data: [
+        { code: 'quick_links', name: 'Accesos rápidos', description: 'Atajos a las pantallas.' },
+        { code: 'service_status', name: 'Estado del servicio', description: 'Si responde.' },
       ],
     }),
 };
@@ -177,6 +186,8 @@ describe('creating a role', () => {
       user_type: 'internal',
       permissions: { users: ['view', 'edit'] },
       scopes: { users: 'own' },
+      // A new profile starts with the whole home screen.
+      widgets: ['quick_links', 'service_status'],
     });
     expect(await screen.findByText('Perfil guardado.')).toBeInTheDocument();
   });
@@ -315,6 +326,7 @@ describe('editing a role', () => {
       description: 'Equipo comercial',
       permissions: { users: ['view', 'edit'] },
       scopes: { users: 'own' },
+      widgets: ['service_status'],
     });
   });
 
@@ -389,5 +401,78 @@ describe('editing a role', () => {
     renderApp(session, '/perfiles/0192f1c2-7d3a-7a11-8f2e-0000000000ff');
 
     expect(await screen.findByText('No se encontró el registro.')).toBeInTheDocument();
+  });
+});
+
+describe('home screen of a role', () => {
+  const checkbox = (name: string) => screen.getByRole('checkbox', { name: new RegExp(`^${name}`) });
+
+  it('starts a new profile with every widget ticked', async () => {
+    const { session } = createTestSession(catalogs);
+    renderApp(session, '/perfiles/nuevo');
+
+    await screen.findByRole('heading', { name: 'Panel de inicio' });
+    expect(checkbox('Accesos rápidos')).toBeChecked();
+    expect(checkbox('Estado del servicio')).toBeChecked();
+  });
+
+  it('shows what the profile has and sends the change, keeping the order it had', async () => {
+    let saved: Call | undefined;
+    const { session } = createTestSession({
+      ...catalogs,
+      [`GET /v1/roles/${SALES.id}`]: () => Response.json({ ...SALES, widgets: ['service_status'] }),
+      [`PATCH /v1/roles/${SALES.id}`]: (call) => {
+        saved = call;
+        return Response.json(SALES);
+      },
+      'GET /v1/roles': () => Response.json(page([SALES])),
+    });
+    renderApp(session, `/perfiles/${SALES.id}`);
+    const user = userEvent.setup();
+
+    await screen.findByRole('heading', { name: 'Panel de inicio' });
+    expect(checkbox('Estado del servicio')).toBeChecked();
+    expect(checkbox('Accesos rápidos')).not.toBeChecked();
+
+    await user.click(checkbox('Accesos rápidos'));
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(saved).toBeDefined());
+    // «Estado del servicio» was already there, so it stays first; the new one goes after it.
+    expect(saved?.body).toMatchObject({ widgets: ['service_status', 'quick_links'] });
+  });
+
+  it('can leave a profile with no widgets', async () => {
+    let saved: Call | undefined;
+    const { session } = createTestSession({
+      ...catalogs,
+      [`GET /v1/roles/${SALES.id}`]: () => Response.json(SALES),
+      [`PATCH /v1/roles/${SALES.id}`]: (call) => {
+        saved = call;
+        return Response.json(SALES);
+      },
+      'GET /v1/roles': () => Response.json(page([SALES])),
+    });
+    renderApp(session, `/perfiles/${SALES.id}`);
+    const user = userEvent.setup();
+
+    await screen.findByRole('heading', { name: 'Panel de inicio' });
+    await user.click(checkbox('Estado del servicio'));
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(saved).toBeDefined());
+    expect(saved?.body).toMatchObject({ widgets: [] });
+  });
+
+  it('is read-only on a system profile', async () => {
+    const { session } = createTestSession({
+      ...catalogs,
+      [`GET /v1/roles/${ADMIN.id}`]: () => Response.json(ADMIN),
+    });
+    renderApp(session, `/perfiles/${ADMIN.id}`);
+
+    await screen.findByRole('heading', { name: 'Panel de inicio' });
+    expect(checkbox('Accesos rápidos')).toBeDisabled();
+    expect(checkbox('Accesos rápidos')).toBeChecked();
   });
 });
