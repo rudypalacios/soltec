@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "npm run generate --workspace @soltec/shared && tsc --noEmit && vite build",
     "typecheck": "npm run generate --workspace @soltec/shared && tsc --noEmit",
-    "test": "npm run generate --workspace @soltec/shared && vitest run"
+    "test": "npm run generate --workspace @soltec/shared && vitest run",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

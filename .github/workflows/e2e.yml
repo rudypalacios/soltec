@@ -1,0 +1,89 @@
+name: E2E
+
+# End-to-end tests (Playwright) against a throwaway server built inside the job: MySQL 5.7, the PHP API, the built web
+# app and a mail sink. They never touch "staging" (docs/adr/0020-pruebas-e2e.md).
+# - A pull request into develop runs only the scenarios it adds or changes, so the job stays short. Each pull request
+#   brings the scenario of what must not break; the CI does not read the application code to guess which ones.
+# - A push to develop (the squash merge of a pull request) runs the whole suite, as the regression of what was merged.
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (PHP 8.3, MySQL 5.7)
+    runs-on: ubuntu-latest
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # --only-changed compares against origin/develop, so the history must be there.
+          fetch-depth: 0
+
+      # Same image and registry as tests.yml (see the note there about Docker Hub limits).
+      - name: Start MySQL 5.7
+        run: |
+          docker run -d --name mysql57 -p 3306:3306 \
+            -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=soltec_e2e \
+            -e MYSQL_USER=soltec -e MYSQL_PASSWORD=soltec_local \
+            mirror.gcr.io/library/mysql:5.7@sha256:4bc6bc963e6d8443453676cae56536f4b8156d78bae03c0145cbe47c2aad73bb > /dev/null
+          for attempt in $(seq 1 40); do
+            if docker exec mysql57 mysqladmin ping -h 127.0.0.1 -proot --silent; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL 5.7 did not become ready"
+          docker logs mysql57 | tail -30
+          exit 1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, intl, gd
+          coverage: none
+          tools: composer
+
+      - name: Install API dependencies
+        working-directory: api
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install and build the web app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Scenarios of the pull request
+        if: github.event_name == 'pull_request'
+        working-directory: e2e
+        run: npx playwright test --only-changed=origin/${{ github.base_ref }} --pass-with-no-tests
+
+      - name: All scenarios
+        if: github.event_name == 'push'
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Keep the traces of a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-traces
+          path: e2e/test-results/
+          retention-days: 7
