@@ -15,6 +15,8 @@ final class ActorContext
         public readonly ?string $userId,
         public readonly ?string $deviceId,
         public readonly ?string $ip,
+        /** Who acted, by name, as it was when the request began: a change to their own name must not rename them. */
+        public readonly ?string $userName = null,
     ) {
     }
 
@@ -33,6 +35,7 @@ final class ActorContext
             $user instanceof CurrentUser ? $user->id : null,
             $user instanceof CurrentUser ? $user->deviceId : null,
             is_string($ip) && filter_var($ip, FILTER_VALIDATE_IP) !== false ? $ip : null,
+            $user instanceof CurrentUser ? $user->name : null,
         );
     }
 }

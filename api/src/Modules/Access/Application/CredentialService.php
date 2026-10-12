@@ -231,7 +231,7 @@ final class CredentialService
     /** The person acting through an email link has no session, but the trace still names them. */
     private static function selfActor(UserRecord $user): ActorContext
     {
-        return new ActorContext($user->id, null, null);
+        return new ActorContext($user->id, null, null, $user->name);
     }
 
     private static function linkInvalid(): ApiException

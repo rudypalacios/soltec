@@ -12,6 +12,7 @@ use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Domain\AuditCursor;
+use Soltec\Modules\Access\Domain\AuditEntityLabels;
 use Soltec\Modules\Access\Domain\AuditFilter;
 
 /**
@@ -39,11 +40,14 @@ final class AuditLogRepository
                 'LOWER(HEX(a.id)) AS id',
                 'a.occurred_at',
                 'LOWER(HEX(a.user_id)) AS user_id',
+                'a.user_label',
                 'u.name AS user_name',
                 'LOWER(HEX(a.device_id)) AS device_id',
                 'a.action',
                 'a.entity_type',
                 'LOWER(HEX(a.entity_id)) AS entity_id',
+                'a.entity_label',
+                AuditEntityLabels::currentNameSql('a') . ' AS current_name',
                 'a.before_data',
                 'a.after_data',
                 'INET6_NTOA(a.ip_address) AS ip_address',
@@ -108,17 +112,26 @@ final class AuditLogRepository
         $userId = Row::nullableString($row, 'user_id');
         $deviceId = Row::nullableString($row, 'device_id');
         $entityId = Row::nullableString($row, 'entity_id');
+        $userLabel = Row::nullableString($row, 'user_label');
+        $label = Row::nullableString($row, 'entity_label');
+        $currentName = Row::nullableString($row, 'current_name');
 
         return [
             'id' => Uuid::fromHex(Row::string($row, 'id')),
             'occurred_at' => Timestamps::toIso(Row::date($row, 'occurred_at')),
-            'user' => $userId === null
-                ? null
-                : ['id' => Uuid::fromHex($userId), 'name' => Row::nullableString($row, 'user_name') ?? ''],
+            'user' => $userId === null ? null : [
+                'id' => Uuid::fromHex($userId),
+                'name' => $userLabel ?? Row::nullableString($row, 'user_name') ?? '',
+                // An entry from before names were stored: the name is the one the person has now.
+                'name_is_current' => $userLabel === null,
+            ],
             'device_id' => $deviceId === null ? null : Uuid::fromHex($deviceId),
             'action' => Row::string($row, 'action'),
             'entity_type' => Row::string($row, 'entity_type'),
             'entity_id' => $entityId === null ? null : Uuid::fromHex($entityId),
+            'entity_label' => $label ?? $currentName,
+            // An entry from before labels were stored: the name is the one the record has now.
+            'entity_label_is_current' => $label === null && $currentName !== null,
             'before' => $this->decode(Row::nullableString($row, 'before_data')),
             'after' => $this->decode(Row::nullableString($row, 'after_data')),
             'ip_address' => Row::nullableString($row, 'ip_address'),

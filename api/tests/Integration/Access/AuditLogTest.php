@@ -94,7 +94,8 @@ final class AuditLogTest extends AccessTestCase
         $rows = $this->rowsAt($page, 'data');
         self::assertSame(['update', 'create'], array_column($rows, 'action'));
         self::assertSame('2026-10-01T11:00:00.000Z', $rows[0]['occurred_at']);
-        self::assertEquals(['id' => $this->adminId, 'name' => 'Admin'], $rows[0]['user']);
+        // The helper writes the entry the old way, without the name of who acted: it shows today's name and says so.
+        self::assertEquals(['id' => $this->adminId, 'name' => 'Admin', 'name_is_current' => true], $rows[0]['user']);
         self::assertSame('roles', $rows[0]['entity_type']);
         self::assertSame($record, $rows[0]['entity_id']);
         self::assertEquals(['name' => 'Ops'], $rows[0]['before']);
@@ -288,5 +289,176 @@ final class AuditLogTest extends AccessTestCase
         self::assertIsString($hex);
 
         return Uuid::fromHex($hex);
+    }
+
+    /** @return array<string, mixed> the entry of the audit read back for a record and an action */
+    private function entryOf(string $entityId, string $action): array
+    {
+        foreach ($this->rowsAt($this->read(['entity_id' => $entityId]), 'data') as $row) {
+            if ($row['action'] === $action) {
+                return $row;
+            }
+        }
+        self::fail("No $action entry for the record.");
+    }
+
+    public function testAnEntryCarriesTheNameOfTheRecordAtTheMomentOfTheChange(): void
+    {
+        $created = $this->json($this->api('POST', '/roles', $this->adminToken, [
+            'name' => 'Ventas',
+            'user_type' => 'internal',
+            'permissions' => [],
+            'scopes' => [],
+        ]));
+        $id = $this->text($created, 'id');
+        $this->clock->advance('+1 minute');
+        $this->api('PATCH', '/roles/' . $id, $this->adminToken, ['version' => 1, 'name' => 'Comercial']);
+
+        $create = $this->entryOf($id, 'create');
+        $update = $this->entryOf($id, 'update');
+
+        self::assertSame('Ventas', $create['entity_label']);
+        self::assertFalse($create['entity_label_is_current']);
+        self::assertSame('Comercial', $update['entity_label']);
+    }
+
+    public function testARenameDoesNotRewriteTheNameOfEarlierEntries(): void
+    {
+        $role = $this->createRole('Ventas');
+        $this->api('POST', '/roles/' . $role . '/deactivate', $this->adminToken);
+        $this->connection->executeStatement(
+            'UPDATE roles SET name = :name WHERE id = UNHEX(:id)',
+            ['name' => 'Renombrado después', 'id' => Uuid::toHex($role)],
+        );
+
+        $entry = $this->entryOf($role, 'deactivate');
+
+        self::assertSame('Ventas', $entry['entity_label']);
+        self::assertFalse($entry['entity_label_is_current']);
+    }
+
+    public function testEachKindOfRecordGetsItsOwnName(): void
+    {
+        $ana = $this->createUser('ana@example.com', name: 'Ana Gómez');
+        $this->api('POST', '/users/' . $ana['id'] . '/deactivate', $this->adminToken);
+        $department = $this->json($this->api('POST', '/departments', $this->adminToken, ['name' => 'Operaciones']));
+        $session = $this->json($this->login('admin@example.com', body: [
+            'device' => ['platform' => 'android', 'name' => 'Pixel 8'],
+        ]));
+        $deviceId = $this->text($session, 'device_id');
+        $this->api('DELETE', '/me/devices/' . $deviceId, $this->text($session, 'access_token'));
+
+        self::assertSame('Ana Gómez', $this->entryOf($ana['id'], 'deactivate')['entity_label']);
+        self::assertSame('Operaciones', $this->entryOf($this->text($department, 'id'), 'create')['entity_label']);
+        self::assertSame('Pixel 8', $this->entryOf($deviceId, 'device_revoke')['entity_label']);
+    }
+
+    public function testTheLoginEntryNamesThePersonWhoSignedIn(): void
+    {
+        $this->login('admin@example.com');
+
+        self::assertSame('Admin', $this->entryOf($this->adminId, 'login')['entity_label']);
+    }
+
+    public function testASingleRowSettingHasNoName(): void
+    {
+        $this->api('PATCH', '/settings/security', $this->adminToken, [
+            'version' => 1,
+            'web_idle_minutes' => 30,
+            'mobile_refresh_days' => 30,
+            'max_failed_attempts' => 5,
+            'lockout_minutes' => 15,
+            'password_expiry_days' => 90,
+            'password_min_length' => 12,
+        ]);
+
+        $rows = $this->rowsAt($this->read(['entity_type' => 'security_settings']), 'data');
+
+        self::assertNull($rows[0]['entity_label']);
+        self::assertFalse($rows[0]['entity_label_is_current']);
+    }
+
+    public function testAnEntryFromBeforeNamesWereStoredShowsTheCurrentNameAndSaysSo(): void
+    {
+        $role = $this->createRole('Nombre de hoy');
+        $this->entry(self::T0, $this->adminId, 'update', 'roles', $role);
+
+        $entry = $this->entryOf($role, 'update');
+
+        self::assertSame('Nombre de hoy', $entry['entity_label']);
+        self::assertTrue($entry['entity_label_is_current']);
+    }
+
+    public function testAnOldEntryWhoseRecordIsGoneHasNoName(): void
+    {
+        $this->entry(self::T0, $this->adminId, 'update', 'roles', Uuid::v7());
+
+        $rows = $this->rowsAt($this->read(['entity_type' => 'roles']), 'data');
+
+        self::assertNull($rows[0]['entity_label']);
+        self::assertFalse($rows[0]['entity_label_is_current']);
+    }
+
+    public function testTheNameOfWhoActedIsTheOneTheyHadAtTheTime(): void
+    {
+        $role = $this->createRole('Ops');
+        $this->api('POST', '/roles/' . $role . '/deactivate', $this->adminToken);
+        $this->connection->executeStatement(
+            "UPDATE users SET name = 'Admin con otro nombre' WHERE id = UNHEX(:id)",
+            ['id' => Uuid::toHex($this->adminId)],
+        );
+
+        $entry = $this->entryOf($role, 'deactivate');
+
+        self::assertSame('Admin', $this->valueAt($entry, 'user', 'name'));
+        self::assertFalse($this->valueAt($entry, 'user', 'name_is_current'));
+    }
+
+    public function testAnEntryWrittenWithoutTheNameShowsTodaysAndSaysSo(): void
+    {
+        $this->entry(self::T0, $this->adminId, 'update', 'roles');
+        $this->connection->executeStatement(
+            "UPDATE users SET name = 'Nombre de hoy' WHERE id = UNHEX(:id)",
+            ['id' => Uuid::toHex($this->adminId)],
+        );
+
+        $rows = $this->rowsAt($this->read(['entity_type' => 'roles']), 'data');
+
+        self::assertSame('Nombre de hoy', $this->valueAt($rows[0], 'user', 'name'));
+        self::assertTrue($this->valueAt($rows[0], 'user', 'name_is_current'));
+    }
+
+    public function testAnEntryByNoOneStillHasNoUser(): void
+    {
+        $this->login('nobody@example.com', 'a wrong password');
+        $ana = $this->createUser('ana@example.com');
+        foreach (range(1, 3) as $ignored) {
+            $this->login('ana@example.com', 'a wrong password');
+        }
+
+        $rows = $this->rowsAt($this->read(['entity_id' => $ana['id']]), 'data');
+
+        self::assertSame('lockout', $rows[0]['action']);
+        self::assertNull($rows[0]['user']);
+    }
+
+    public function testAPersonWhoRenamesThemselvesIsStillNamedAsTheyWereInThatEntry(): void
+    {
+        $role = $this->createRole('Own account', ['users' => ['view', 'edit']], ['users' => 'own']);
+        $ana = $this->createUser('ana@example.com', [$role], name: 'Ana A');
+        $token = $this->tokenFor($ana['id']);
+
+        $renamed = $this->api('PATCH', '/users/' . $ana['id'], $token, ['version' => 1, 'name' => 'Ana B']);
+        self::assertSame(200, $renamed->getStatusCode(), (string) $renamed->getBody());
+        $this->login('ana@example.com');
+
+        $rename = $this->entryOf($ana['id'], 'update');
+        self::assertSame('Ana A', $this->valueAt($rename, 'user', 'name'), 'Who: as they were when they acted.');
+        self::assertSame('Ana B', $rename['entity_label'], 'The record: as it is after the change.');
+        self::assertEquals(['name' => 'Ana A'], $rename['before']);
+        self::assertEquals(['name' => 'Ana B'], $rename['after']);
+
+        $login = $this->entryOf($ana['id'], 'login');
+        self::assertSame('Ana B', $this->valueAt($login, 'user', 'name'), 'Later entries use the new name.');
     }
 }
