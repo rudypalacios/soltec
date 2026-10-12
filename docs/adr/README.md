@@ -13,7 +13,7 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0003](0003-migraciones-phinx-por-endpoint.md) | Migraciones con Phinx ejecutadas por endpoint | Aceptada |
 | [0004](0004-despliegue-ftps-github-actions.md) | Despliegue por FTPS con GitHub Actions | Propuesta |
 | [0005](0005-actualizaciones-por-polling.md) | Actualizaciones por polling | Aceptada |
-| [0006](0006-contrato-openapi-y-validaciones.md) | OpenAPI como fuente única de validaciones | Propuesta |
+| [0006](0006-contrato-openapi-y-validaciones.md) | OpenAPI como fuente única de validaciones | Aceptada, recortada |
 | [0007](0007-pdf-con-dompdf.md) | PDFs con Dompdf | Aceptada |
 | [0008](0008-ui-con-mui.md) | Interfaz web con MUI | Aceptada |
 | [0009](0009-archivos-e-imagenes.md) | Archivos locales e imágenes en WebP | Aceptada |
