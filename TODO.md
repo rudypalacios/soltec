@@ -64,14 +64,14 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - Fuera de 1.5: ver o cerrar las sesiones de otro usuario (desactivarlo ya las cierra), exportar la auditoría, retención o purga de la auditoría (deuda a revisar antes de producción: la tabla solo crece), `push_token`
 **Hito 1 cerrado (2026-10-12).** Autenticación, autorización, usuarios y perfiles, departamentos, auditoría, configuración general, márgenes y precio, y dashboard base están hechos y desplegados en las rebanadas 1.1 a 1.5.
 - Pasa al Hito 2: las **pruebas de aislamiento por cliente** y el FK `users.client_id → clients` del modelo de usuarios externos. El modelo (tipo y cliente asignado) y la invitación ya existen; no se pueden probar sin la tabla `clients`. Las pantallas del usuario externo siguen siendo del Hito 9.
-- Pendiente del usuario, sin bloquear: confirmar el ADR-0006 y lo anotado en GitHub (más abajo).
+- Pendiente del usuario, sin bloquear: confirmar el ADR-0006.
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
 
 ## Transversal — Flujo de ramas con `develop` y E2E con Playwright
 - [x] **Flujo de ramas** (ADR-0021, `CLAUDE.md` §7, `docs/despliegue.md`): PR de trabajo a `develop` con squash; `develop → main` con commit de fusión; `pre-deploy` y QA en el PR; producción solo desde `main`. `develop` ya existe y es la rama por defecto.
-  - Pendiente del usuario en GitHub: proteger `develop` (pruebas y E2E obligatorios), permitir que `staging` despliegue desde ramas de PR y limitar `main` a *merge commit*.
+  - Hecho en GitHub (2026-10-12), con rulesets: `develop` exige PR con solo squash y las pruebas y el job `Playwright`; `main` exige PR con solo merge commit y las pruebas.
 - [x] **E2E con Playwright** (`hito-1/e2e`, ADR-0020): infraestructura (servidor desechable con buzón de correo de prueba, estructura atómica en `e2e/`, `.github/workflows/e2e.yml`) y tres escenarios: inicio de sesión, bloqueo y desbloqueo, y auditoría. En un PR hacia `develop` corre solo lo nuevo o cambiado; al caer en `develop`, todo. No corre en el PR de release a `main` (ya pasó en `develop`).
-  - Pendiente: agregar `E2E` como comprobación obligatoria de `develop` en GitHub; proyecto móvil (390 px) y una prueba de humo mínima contra `staging` con la cuenta QA, cuando hagan falta.
+  - Pendiente: proyecto móvil (390 px) y una prueba de humo mínima contra `staging` con la cuenta QA, cuando hagan falta.
 - **Sigue siendo manual** (no lo cubre el E2E): que un correo llegue a una bandeja real, un teléfono físico y la revisión visual.
 - **Reglas del QA de Claude en `staging`:** solo `staging`, nunca producción; datos con prefijo `qa-`; nada se borra, solo se desactiva; nada que envíe correo real; la cuenta QA nunca se usa para probar bloqueos ni renombrarse.
 

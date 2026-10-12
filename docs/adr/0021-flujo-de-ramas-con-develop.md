@@ -17,6 +17,6 @@ Todo PR iba a `main` con squash y cada fusión desplegaba a producción. No hab�
 - **`staging` desde `develop`:** `staging` es compartido y un PR sin fusionar no tendría dónde probarse; se queda en el PR con `pre-deploy`.
 
 ## Consecuencias
-- Hay dos fusiones distintas; el tipo se elige por destino. Un squash a `main` por error se corrige con un PR de reconciliación; conviene desactivar *squash* y *rebase* en las reglas de `main`.
+- Hay dos fusiones distintas; el tipo se elige por destino. Los *rulesets* de GitHub fuerzan el método por rama (`develop`: solo squash; `main`: solo merge commit), así que un squash a `main` por error no es posible; sin ellos, se corregiría con un PR de reconciliación.
 - Producción sigue limitada a `main` (entorno `production`); `staging` debe aceptar las ramas de PR.
-- Lo que hace el usuario en GitHub: proteger `develop` (pruebas y E2E obligatorios), permitir en `staging` el despliegue desde ramas de PR y limitar los métodos de fusión de `main` a *merge commit*.
+- En GitHub: un ruleset para `develop` (PR, solo squash, pruebas y `Playwright` obligatorios) y otro para `main` (PR, solo merge commit, pruebas obligatorias). `staging` ya desplegaba desde ramas de PR y no cambia.
