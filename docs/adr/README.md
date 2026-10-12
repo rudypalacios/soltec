@@ -28,3 +28,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Aceptada |
 | [0019](0019-correlativos-logo-y-remitente.md) | Correlativos atómicos, logo de la empresa y remitente en el `.env` | Aceptada |
 | [0020](0020-pruebas-e2e.md) | Pruebas E2E con Playwright contra un servidor desechable | Aceptada |
+| [0021](0021-flujo-de-ramas-con-develop.md) | Flujo de ramas: PR a `develop` con squash y release a `main` con commit de fusión | Aceptada |

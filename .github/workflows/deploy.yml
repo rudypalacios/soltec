@@ -4,7 +4,8 @@ name: Deploy
 # - Every pull request runs the tests, on every push to it. The tests are the only ones of the CI, shown on the PR.
 # - A pull request deploys to "staging" only while it carries the label "pre-deploy", so the person reviewing chooses
 #   what is tested there (a change of text alone does not need to be deployed). Adding the label deploys at once.
-# - A push to main (the squash merge of a PR) tests and deploys to production ("production"), as always.
+# - A push to main (the merge commit of the release PR develop -> main) tests and deploys to production ("production").
+#   Merging a PR into develop deploys nothing; it only runs the E2E suite (e2e.yml).
 # - "Run workflow" applies the main/other-branch rule to the chosen branch: on main it redeploys production.
 # A branch with no pull request runs nothing: open the PR (the work is only reviewed through one anyway).
 on:

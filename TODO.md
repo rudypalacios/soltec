@@ -74,12 +74,9 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Dashboard base (contenedor y registro de widgets)
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
 
-## Transversal pendiente — Flujo de ramas con `develop` y E2E con Playwright
-Acordado en conversación (2026-10-12), **sin empezar**. Orden: primero el PR del flujo de ramas, después el de Playwright.
-- [ ] **Flujo de ramas** (ADR corto, `CLAUDE.md` §7, `docs/despliegue.md` y workflows):
-  - Los PR de trabajo salen de `develop` y van a `develop` (squash). `develop → main` es un PR de release **con commit de fusión, no squash** (con squash los historiales se separan y el siguiente release da conflictos). Producción solo desde `main`.
-  - El despliegue a `staging` con la etiqueta `pre-deploy` **se queda en el PR**: así Claude prueba con la cuenta QA antes de fusionar.
-  - Lo que hace el usuario en GitHub: crear `develop`, protegerla (pruebas obligatorias), ponerla como rama por defecto y permitir que el entorno `staging` despliegue desde las ramas de PR.
+## Transversal — Flujo de ramas con `develop` y E2E con Playwright
+- [x] **Flujo de ramas** (ADR-0021, `CLAUDE.md` §7, `docs/despliegue.md`): PR de trabajo a `develop` con squash; `develop → main` con commit de fusión; `pre-deploy` y QA en el PR; producción solo desde `main`. `develop` ya existe y es la rama por defecto.
+  - Pendiente del usuario en GitHub: proteger `develop` (pruebas y E2E obligatorios), permitir que `staging` despliegue desde ramas de PR y limitar `main` a *merge commit*.
 - [x] **E2E con Playwright** (`hito-1/e2e`, ADR-0020): infraestructura (servidor desechable con buzón de correo de prueba, estructura atómica en `e2e/`, `.github/workflows/e2e.yml`) y tres escenarios: inicio de sesión, bloqueo y desbloqueo, y auditoría. En un PR hacia `develop` corre solo lo nuevo o cambiado; al caer en `develop`, todo. No corre en el PR de release a `main` (ya pasó en `develop`).
   - Pendiente: agregar `E2E` como comprobación obligatoria de `develop` en GitHub; proyecto móvil (390 px) y una prueba de humo mínima contra `staging` con la cuenta QA, cuando hagan falta.
 - **Sigue siendo manual** (no lo cubre el E2E): que un correo llegue a una bandeja real, un teléfono físico y la revisión visual.
