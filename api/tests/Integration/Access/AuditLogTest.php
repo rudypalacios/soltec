@@ -441,4 +441,24 @@ final class AuditLogTest extends AccessTestCase
         self::assertSame('lockout', $rows[0]['action']);
         self::assertNull($rows[0]['user']);
     }
+
+    public function testAPersonWhoRenamesThemselvesIsStillNamedAsTheyWereInThatEntry(): void
+    {
+        $role = $this->createRole('Own account', ['users' => ['view', 'edit']], ['users' => 'own']);
+        $ana = $this->createUser('ana@example.com', [$role], name: 'Ana A');
+        $token = $this->tokenFor($ana['id']);
+
+        $renamed = $this->api('PATCH', '/users/' . $ana['id'], $token, ['version' => 1, 'name' => 'Ana B']);
+        self::assertSame(200, $renamed->getStatusCode(), (string) $renamed->getBody());
+        $this->login('ana@example.com');
+
+        $rename = $this->entryOf($ana['id'], 'update');
+        self::assertSame('Ana A', $this->valueAt($rename, 'user', 'name'), 'Who: as they were when they acted.');
+        self::assertSame('Ana B', $rename['entity_label'], 'The record: as it is after the change.');
+        self::assertEquals(['name' => 'Ana A'], $rename['before']);
+        self::assertEquals(['name' => 'Ana B'], $rename['after']);
+
+        $login = $this->entryOf($ana['id'], 'login');
+        self::assertSame('Ana B', $this->valueAt($login, 'user', 'name'), 'Later entries use the new name.');
+    }
 }

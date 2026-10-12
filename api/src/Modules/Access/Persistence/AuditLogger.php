@@ -59,7 +59,7 @@ final class AuditLogger
                 'id' => Uuid::toHex(Uuid::v7()),
                 'occurred_at' => Timestamps::toDb($this->clock->now()),
                 'user_id' => $actor->userId === null ? null : Uuid::toHex($actor->userId),
-                'user_label' => $this->labelOf('users', $actor->userId),
+                'user_label' => $actor->userName ?? $this->labelOf('users', $actor->userId),
                 'device_id' => $actor->deviceId === null ? null : Uuid::toHex($actor->deviceId),
                 'action' => $action,
                 'entity_type' => $entityType,

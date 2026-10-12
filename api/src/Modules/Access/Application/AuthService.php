@@ -97,7 +97,7 @@ final class AuthService
             $this->sessions->touchDevice($deviceId, $now);
             $refreshToken = $this->issueRefreshToken($deviceId, $platform, $now);
             $this->audit->record(
-                new ActorContext($user->id, $deviceId, $request->ip),
+                new ActorContext($user->id, $deviceId, $request->ip, $user->name),
                 'login',
                 'users',
                 $user->id,
