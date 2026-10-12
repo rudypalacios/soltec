@@ -23,7 +23,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
 - [x] 5. Esqueleto de autenticación y roles (`docs/arquitectura/autenticacion-y-roles.md`)
 - [x] 6. Especificación OpenAPI: **cambio de estrategia** (2026-10-09). No se especifica un hito completo por adelantado: el contrato crece por rebanadas verticales (ver abajo). Quedó la rebanada 1.1 en `contract/openapi.yaml` (19 operaciones con `x-planned`; el flag se quita en el PR que agrega la ruta)
-- [ ] Confirmar ADR-0006 (OpenAPI), hoy en `Propuesta` (ADR-0004 ya está aceptado)
+- [x] ADR-0006 (OpenAPI) aceptado recortado (2026-10-12): contrato como fuente única de rutas, tipos y cliente; validaciones en el servidor
 
 ## Hito 1 — Fundaciones
 **Se construye por rebanadas verticales:** cada una incluye migraciones, API con tests, contrato OpenAPI de sus rutas y lo mínimo en la web para probarla en `staging`. No se pasa a la siguiente sin la anterior desplegada y probada.
@@ -64,7 +64,6 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - Fuera de 1.5: ver o cerrar las sesiones de otro usuario (desactivarlo ya las cierra), exportar la auditoría, retención o purga de la auditoría (deuda a revisar antes de producción: la tabla solo crece), `push_token`
 **Hito 1 cerrado (2026-10-12).** Autenticación, autorización, usuarios y perfiles, departamentos, auditoría, configuración general, márgenes y precio, y dashboard base están hechos y desplegados en las rebanadas 1.1 a 1.5.
 - Pasa al Hito 2: las **pruebas de aislamiento por cliente** y el FK `users.client_id → clients` del modelo de usuarios externos. El modelo (tipo y cliente asignado) y la invitación ya existen; no se pueden probar sin la tabla `clients`. Las pantallas del usuario externo siguen siendo del Hito 9.
-- Pendiente del usuario, sin bloquear: confirmar el ADR-0006.
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
 
 ## Transversal — Flujo de ramas con `develop` y E2E con Playwright
@@ -76,6 +75,9 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - **Reglas del QA de Claude en `staging`:** solo `staging`, nunca producción; datos con prefijo `qa-`; nada se borra, solo se desactiva; nada que envíe correo real; la cuenta QA nunca se usa para probar bloqueos ni renombrarse.
 
 ## Hito 2 — Catálogo y clientes
+- **P3 (estados de cliente), acordado provisionalmente (2026-10-12):** en el Hito 2 el estado del cliente es un valor de un catálogo configurable (PM2: nombre, color, activo), **sin transiciones ni reglas**, sembrado con seis estados propuestos por el usuario: Prospecto aprobado / por activar, Activo (nuevo), Activo (recurrente), En riesgo / inactivo temporal, Inactivo / dormido, Perdido. En el Hito 2 se asignan a mano.
+  - Respuestas del usuario: (1) si el estado «por activar» se solapa con el tipo prospecto/cliente **no se sabe aún**; (2) el estado debe poder cambiar **de forma automática** (por ejemplo, al cerrar la primera cotización) **y a mano** (para devolverlo por cualquier razón); (3) algunos estados sí cambiarán lo que se puede hacer, pero **los disparadores no están definidos**; (4) **«Perdido» no es desactivar**: desactivar significa lo mismo en toda la plataforma (el «pre-delete» lógico) y es independiente del estado.
+  - Consecuencias: el motor de estados (Hito 3) debe permitir el cambio manual siempre y el automático por eventos; los estados 2 a 5 dependen de compras (Hitos 4 a 6) y sus umbrales serán configurables; qué estado impide qué, y si «por activar» es un tipo o un estado, se decide en el Hito 4 con el Cotizador. El flujo configurable (transiciones y banderas) es el motor del Hito 3; los clientes lo adoptarán con una migración.
 - [ ] Parámetros de catálogo (precarga PM1 y PM5)
 - [ ] Marcas, áreas (precarga PM9) y grupos
 - [ ] Contactos y proveedores (cascada de desactivación a productos)
