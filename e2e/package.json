@@ -5,8 +5,8 @@
   "type": "module",
   "description": "End-to-end tests (Playwright) against a throwaway server: API, MySQL, built web app and a mail sink.",
   "scripts": {
-    "test": "playwright test",
-    "test:changed": "playwright test --only-changed=origin/develop",
+    "e2e": "playwright test",
+    "e2e:changed": "playwright test --only-changed=origin/develop",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

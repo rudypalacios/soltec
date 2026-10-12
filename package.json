@@ -19,7 +19,7 @@
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspace @soltec/web",
     "dev": "npm run dev --workspace @soltec/web",
-    "e2e": "npm run build && npm run test --workspace @soltec/e2e"
+    "e2e": "npm run build && npm run e2e --workspace @soltec/e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
