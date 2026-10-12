@@ -1,15 +1,16 @@
 # ERD — convenciones y mapa
 
-**Entregable 4 del Hito 0** · Estado: Hito 1 detallado; hitos 2 a 9 esbozados · Fecha: 2026-10-09
+**Entregable 4 del Hito 0** · Estado: hitos 1 y 2 detallados; hitos 3 a 9 esbozados · Fecha: 2026-10-12
 
-El modelo se detalla **hito por hito**: el Hito 1 ya está detallado; de los hitos 2 a 9 hay un esbozo de entidades y relaciones, y las columnas de cada uno se definen al planearlo.
+El modelo se detalla **hito por hito**: los hitos 1 y 2 ya están detallados; de los hitos 3 a 9 hay un esbozo de entidades y relaciones, y las columnas de cada uno se definen al planearlo.
 
 | Documento | Contenido | Nivel |
 |---|---|---|
 | [`01-fundaciones.md`](01-fundaciones.md) | Hito 1: acceso, organización, configuración, márgenes, auditoría, dashboard | Detallado |
-| [`02-esbozo-hitos-2-a-9.md`](02-esbozo-hitos-2-a-9.md) | Hitos 2 a 9: entidades, relaciones y las decisiones ya tomadas | Esbozo |
+| [`03-catalogo-y-clientes.md`](03-catalogo-y-clientes.md) | Hito 2: parámetros, catálogo, contactos, proveedores, productos, paquetes y clientes | Detallado |
+| [`02-esbozo-hitos-2-a-9.md`](02-esbozo-hitos-2-a-9.md) | Hitos 3 a 9: entidades, relaciones y las decisiones ya tomadas | Esbozo |
 
-Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uuid.md) (identificadores) y [ADR-0016](../../adr/0016-catalogos-y-configuracion-tipados.md) (catálogos y configuración). Autenticación y permisos: [ADR-0012](../../adr/0012-autenticacion-y-autorizacion.md).
+Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uuid.md) (identificadores), [ADR-0016](../../adr/0016-catalogos-y-configuracion-tipados.md) (catálogos y configuración) y, para el Hito 2, los ADR 0022 a 0025. Autenticación y permisos: [ADR-0012](../../adr/0012-autenticacion-y-autorizacion.md).
 
 ## Convenciones
 
@@ -35,7 +36,7 @@ Las tablas de unión, las de sistema, las de una sola fila de configuración con
 
 **Llaves foráneas.** Siempre `ON DELETE RESTRICT` y `ON UPDATE RESTRICT`: como nada se borra, la base no debe permitirlo tampoco.
 
-**Dinero y tasas.** Dinero `DECIMAL(14,2)`; costos y precios unitarios con la precisión que se defina en el Hito 2. Tasas y márgenes `DECIMAL(6,5)` (0.12000 = 12 %). Moneda en una columna `currency_code CHAR(3)` de los documentos monetarios (por defecto `GTQ`, P1).
+**Dinero y tasas.** Dinero `DECIMAL(14,2)`; costos unitarios `DECIMAL(13,4)` (el máximo de `PriceCalculator`). Tasas y márgenes `DECIMAL(6,5)` (0.12000 = 12 %). Moneda en una columna `currency_code CHAR(3)` de los documentos monetarios (por defecto `GTQ`, P1).
 
 **ENUM.** Solo para conjuntos cerrados que pertenecen al código (tipo de usuario, plataforma, alcance de datos). Lo que el administrador pueda ampliar (estados, catálogos) es una tabla.
 
@@ -58,7 +59,7 @@ flowchart LR
         M[margin_levels]
         U[audit_logs, role_widgets]
     end
-    subgraph H2[Hito 2 — esbozo]
+    subgraph H2[Hito 2 — detallado]
         K[Catálogos PM1 a PM13]
         P[contacts, suppliers, products, bundles]
         L[clients]
@@ -79,6 +80,6 @@ flowchart LR
 |---|---|---|
 | P5 Roles definitivos | Perfiles como datos: no hay roles fijos en el esquema | Solo cambian los datos sembrados |
 | P20 Contraseñas del legacy | No se conoce el hash: `must_change_password` obliga a cambiarla en el primer acceso | Ninguna |
-| P23 / P7 Esquema y datos del legacy | Se modela desde los requisitos; el usuario indica los campos que falten al revisar cada sección, y se agregan con una migración. El volcado del legacy es opcional. Columna `legacy_id` en las entidades importables (hitos 2 y 3) | Migración que ajusta columnas |
+| P23 / P7 Esquema y datos del legacy | Se modela desde los requisitos; el usuario indica los campos que falten al revisar cada sección, y se agregan con una migración. El volcado del legacy es opcional y llegará más adelante. Sin columna `legacy_id`: el Hito 3 usa una tabla temporal de mapeo | Migración que ajusta columnas |
 | P17 / P18 Paquetes | Sin descuento propio y sin paquetes anidados (Hito 2) | Migración |
 | P2 Proyectos consolidados | Un proyecto puede tener subproyectos (Hito 5) | Migración |

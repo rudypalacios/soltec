@@ -22,10 +22,14 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0012](0012-autenticacion-y-autorizacion.md) | Autenticación y autorización | Aceptada |
 | [0013](0013-envio-de-email.md) | Envío de email: SMTP autenticado, `mail()` como plan B | Aceptada (el remitente pasa al `.env` por 0019) |
 | [0014](0014-el-servidor-calcula-los-precios.md) | El servidor calcula los precios; `shared/` solo los previsualiza | Aceptada |
-| [0015](0015-identificadores-uuid.md) | UUID v7 como clave primaria en todas las tablas | Propuesta |
-| [0016](0016-catalogos-y-configuracion-tipados.md) | Catálogos y configuración en tablas tipadas | Propuesta |
+| [0015](0015-identificadores-uuid.md) | UUID v7 como clave primaria en todas las tablas | Aceptada |
+| [0016](0016-catalogos-y-configuracion-tipados.md) | Catálogos y configuración en tablas tipadas | Aceptada |
 | [0017](0017-credenciales-por-enlace-de-correo.md) | Invitación y recuperación de contraseña por enlace de correo | Aceptada |
 | [0018](0018-identidad-visual-y-tema.md) | Identidad visual, tokens del tema y componentes compartidos de la web | Aceptada |
 | [0019](0019-correlativos-logo-y-remitente.md) | Correlativos atómicos, logo de la empresa y remitente en el `.env` | Aceptada |
 | [0020](0020-pruebas-e2e.md) | Pruebas E2E con Playwright contra un servidor desechable | Aceptada |
 | [0021](0021-flujo-de-ramas-con-develop.md) | Flujo de ramas: PR a `develop` con squash y release a `main` con commit de fusión | Aceptada |
+| [0022](0022-identificacion-fiscal.md) | Identificación fiscal: NIT, CUI o ninguna, única entre activos | Aceptada |
+| [0023](0023-desactivacion-referencias-y-cascada.md) | Desactivación, referencias y cascada proveedor → productos | Aceptada |
+| [0024](0024-permisos-por-seccion-y-listas-de-opciones.md) | Permisos por sección y listas de opciones | Aceptada |
+| [0025](0025-clientes-con-varios-asesores-y-contactos-propios.md) | Clientes con varios asesores, contactos propios y perfil externo reducido | Aceptada |

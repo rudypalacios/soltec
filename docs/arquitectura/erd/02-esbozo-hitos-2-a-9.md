@@ -1,6 +1,6 @@
-# ERD — esbozo de los hitos 2 a 9
+# ERD — esbozo de los hitos 3 a 9 (y decisiones previas)
 
-Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito se detallan al planearlo** (plan del hito, aprobación y luego migraciones), con las convenciones del [README](README.md). El Hito 1 ya está detallado en [01-fundaciones.md](01-fundaciones.md).
+Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito se detallan al planearlo** (plan del hito, aprobación y luego migraciones), con las convenciones del [README](README.md). Los hitos 1 y 2 ya están detallados en [01-fundaciones.md](01-fundaciones.md) y [03-catalogo-y-clientes.md](03-catalogo-y-clientes.md).
 
 ## Decisiones ya tomadas que el detalle debe respetar
 
@@ -9,22 +9,14 @@ Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito
 - **Margen (MCP):** es el nivel que se aplica al producto al venderlo a un cliente. El proveedor no tiene margen.
 - **Paquetes:** un ítem aparte, compuesto solo de productos simples, sin descuento propio (P17) ni paquetes anidados (P18).
 - **Clientes:** un solo registro que nace como prospecto y pasa a cliente de venta; los datos fiscales y de crédito van en una tabla 1 a 1 que solo existe para clientes de venta.
-- **Identificación de clientes y proveedores:** tipo `nit`, `cui` o `none` (economía informal), elegido en el UI. La misma identificación no se repite entre activos. NIT con el dígito verificador módulo 11 de la SAT (`576937-K` válido, `8977112-0` inválido; falta confirmarla con NIT reales); la regla del CUI se define al implementarla. Un cliente sin identificación es real y se factura como consumidor final: no hay un cliente «consumidor final» genérico.
+- **Identificación de clientes y proveedores:** tipo `nit`, `cui` o `none` (economía informal), elegido en el UI. La misma identificación no se repite entre activos. Reglas en el [ADR-0022](../../adr/0022-identificacion-fiscal.md): NIT con dígito verificador módulo 11 (confirmado con NIT reales) y CUI de 13 dígitos. Un cliente sin identificación es real y se factura como consumidor final: no hay un cliente «consumidor final» genérico.
 - **Contactos:** personas independientes, vinculadas a clientes y a proveedores con un rol (tipo de contacto). Direcciones múltiples para clientes y proveedores.
-- **Cierre de Hito 1:** las migraciones del Hito 2 crean las llaves foráneas que el Hito 1 dejó pendientes (`users.client_id`, `users.contact_id`, `company_profile.tax_regime_id`).
+- **Cierre de Hito 1:** las migraciones del Hito 2 crean las llaves foráneas que el Hito 1 dejó pendientes (`users.client_id`, `users.contact_id`).
 - **Campos del legacy:** se revisan cuando exista la interfaz de cada módulo y se agregan con una migración.
 
 ## Hito 2 — Catálogo y clientes
 
-| Entidad | Para qué | Relaciones clave |
-|---|---|---|
-| Catálogos PM1 a PM13 + unidad de medida | Listas administrables, una tabla cada una | Las usan clientes, contactos, proveedores y productos |
-| `areas`, `product_groups`, `brands` | Estructura del catálogo | El grupo pertenece a un área |
-| `contacts` | Personas | Vinculadas a clientes y proveedores con rol |
-| `suppliers` (+ direcciones) | A quién se le compra | Sus productos se desactivan en cascada |
-| `products` | Producto simple con costo | Proveedor, grupo, marca, unidad |
-| `bundles`, `bundle_items` | Ítem compuesto | Contiene productos simples con cantidad |
-| `clients` (+ perfil de facturación, direcciones) | Prospectos y clientes de venta | Vendedor asignado (`users`), contactos con rol, nivel de margen habitual opcional (`margin_level_id`; sin él, el por defecto) |
+Detallado en [03-catalogo-y-clientes.md](03-catalogo-y-clientes.md).
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
 
@@ -35,7 +27,7 @@ Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito
 | Reglas y notificaciones | Configurables por perfil y departamento; endpoint de actualizaciones | Usuarios, perfiles, departamentos |
 | Archivos | Fotos en WebP normal y miniatura, metadatos en JSON | Vinculados a cualquier registro |
 | `tasks`, `tickets` | Tareas con vencimiento; tickets mínimos | Usuario asignado, cliente, estado, hilo |
-| Mapeo de importación | `legacy_id` y registro de lo importado | Entidades importables |
+| Mapeo de importación | Tabla temporal con los ids viejos y los nuevos; las entidades no llevan columna `legacy_id` | Entidades importables |
 
 ## Hito 4 — Cotizador
 
@@ -88,7 +80,7 @@ Solo entidades y relaciones clave. **Las columnas, tipos e índices de cada hito
 |---|---|---|
 | P3 Estados reales del cliente | Catálogo sin valores fijos | 2 |
 | P17 / P18 Descuento y anidación de paquetes | Sin descuento y sin anidados | 2 |
-| Regla del CUI y misma persona con NIT y CUI | Se define al implementar; se avisa si hay otro registro con el mismo nombre | 2 |
+| Regla del CUI y misma persona con NIT y CUI | Resuelto en el ADR-0022: CUI de 13 dígitos; aviso por nombre dentro del alcance | 2 |
 | Facturar a un cliente sin identificación | Como consumidor final | 6 |
 | P2 Proyectos consolidados | Un proyecto puede tener subproyectos | 5 |
 | P4 Momento de la OC | Cuando Compras procesa la solicitud | 5 |
