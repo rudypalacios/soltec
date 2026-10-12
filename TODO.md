@@ -78,12 +78,31 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - **P3 (estados de cliente), acordado provisionalmente (2026-10-12):** en el Hito 2 el estado del cliente es un valor de un catálogo configurable (PM2: nombre, color, activo), **sin transiciones ni reglas**, sembrado con seis estados propuestos por el usuario: Prospecto aprobado / por activar, Activo (nuevo), Activo (recurrente), En riesgo / inactivo temporal, Inactivo / dormido, Perdido. En el Hito 2 se asignan a mano.
   - Respuestas del usuario: (1) si el estado «por activar» se solapa con el tipo prospecto/cliente **no se sabe aún**; (2) el estado debe poder cambiar **de forma automática** (por ejemplo, al cerrar la primera cotización) **y a mano** (para devolverlo por cualquier razón); (3) algunos estados sí cambiarán lo que se puede hacer, pero **los disparadores no están definidos**; (4) **«Perdido» no es desactivar**: desactivar significa lo mismo en toda la plataforma (el «pre-delete» lógico) y es independiente del estado.
   - Consecuencias: el motor de estados (Hito 3) debe permitir el cambio manual siempre y el automático por eventos; los estados 2 a 5 dependen de compras (Hitos 4 a 6) y sus umbrales serán configurables; qué estado impide qué, y si «por activar» es un tipo o un estado, se decide en el Hito 4 con el Cotizador. El flujo configurable (transiciones y banderas) es el motor del Hito 3; los clientes lo adoptarán con una migración.
-- [ ] Parámetros de catálogo (precarga PM1 y PM5)
-- [ ] Marcas, áreas (precarga PM9) y grupos
-- [ ] Contactos y proveedores (cascada de desactivación a productos)
-- [ ] Productos simples y paquetes, con alerta de costo desactualizado
-- [ ] Clientes (prospecto y venta, NIT sin duplicados), con el FK `users.client_id` y las pruebas de aislamiento por cliente que quedaron del Hito 1
-- **Fuera:** cotizaciones, conversión automática a cliente, aviso a cotizaciones vigentes, inventario y stock.
+**Se construye por rebanadas verticales** (como el Hito 1). Antes de empezar cada una, Claude entrega su **ficha de arranque** (qué se construye, reglas, qué queda fuera, preguntas) y el usuario la revisa. Modelo: `docs/arquitectura/erd/03-catalogo-y-clientes.md`. Decisiones: ADR-0022 a 0025.
+- [ ] **2.0a Plan y modelo** (`docs`, solo documentos): ERD del Hito 2, ADR 0022 a 0025, aceptación de los ADR 0015 y 0016
+- [ ] **2.0b Contrato partido por módulo** (infra, sin cambio de comportamiento): `contract/openapi.yaml` pasa a una raíz con `$ref` a un archivo por módulo; `ContractTest` resuelve los `$ref`. Se revisa y edita por módulo
+- [ ] **2.1 Parámetros de catálogo**: `contact_types`, `client_statuses`, `segments`, `tax_regimes`, `payment_methods`; una ruta por catálogo (`/v1/contact-types`, …) sobre un solo código genérico; siembra de PM1, PM2, PM5 y PM6; pantalla «Parámetros» con pestañas; proyecto E2E de 390 px
+- [ ] **2.2 Estructura del catálogo**: marcas, áreas (siembra PM9), grupos de producto, categorías y unidades de medida; el padre con hijos activos no se desactiva
+- [ ] **2.3a Contactos**: `contacts` con dueño (`owner_id`), código automático y FK `users.contact_id`; alcance `own`/`team`/`all` por dueño
+- [ ] **2.3b Proveedores**: identificación NIT/CUI/ninguna única (ADR-0022), direcciones, vínculo con contactos y crédito
+- [ ] **2.4a Productos**: costo con IVA y precio calculado, alerta de costo desactualizado, `deactivation_reason`, cascada desde el proveedor, acciones en bloque y selección de filas en `DataList`
+- [ ] **2.4b Paquetes**: composición de productos con cantidad decimal y precio como suma
+- [ ] **2.5 Clientes**: prospecto y venta, perfil de facturación, varios asesores (`client_sellers`) con un responsable, vínculo de contactos, reasignación (individual y de cartera con los contactos), alcance `client`, FK `users.client_id`, `GET /v1/me/client` reducido, widget `quick_create_client` y pruebas de aislamiento por cliente
+- **Acordado:**
+  - Cada sección es su propio recurso de permisos y ofrece listas de opciones aparte (ADR-0024)
+  - Las unidades de medida son una escalera: categoría (cantidad, longitud, peso, volumen, superficie) y unidades; sin conversiones
+  - El régimen fiscal es solo del perfil de facturación del cliente
+  - El costo del producto es visible para quien ve productos (sin `view_cost`; `cost` es opcional en el contrato por si hiciera falta)
+  - Sin columna `legacy_id`: el Hito 3 usa una tabla temporal de mapeo
+  - El QA en `staging` no prueba alcances (crear usuarios envía correos reales): los alcances se cubren con integración y E2E
+- **Criterio de cierre del Hito 2:** las rebanadas en `develop` y desplegadas en `staging`; el E2E de cada una en verde; ERD y `TODO.md` al día; P3 anotada como provisional; pendientes de abajo registrados
+- **Pendientes anotados (no bloquean el hito):**
+  - Formas de pago: sin siembra hasta que el usuario las defina
+  - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior
+  - Volcado de estructura del legacy: el usuario lo entregará; se revisa antes del Hito 3
+  - Regla completa del CUI (dígito verificador y municipio) si hiciera falta
+  - Valores de costo desactualizado (`stale_cost_days`, hoy 90) y colores de los estados: provisionales
+- **Fuera:** cotizaciones, conversión automática a cliente, aviso a cotizaciones vigentes, inventario y stock, descuento y anidación de paquetes, conversiones entre unidades, historial de compras, pantallas del usuario externo (Hito 9), PM3, PM4, PM8 y PM13.
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
 - [ ] Motor de estados

@@ -1,6 +1,6 @@
 # ADR-0016: Catálogos y configuración en tablas tipadas
 
-**Estado:** Propuesta · **Fecha:** 2026-10-09
+**Estado:** Aceptada (2026-10-12) · **Fecha:** 2026-10-09
 
 ## Contexto
 Los requerimientos piden trece parámetros administrables (PM1 a PM13) y una configuración general de la empresa. Se pueden modelar con una tabla genérica (columna `kind` para los catálogos, clave-valor para la configuración) o con tablas propias. El proyecto debe seguir buenas prácticas de normalización: cada dato en su sitio, sin duplicar información y con la integridad garantizada por la base de datos. Decisión del usuario.

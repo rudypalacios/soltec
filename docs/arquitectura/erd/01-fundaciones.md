@@ -51,7 +51,7 @@ Usuarios internos y externos (clientes de la empresa, solo lectura). El tipo dec
 | `client_id` | `BINARY(16)` | sí | FK `clients` (Hito 2). Obligatorio para externos: es su alcance de datos |
 | `contact_id` | `BINARY(16)` | sí | FK `contacts` (Hito 2). Persona del cliente a la que pertenece la cuenta |
 
-Las FK a `clients` y `contacts` se crean con las migraciones del Hito 2; hasta entonces las columnas existen sin llave. La de `departments` llegó con la rebanada 1.2.
+Las FK a `contacts` (rebanada 2.3a) y `clients` (2.5) se crean con el Hito 2; hasta entonces las columnas existen sin llave. La de `departments` llegó con la rebanada 1.2.
 Índices: `uq_users_active_email (active_email)`, `idx_users_department (department_id)`, `idx_users_manager (manager_id)`, `idx_users_client (client_id)`, `idx_users_updated (updated_at)`.
 
 ### `roles`
@@ -153,7 +153,6 @@ Se siembra vacía: ningún dato de un cliente va en el código.
 |---|---|---|
 | `legal_name`, `trade_name` | `VARCHAR(190)` | no (vacío hasta configurarla) |
 | `tax_id` (NIT) | `VARCHAR(30)` | no (vacío hasta configurarla) |
-| `tax_regime_id` | `BINARY(16)` | sí (FK `tax_regimes`, Hito 2; la columna llega con él) |
 | `address`, `phone`, `email` | `VARCHAR(255)` / `VARCHAR(40)` / `VARCHAR(190)` | sí |
 | `timezone` | `VARCHAR(50)` | no (`America/Guatemala`). Calendario de los correlativos |
 | `logo_path` | `VARCHAR(255)` | sí. `branding/logo-<hash>.webp` bajo `storage/` |

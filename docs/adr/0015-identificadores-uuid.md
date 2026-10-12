@@ -1,6 +1,6 @@
 # ADR-0015: UUID v7 como clave primaria en todas las tablas
 
-**Estado:** Propuesta · **Fecha:** 2026-10-09
+**Estado:** Aceptada (2026-10-12) · **Fecha:** 2026-10-09
 
 ## Contexto
 El móvil (Hito 8) creará registros sin conexión y los sincronizará después, y una posible migración a Expo no debe obligar a cambiar el modelo. Con un entero autoincremental el cliente no puede asignar el identificador de un registro nuevo sin riesgo de choque con el de otro dispositivo, y migrar las llaves de una base con datos reales sería caro. Decisión del usuario: priorizar el UUID.
