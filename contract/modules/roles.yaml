@@ -1,0 +1,356 @@
+paths:
+  /v1/roles:
+    get:
+      operationId: listRoles
+      summary: List roles.
+      description: Returns a page of roles with their permission matrix and data scopes.
+      tags:
+        - Roles
+      x-permission: roles.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - name: user_type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserType'
+      responses:
+        '200':
+          description: A page of roles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createRole
+      summary: Create a role.
+      description:
+        'Business roles (P5) are created here by an administrator; only `admin` is seeded in this slice.
+        The matrix is checked: permission and resource codes must exist. In this slice only internal roles can be
+        created, with the `own`, `team` and `all` scopes (`client` arrives with the client portal). Granting
+        permissions on `users` and `roles` is close to making someone an administrator.'
+      tags:
+        - Roles
+      x-permission: roles.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/roles/{roleId}:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    get:
+      operationId: getRole
+      summary: Get a role with its matrix.
+      description: Returns the role with its full matrix, active or not.
+      tags:
+        - Roles
+      x-permission: roles.view
+      responses:
+        '200':
+          description: The role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateRole
+      summary: Update a role.
+      description:
+        '`permissions` and `scopes`, when sent, replace the whole set. `user_type` cannot change. System
+        roles (`is_system`) cannot be edited: 409 `system_role_immutable`. A change applies to every holder of the
+        role at their next request. A stale version answers 409 `conflict`.'
+      tags:
+        - Roles
+      x-permission: roles.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          description: The updated role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/roles/{roleId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    post:
+      operationId: deactivateRole
+      summary: Deactivate a role.
+      description:
+        System roles cannot be deactivated (409 `system_role_immutable`). A role still assigned to active
+        users answers 409 `conflict`. Idempotent.
+      tags:
+        - Roles
+      x-permission: roles.deactivate
+      responses:
+        '200':
+          description: The deactivated role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/roles/{roleId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    post:
+      operationId: reactivateRole
+      summary: Reactivate a role.
+      description: Fails with 422 `validation_failed` if the name is now used by an active role. Idempotent.
+      tags:
+        - Roles
+      x-permission: roles.deactivate
+      responses:
+        '200':
+          description: The reactivated role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/resources:
+    get:
+      operationId: listResources
+      summary: List the protected resources (one per module).
+      description: System table seeded by migrations; read-only.
+      tags:
+        - Access catalogs
+      x-permission: roles.view
+      responses:
+        '200':
+          description: The resources.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItemList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/permissions:
+    get:
+      operationId: listPermissions
+      summary: List the permission verbs (view, create, edit, deactivate, approve…).
+      description: System table seeded by migrations; read-only.
+      tags:
+        - Access catalogs
+      x-permission: roles.view
+      responses:
+        '200':
+          description: The permissions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItemList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    CatalogItem:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    CatalogItemList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogItem'
+    Role:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - code
+            - name
+            - description
+            - user_type
+            - is_system
+            - is_active
+            - permissions
+            - scopes
+            - widgets
+          properties:
+            code:
+              type:
+                - string
+                - 'null'
+              description: Only for system roles.
+            name:
+              type: string
+            description:
+              type:
+                - string
+                - 'null'
+            user_type:
+              $ref: '#/components/schemas/UserType'
+            is_system:
+              type: boolean
+            is_active:
+              type: boolean
+            permissions:
+              $ref: '#/components/schemas/PermissionMap'
+            scopes:
+              $ref: '#/components/schemas/ScopeMap'
+            widgets:
+              type: array
+              description: The home screen widgets of the role, in the order they show.
+              items:
+                $ref: '#/components/schemas/WidgetCode'
+    RolePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    RoleCreate:
+      type: object
+      required:
+        - name
+        - user_type
+        - permissions
+        - scopes
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        user_type:
+          $ref: '#/components/schemas/UserType'
+        permissions:
+          $ref: '#/components/schemas/PermissionMap'
+        scopes:
+          $ref: '#/components/schemas/ScopeMap'
+        widgets:
+          type: array
+          description: Home screen widgets, in order and without repeats. Defaults to none.
+          items:
+            $ref: '#/components/schemas/WidgetCode'
+    RoleUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+            description:
+              type:
+                - string
+                - 'null'
+              maxLength: 255
+            permissions:
+              $ref: '#/components/schemas/PermissionMap'
+            scopes:
+              $ref: '#/components/schemas/ScopeMap'
+            widgets:
+              type: array
+              description: When sent, replaces the whole list (an empty one clears it).
+              items:
+                $ref: '#/components/schemas/WidgetCode'

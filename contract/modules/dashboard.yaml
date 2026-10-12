@@ -1,0 +1,82 @@
+paths:
+  /v1/dashboard:
+    get:
+      operationId: getDashboard
+      summary: The widgets of the signed-in user's home screen.
+      description:
+        The widgets of the user's active roles, each once, in the position of the role that puts it first. A user
+        with no widget gets an empty list. A widget never carries data; it asks for it with the viewer's own
+        permissions.
+      tags:
+        - Dashboard
+      x-permission: authenticated
+      responses:
+        '200':
+          description: The widgets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardWidgetList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/widgets:
+    get:
+      operationId: listWidgets
+      summary: The widgets a role can be assigned.
+      description: Fixed by the application, so a role form can offer them. Read-only.
+      tags:
+        - Dashboard
+      x-permission: roles.view
+      responses:
+        '200':
+          description: The catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  schemas:
+    DashboardWidgetList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - code
+            properties:
+              code:
+                $ref: '#/components/schemas/WidgetCode'
+    WidgetCatalog:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required:
+              - code
+              - name
+              - description
+            properties:
+              code:
+                $ref: '#/components/schemas/WidgetCode'
+              name:
+                type: string
+              description:
+                type: string

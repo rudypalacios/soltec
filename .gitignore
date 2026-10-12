@@ -73,3 +73,6 @@ Thumbs.db
 # ---------------------------------------------------------------------------
 e2e/test-results/
 e2e/playwright-report/
+
+# Contract bundle (npm run contract:bundle)
+contract/dist/

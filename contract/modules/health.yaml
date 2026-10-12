@@ -1,0 +1,48 @@
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: Check that the API and its database answer.
+      description: Public and free of internal detail. Used by the deployment smoke test and by monitoring.
+      tags:
+        - System
+      x-permission: public
+      security: []
+      responses:
+        '200':
+          description: The API and its database answer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: The API answers but the database does not.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+        checks:
+          type: object
+          required:
+            - database
+          properties:
+            database:
+              type: string
+              enum:
+                - ok
+                - error
