@@ -17,8 +17,8 @@ use Soltec\Modules\Access\Domain\AuditEntityLabels;
  * records, so a change and its trace are saved together or not at all. Passwords and tokens never reach the log:
  * such a key is a programming error.
  *
- * It also stores the name of the record at that moment (`entity_label`), read inside the same transaction, so a later
- * rename does not rewrite what the entry says.
+ * It also stores the name of the record and of who acted at that moment (`entity_label`, `user_label`), read inside
+ * the same transaction, so a later rename does not rewrite what the entry says.
  */
 final class AuditLogger
 {
@@ -51,14 +51,15 @@ final class AuditLogger
         }
 
         $this->connection->executeStatement(
-            'INSERT INTO audit_logs (id, occurred_at, user_id, device_id, action, entity_type, entity_id, '
+            'INSERT INTO audit_logs (id, occurred_at, user_id, user_label, device_id, action, entity_type, entity_id, '
             . 'entity_label, before_data, after_data, ip_address) VALUES (UNHEX(:id), :occurred_at, '
-            . 'UNHEX(:user_id), UNHEX(:device_id), :action, :entity_type, UNHEX(:entity_id), :entity_label, '
-            . ':before, :after, INET6_ATON(:ip))',
+            . 'UNHEX(:user_id), :user_label, UNHEX(:device_id), :action, :entity_type, UNHEX(:entity_id), '
+            . ':entity_label, :before, :after, INET6_ATON(:ip))',
             [
                 'id' => Uuid::toHex(Uuid::v7()),
                 'occurred_at' => Timestamps::toDb($this->clock->now()),
                 'user_id' => $actor->userId === null ? null : Uuid::toHex($actor->userId),
+                'user_label' => $this->labelOf('users', $actor->userId),
                 'device_id' => $actor->deviceId === null ? null : Uuid::toHex($actor->deviceId),
                 'action' => $action,
                 'entity_type' => $entityType,

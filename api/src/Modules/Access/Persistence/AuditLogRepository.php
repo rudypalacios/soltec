@@ -40,6 +40,7 @@ final class AuditLogRepository
                 'LOWER(HEX(a.id)) AS id',
                 'a.occurred_at',
                 'LOWER(HEX(a.user_id)) AS user_id',
+                'a.user_label',
                 'u.name AS user_name',
                 'LOWER(HEX(a.device_id)) AS device_id',
                 'a.action',
@@ -111,15 +112,19 @@ final class AuditLogRepository
         $userId = Row::nullableString($row, 'user_id');
         $deviceId = Row::nullableString($row, 'device_id');
         $entityId = Row::nullableString($row, 'entity_id');
+        $userLabel = Row::nullableString($row, 'user_label');
         $label = Row::nullableString($row, 'entity_label');
         $currentName = Row::nullableString($row, 'current_name');
 
         return [
             'id' => Uuid::fromHex(Row::string($row, 'id')),
             'occurred_at' => Timestamps::toIso(Row::date($row, 'occurred_at')),
-            'user' => $userId === null
-                ? null
-                : ['id' => Uuid::fromHex($userId), 'name' => Row::nullableString($row, 'user_name') ?? ''],
+            'user' => $userId === null ? null : [
+                'id' => Uuid::fromHex($userId),
+                'name' => $userLabel ?? Row::nullableString($row, 'user_name') ?? '',
+                // An entry from before names were stored: the name is the one the person has now.
+                'name_is_current' => $userLabel === null,
+            ],
             'device_id' => $deviceId === null ? null : Uuid::fromHex($deviceId),
             'action' => Row::string($row, 'action'),
             'entity_type' => Row::string($row, 'entity_type'),

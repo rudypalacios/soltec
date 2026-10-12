@@ -229,6 +229,7 @@ Solo se agrega: nunca se edita ni se borra. Sin `updated_at`, `version` ni `dele
 |---|---|---|---|
 | `occurred_at` | `DATETIME(3)` | no | UTC |
 | `user_id` | `BINARY(16)` | sí | FK `users`; `NULL` si lo hizo el sistema o un login fallido |
+| `user_label` | `VARCHAR(150)` | sí | El nombre de quien actuó **en ese momento**, por la misma razón que `entity_label`. Sin él (entradas anteriores a la migración `20261012000002`) la API muestra el nombre actual y lo marca (`user.name_is_current`) |
 | `device_id` | `BINARY(16)` | sí | FK `devices` |
 | `action` | `VARCHAR(50)` | no | `create`, `update`, `deactivate`, `login`, `logout`, `lockout`, `unlock`, `device_revoke`, … El login fallido no se registra: con correos inventados cualquiera llenaría la tabla; el momento en que una cuenta se bloquea (`lockout`) sí |
 | `entity_type` | `VARCHAR(50)` | no | Nombre de la tabla |

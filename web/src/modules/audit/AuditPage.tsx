@@ -312,6 +312,7 @@ function DetailDialog({ entry, onClose }: { entry: AuditEntry | null; onClose: (
               </Typography>
               <Typography variant="body2">
                 <strong>Quién:</strong> {entry.user?.name ?? WHO_WITHOUT_SESSION}
+                {entry.user?.name_is_current ? ' (nombre actual)' : ''}
               </Typography>
               <Typography variant="body2">
                 <strong>Sobre:</strong> {entityLabel(entry.entity_type)}

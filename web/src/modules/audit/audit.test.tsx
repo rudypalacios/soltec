@@ -13,7 +13,7 @@ const READER = {
 const ENTRY = {
   id: '0192f1c2-7d3a-7a11-8f2e-0000000000e1',
   occurred_at: '2026-10-09T18:30:00.000Z',
-  user: { id: ME.id, name: 'Ana Pérez' },
+  user: { id: ME.id, name: 'Ana Pérez', name_is_current: false },
   device_id: null,
   action: 'update',
   entity_type: 'roles',
@@ -332,5 +332,36 @@ describe('record of an entry', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByText(/Registro:/)).not.toBeInTheDocument();
+  });
+});
+
+describe('who acted', () => {
+  it("says in the detail when the name is today's and not the one of the moment", async () => {
+    const old = {
+      ...ENTRY,
+      user: { id: ME.id, name: 'Ana Pérez', name_is_current: true },
+    };
+    const { session } = createTestSession(log([old]), READER);
+    renderApp(session, '/auditoria');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /Acciones de Cambio/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver detalle' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/Ana Pérez \(nombre actual\)/)).toBeInTheDocument();
+  });
+
+  it('does not say it when the name is the one of the moment', async () => {
+    const { session } = createTestSession(log([ENTRY]), READER);
+    renderApp(session, '/auditoria');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /Acciones de Cambio/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver detalle' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/Ana Pérez/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/Ana Pérez \(nombre actual\)/)).not.toBeInTheDocument();
   });
 });

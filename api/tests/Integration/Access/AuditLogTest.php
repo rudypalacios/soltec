@@ -94,7 +94,8 @@ final class AuditLogTest extends AccessTestCase
         $rows = $this->rowsAt($page, 'data');
         self::assertSame(['update', 'create'], array_column($rows, 'action'));
         self::assertSame('2026-10-01T11:00:00.000Z', $rows[0]['occurred_at']);
-        self::assertEquals(['id' => $this->adminId, 'name' => 'Admin'], $rows[0]['user']);
+        // The helper writes the entry the old way, without the name of who acted: it shows today's name and says so.
+        self::assertEquals(['id' => $this->adminId, 'name' => 'Admin', 'name_is_current' => true], $rows[0]['user']);
         self::assertSame('roles', $rows[0]['entity_type']);
         self::assertSame($record, $rows[0]['entity_id']);
         self::assertEquals(['name' => 'Ops'], $rows[0]['before']);
@@ -396,5 +397,48 @@ final class AuditLogTest extends AccessTestCase
 
         self::assertNull($rows[0]['entity_label']);
         self::assertFalse($rows[0]['entity_label_is_current']);
+    }
+
+    public function testTheNameOfWhoActedIsTheOneTheyHadAtTheTime(): void
+    {
+        $role = $this->createRole('Ops');
+        $this->api('POST', '/roles/' . $role . '/deactivate', $this->adminToken);
+        $this->connection->executeStatement(
+            "UPDATE users SET name = 'Admin con otro nombre' WHERE id = UNHEX(:id)",
+            ['id' => Uuid::toHex($this->adminId)],
+        );
+
+        $entry = $this->entryOf($role, 'deactivate');
+
+        self::assertSame('Admin', $this->valueAt($entry, 'user', 'name'));
+        self::assertFalse($this->valueAt($entry, 'user', 'name_is_current'));
+    }
+
+    public function testAnEntryWrittenWithoutTheNameShowsTodaysAndSaysSo(): void
+    {
+        $this->entry(self::T0, $this->adminId, 'update', 'roles');
+        $this->connection->executeStatement(
+            "UPDATE users SET name = 'Nombre de hoy' WHERE id = UNHEX(:id)",
+            ['id' => Uuid::toHex($this->adminId)],
+        );
+
+        $rows = $this->rowsAt($this->read(['entity_type' => 'roles']), 'data');
+
+        self::assertSame('Nombre de hoy', $this->valueAt($rows[0], 'user', 'name'));
+        self::assertTrue($this->valueAt($rows[0], 'user', 'name_is_current'));
+    }
+
+    public function testAnEntryByNoOneStillHasNoUser(): void
+    {
+        $this->login('nobody@example.com', 'a wrong password');
+        $ana = $this->createUser('ana@example.com');
+        foreach (range(1, 3) as $ignored) {
+            $this->login('ana@example.com', 'a wrong password');
+        }
+
+        $rows = $this->rowsAt($this->read(['entity_id' => $ana['id']]), 'data');
+
+        self::assertSame('lockout', $rows[0]['action']);
+        self::assertNull($rows[0]['user']);
     }
 }
