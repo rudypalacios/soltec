@@ -10,7 +10,10 @@ use Soltec\Kernel\Config;
 use Soltec\Modules\Access\Domain\WidgetCatalog;
 use Symfony\Component\Yaml\Yaml;
 
-/** Keeps the route table and contract/openapi.yaml in step: no undocumented route, no ghost path. */
+/**
+ * Keeps the route table and the API contract in step: no undocumented route, no ghost path. It reads the contract
+ * joined by `npm run contract:bundle` from contract/openapi.yaml and contract/modules/.
+ */
 final class ContractTest extends TestCase
 {
     private const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'];
@@ -52,8 +55,7 @@ final class ContractTest extends TestCase
 
     public function testTheWidgetCodesOfTheContractAreTheOnesTheServerKnows(): void
     {
-        $contract = Yaml::parseFile(dirname(__DIR__, 3) . '/contract/openapi.yaml');
-        self::assertIsArray($contract);
+        $contract = $this->contract();
         $components = $contract['components'] ?? null;
         self::assertIsArray($components);
         $schemas = $components['schemas'] ?? null;
@@ -130,11 +132,24 @@ final class ContractTest extends TestCase
         return $operations;
     }
 
+    /** @return array<mixed> */
+    private function contract(): array
+    {
+        $file = dirname(__DIR__, 3) . '/contract/dist/openapi.yaml';
+        self::assertFileExists(
+            $file,
+            'The contract is not bundled: run `npm run contract:bundle` from the repository root.',
+        );
+        $contract = Yaml::parseFile($file);
+        self::assertIsArray($contract);
+
+        return $contract;
+    }
+
     /** @return array<string, array<mixed>> */
     private function contractPaths(): array
     {
-        $contract = Yaml::parseFile(dirname(__DIR__, 3) . '/contract/openapi.yaml');
-        self::assertIsArray($contract);
+        $contract = $this->contract();
         self::assertIsArray($contract['paths']);
 
         $paths = [];

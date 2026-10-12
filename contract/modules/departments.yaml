@@ -1,0 +1,230 @@
+paths:
+  /v1/departments:
+    get:
+      operationId: listDepartments
+      summary: List departments.
+      description:
+        Inactive departments are hidden unless status says otherwise. Departments have no data scope of their own;
+        whoever may view them sees all of them.
+      tags:
+        - Departments
+      x-permission: departments.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of departments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createDepartment
+      summary: Create a department.
+      description: The name must be unique among active departments (422 `taken`).
+      tags:
+        - Departments
+      x-permission: departments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    get:
+      operationId: getDepartment
+      summary: Get a department by id.
+      description: Returns the department, active or not.
+      tags:
+        - Departments
+      x-permission: departments.view
+      responses:
+        '200':
+          description: The department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateDepartment
+      summary: Rename a department.
+      description: A stale version answers 409 `conflict`; a name used by another active department, 422 `taken`.
+      tags:
+        - Departments
+      x-permission: departments.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: The updated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    post:
+      operationId: deactivateDepartment
+      summary: Deactivate a department.
+      description:
+        Logical deactivation. Refused while the department has active users (409 `department_in_use`, with
+        `active_user_count`); move them to another department first. Inactive users may keep it. Idempotent.
+      tags:
+        - Departments
+      x-permission: departments.deactivate
+      responses:
+        '200':
+          description: The deactivated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/departments/{departmentId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/DepartmentId'
+    post:
+      operationId: reactivateDepartment
+      summary: Reactivate a department.
+      description: Fails with 422 `validation_failed` if the name is now used by an active department. Idempotent.
+      tags:
+        - Departments
+      x-permission: departments.deactivate
+      responses:
+        '200':
+          description: The reactivated department.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    DepartmentId:
+      name: departmentId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    Department:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - active_user_count
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            active_user_count:
+              type: integer
+              minimum: 0
+              description: Active users in the department; it can be deactivated only when this is 0.
+    DepartmentPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    DepartmentCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    DepartmentUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100

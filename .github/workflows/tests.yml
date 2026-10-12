@@ -53,6 +53,18 @@ jobs:
       - name: Static analysis (phpstan)
         run: composer analyse
 
+      # ContractTest reads the contract joined from contract/openapi.yaml and contract/modules/.
+      - name: Set up Node (contract bundle)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Bundle the API contract
+        working-directory: .
+        run: npm ci --ignore-scripts && npm run contract:bundle
+
       - name: Tests (phpunit)
         run: composer test
 

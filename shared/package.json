@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "generate": "openapi-typescript ../contract/openapi.yaml -o src/api/generated/schema.ts",
+    "generate": "node ../contract/bundle.mjs && openapi-typescript ../contract/dist/openapi.yaml -o src/api/generated/schema.ts",
     "typecheck": "npm run generate && tsc --noEmit",
     "test": "npm run generate && vitest run"
   },
