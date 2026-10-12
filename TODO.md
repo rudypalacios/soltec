@@ -18,7 +18,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
   - [x] Production: sin *Required reviewers* (decisión del usuario: único revisor, repo privado)
   - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
-  - [ ] Decidir el acceso de red de la sesión a los subdominios (opcional)
+  - [x] Acceso de red de la sesión a los subdominios: verificado (2026-10-12), la sesión alcanza `staging`. El QA usa las variables del environment `QA_BASE_URL`, `QA_EMAIL` y `QA_PASSWORD` (cuenta de administrador de `staging`)
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
 - [x] 5. Esqueleto de autenticación y roles (`docs/arquitectura/autenticacion-y-roles.md`)
@@ -73,6 +73,21 @@ Detalle de lo que sigue (referencia, no es orden de trabajo):
 - [ ] Niveles de margen y función de precio, con los casos de prueba del ADR-0011
 - [ ] Dashboard base (contenedor y registro de widgets)
 - **Fuera:** tareas, notificaciones, parámetros de catálogo, catálogo, clientes.
+
+## Transversal pendiente — Flujo de ramas con `develop` y E2E con Playwright
+Acordado en conversación (2026-10-12), **sin empezar**. Orden: primero el PR del flujo de ramas, después el de Playwright.
+- [ ] **Flujo de ramas** (ADR corto, `CLAUDE.md` §7, `docs/despliegue.md` y workflows):
+  - Los PR de trabajo salen de `develop` y van a `develop` (squash). `develop → main` es un PR de release **con commit de fusión, no squash** (con squash los historiales se separan y el siguiente release da conflictos). Producción solo desde `main`.
+  - El despliegue a `staging` con la etiqueta `pre-deploy` **se queda en el PR**: así Claude prueba con la cuenta QA antes de fusionar.
+  - Lo que hace el usuario en GitHub: crear `develop`, protegerla (pruebas obligatorias), ponerla como rama por defecto y permitir que el entorno `staging` despliegue desde las ramas de PR.
+- [ ] **E2E con Playwright** (se decidió Playwright y no Cypress: ya está en el environment, prueba WebKit y simula bien el móvil):
+  - Servidor desechable en el CI (API, MySQL 5.7, web construida y un correo de prueba que se lee en vez de enviarse), tanto en el PR como en `develop`; no contra `staging`. Ahí se pueden probar usuarios, bloqueo y desbloqueo e invitaciones sin correo real.
+  - En el PR corren **solo las pruebas nuevas o afectadas** (`playwright test --only-changed=origin/develop`, con `fetch-depth: 0`; también reejecuta las pruebas que importan un archivo cambiado). Cada PR trae su escenario nuevo o ajusta el existente: no mira el código de la aplicación.
+  - Al caer en `develop` corre el **E2E completo** (regresión), y es obligatorio en el PR de release hacia `main`. Una prueba de humo contra `staging` con la cuenta QA queda aparte, mínima.
+  - Estructura atómica: `e2e/componentes` (átomos, un locator y una intención; corresponden a `DataList`, `ConfirmDialog`, `FormPage`…), `e2e/paginas` (objetos de página), `e2e/flujos` (pasos de negocio) y `e2e/pruebas` (escenarios cortos), más fixtures para la sesión y para preparar datos **por API**. Locators por rol y etiqueta, nunca por CSS; las aserciones van en las pruebas, no en las páginas; se extrae a la segunda o tercera repetición.
+  - Primer PR: la infraestructura y tres escenarios (inicio de sesión, bloqueo y desbloqueo, y auditoría).
+- **Sigue siendo manual** (no lo cubre el E2E): que un correo llegue a una bandeja real, un teléfono físico y la revisión visual.
+- **Reglas del QA de Claude en `staging`:** solo `staging`, nunca producción; datos con prefijo `qa-`; nada se borra, solo se desactiva; nada que envíe correo real; la cuenta QA nunca se usa para probar bloqueos ni renombrarse.
 
 ## Hito 2 — Catálogo y clientes
 - [ ] Parámetros de catálogo (precarga PM1 y PM5)
