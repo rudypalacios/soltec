@@ -38,7 +38,8 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'npm run preview --workspace @soltec/web -- --port 4173 --strictPort',
+      command:
+        'npm run preview --workspace @soltec/web -- --host 127.0.0.1 --port 4173 --strictPort',
       cwd: '..',
       port: 4173,
       reuseExistingServer: !process.env.CI,
