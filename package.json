@@ -5,19 +5,21 @@
   "description": "CRM-ERP monorepo: shared (TypeScript) and web (React). The PHP API lives in api/.",
   "workspaces": [
     "shared",
-    "web"
+    "web",
+    "e2e"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "generate": "npm run generate --workspace @soltec/shared",
-    "lint": "eslint . && prettier --check \"shared/**/*.ts\" \"web/**/*.{ts,tsx,json,html}\" \"contract/*.yaml\" \"*.json\"",
+    "lint": "eslint . && prettier --check \"shared/**/*.ts\" \"e2e/**/*.ts\" \"web/**/*.{ts,tsx,json,html}\" \"contract/*.yaml\" \"*.json\"",
     "lint:contract": "spectral lint contract/openapi.yaml --fail-severity=warn",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspace @soltec/web",
-    "dev": "npm run dev --workspace @soltec/web"
+    "dev": "npm run dev --workspace @soltec/web",
+    "e2e": "npm run build && npm run test --workspace @soltec/e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
