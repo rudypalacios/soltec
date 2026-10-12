@@ -2818,6 +2818,8 @@ components:
         - action
         - entity_type
         - entity_id
+        - entity_label
+        - entity_label_is_current
         - before
         - after
         - ip_address
@@ -2852,6 +2854,15 @@ components:
           allOf:
             - $ref: '#/components/schemas/Uuid'
           nullable: true
+        entity_label:
+          type: string
+          nullable: true
+          description:
+            The name of the record when the entry was written (a profile that was called «Ventas» then keeps saying
+            so after a rename). Null for records without a name of their own, such as the single-row settings.
+        entity_label_is_current:
+          type: boolean
+          description: True for an entry written before names were stored, whose `entity_label` is the name the record has now.
         before:
           type: object
           nullable: true

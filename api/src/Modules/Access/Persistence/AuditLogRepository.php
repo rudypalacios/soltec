@@ -12,6 +12,7 @@ use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Domain\AuditCursor;
+use Soltec\Modules\Access\Domain\AuditEntityLabels;
 use Soltec\Modules\Access\Domain\AuditFilter;
 
 /**
@@ -44,6 +45,8 @@ final class AuditLogRepository
                 'a.action',
                 'a.entity_type',
                 'LOWER(HEX(a.entity_id)) AS entity_id',
+                'a.entity_label',
+                AuditEntityLabels::currentNameSql('a') . ' AS current_name',
                 'a.before_data',
                 'a.after_data',
                 'INET6_NTOA(a.ip_address) AS ip_address',
@@ -108,6 +111,8 @@ final class AuditLogRepository
         $userId = Row::nullableString($row, 'user_id');
         $deviceId = Row::nullableString($row, 'device_id');
         $entityId = Row::nullableString($row, 'entity_id');
+        $label = Row::nullableString($row, 'entity_label');
+        $currentName = Row::nullableString($row, 'current_name');
 
         return [
             'id' => Uuid::fromHex(Row::string($row, 'id')),
@@ -119,6 +124,9 @@ final class AuditLogRepository
             'action' => Row::string($row, 'action'),
             'entity_type' => Row::string($row, 'entity_type'),
             'entity_id' => $entityId === null ? null : Uuid::fromHex($entityId),
+            'entity_label' => $label ?? $currentName,
+            // An entry from before labels were stored: the name is the one the record has now.
+            'entity_label_is_current' => $label === null && $currentName !== null,
             'before' => $this->decode(Row::nullableString($row, 'before_data')),
             'after' => $this->decode(Row::nullableString($row, 'after_data')),
             'ip_address' => Row::nullableString($row, 'ip_address'),

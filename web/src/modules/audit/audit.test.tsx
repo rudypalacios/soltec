@@ -18,6 +18,8 @@ const ENTRY = {
   action: 'update',
   entity_type: 'roles',
   entity_id: '0192f1c2-7d3a-7a11-8f2e-0000000000b1',
+  entity_label: 'Comercial',
+  entity_label_is_current: false,
   before: { name: 'Ventas', description: null },
   after: { name: 'Comercial', description: 'Equipo comercial' },
   ip_address: '203.0.113.9',
@@ -29,6 +31,9 @@ const LOCKOUT = {
   user: null,
   action: 'lockout',
   entity_type: 'users',
+  entity_id: '0192f1c2-7d3a-7a11-8f2e-0000000000c1',
+  entity_label: 'Luis Gómez',
+  entity_label_is_current: false,
   before: null,
   after: null,
   ip_address: null,
@@ -216,5 +221,116 @@ describe('audit screen', () => {
 
     const navigation = await screen.findByRole('navigation', { name: 'Navegación principal' });
     expect(within(navigation).getByText('Auditoría')).toBeInTheDocument();
+  });
+});
+
+describe('record of an entry', () => {
+  const SETTINGS = {
+    ...ENTRY,
+    id: '0192f1c2-7d3a-7a11-8f2e-0000000000e3',
+    entity_type: 'security_settings',
+    entity_id: null,
+    entity_label: null,
+  };
+  const OLD = {
+    ...ENTRY,
+    id: '0192f1c2-7d3a-7a11-8f2e-0000000000e4',
+    entity_type: 'departments',
+    entity_label: 'Operaciones',
+    entity_label_is_current: true,
+  };
+  const withRoleAndUserAccess = {
+    ...READER,
+    permissions: { ...READER.permissions, roles: ['view'], users: ['view', 'edit'] },
+  };
+
+  it('shows the name of the record and links it to its screen when there is one', async () => {
+    const { session } = createTestSession(log([ENTRY, LOCKOUT, OLD]), withRoleAndUserAccess);
+    renderApp(session, '/auditoria');
+
+    const table = await screen.findByRole('table', { name: 'Movimientos registrados' });
+    expect(within(table).getByRole('link', { name: 'Comercial' })).toHaveAttribute(
+      'href',
+      `/perfiles/${ENTRY.entity_id}`,
+    );
+    expect(within(table).getByRole('link', { name: 'Luis Gómez' })).toHaveAttribute(
+      'href',
+      `/usuarios/${LOCKOUT.entity_id}/editar`,
+    );
+    // Departments have no screen of their own: the name is plain text.
+    expect(within(table).getByText('Operaciones')).toBeInTheDocument();
+    expect(within(table).queryByRole('link', { name: 'Operaciones' })).not.toBeInTheDocument();
+  });
+
+  it('shows the name without a link to whoever may not open that screen', async () => {
+    const onlyAudit = {
+      ...ME,
+      permissions: { audit_logs: ['view'] },
+      scopes: { audit_logs: 'all' },
+    };
+    const { session } = createTestSession(log([ENTRY]), onlyAudit);
+    renderApp(session, '/auditoria');
+
+    const table = await screen.findByRole('table', { name: 'Movimientos registrados' });
+    expect(within(table).getByText('Comercial')).toBeInTheDocument();
+    expect(within(table).queryByRole('link', { name: 'Comercial' })).not.toBeInTheDocument();
+  });
+
+  it("marks a name that is today's and not the one of the moment", async () => {
+    const { session } = createTestSession(log([OLD, ENTRY]), READER);
+    renderApp(session, '/auditoria');
+
+    const table = await screen.findByRole('table', { name: 'Movimientos registrados' });
+    expect(within(table).getAllByText('nombre actual')).toHaveLength(1);
+  });
+
+  it('shows a dash when the record has no name of its own', async () => {
+    const { session } = createTestSession(log([SETTINGS]), READER);
+    renderApp(session, '/auditoria');
+
+    const table = await screen.findByRole('table', { name: 'Movimientos registrados' });
+    expect(within(table).getByText('—')).toBeInTheDocument();
+  });
+
+  it('shows it on the card of a phone', async () => {
+    setViewportWidth(390);
+    const { session } = createTestSession(log([ENTRY]), READER);
+    renderApp(session, '/auditoria');
+
+    const cards = await screen.findByLabelText('Movimientos registrados');
+    expect(within(cards).getByText(/Registro:/)).toBeInTheDocument();
+    expect(within(cards).getByText('Comercial')).toBeInTheDocument();
+  });
+
+  it('names the record in the detail with a way to its screen and its history', async () => {
+    const { session } = createTestSession(log([ENTRY]), withRoleAndUserAccess);
+    renderApp(session, '/auditoria');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /Acciones de Cambio/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver detalle' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/Perfil «Comercial»/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Ver el perfil' })).toHaveAttribute(
+      'href',
+      `/perfiles/${ENTRY.entity_id}`,
+    );
+    expect(within(dialog).getByRole('link', { name: 'Ver su historial' })).toHaveAttribute(
+      'href',
+      `/auditoria?tipo=roles&registro=${ENTRY.entity_id}`,
+    );
+  });
+
+  it('has no record line in the detail when the entry is about no record', async () => {
+    const { session } = createTestSession(log([SETTINGS]), READER);
+    renderApp(session, '/auditoria');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /Acciones de Cambio/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver detalle' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByText(/Registro:/)).not.toBeInTheDocument();
   });
 });

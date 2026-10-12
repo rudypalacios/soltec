@@ -10,11 +10,15 @@ use Soltec\Kernel\Clock;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
+use Soltec\Modules\Access\Domain\AuditEntityLabels;
 
 /**
  * Appends to `audit_logs` (UNHEX and INET6_ATON of NULL are NULL). It runs inside the transaction of the change it
  * records, so a change and its trace are saved together or not at all. Passwords and tokens never reach the log:
  * such a key is a programming error.
+ *
+ * It also stores the name of the record at that moment (`entity_label`), read inside the same transaction, so a later
+ * rename does not rewrite what the entry says.
  */
 final class AuditLogger
 {
@@ -48,9 +52,9 @@ final class AuditLogger
 
         $this->connection->executeStatement(
             'INSERT INTO audit_logs (id, occurred_at, user_id, device_id, action, entity_type, entity_id, '
-            . 'before_data, after_data, ip_address) VALUES (UNHEX(:id), :occurred_at, '
-            . 'UNHEX(:user_id), UNHEX(:device_id), :action, :entity_type, UNHEX(:entity_id), :before, :after, '
-            . 'INET6_ATON(:ip))',
+            . 'entity_label, before_data, after_data, ip_address) VALUES (UNHEX(:id), :occurred_at, '
+            . 'UNHEX(:user_id), UNHEX(:device_id), :action, :entity_type, UNHEX(:entity_id), :entity_label, '
+            . ':before, :after, INET6_ATON(:ip))',
             [
                 'id' => Uuid::toHex(Uuid::v7()),
                 'occurred_at' => Timestamps::toDb($this->clock->now()),
@@ -59,10 +63,27 @@ final class AuditLogger
                 'action' => $action,
                 'entity_type' => $entityType,
                 'entity_id' => $entityId === null ? null : Uuid::toHex($entityId),
+                'entity_label' => $this->labelOf($entityType, $entityId),
                 'before' => $before === null ? null : json_encode($before, JSON_THROW_ON_ERROR),
                 'after' => $after === null ? null : json_encode($after, JSON_THROW_ON_ERROR),
                 'ip' => $actor->ip,
             ],
         );
+    }
+
+    /** The record's name right now, or null when its type has no name or the record is not there. */
+    private function labelOf(string $entityType, ?string $entityId): ?string
+    {
+        $table = AuditEntityLabels::tableOf($entityType);
+        if ($table === null || $entityId === null) {
+            return null;
+        }
+
+        $name = $this->connection->fetchOne(
+            sprintf('SELECT name FROM %s WHERE id = UNHEX(:id)', $table),
+            ['id' => Uuid::toHex($entityId)],
+        );
+
+        return is_string($name) ? mb_substr($name, 0, AuditEntityLabels::MAX_LENGTH) : null;
     }
 }

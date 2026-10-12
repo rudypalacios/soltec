@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Link,
   MenuItem,
   Stack,
   Table,
@@ -20,13 +22,22 @@ import {
 } from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { DataList, type DataColumn } from '../../components/DataList';
 import { PageHeader } from '../../components/PageHeader';
 import type { RowAction } from '../../components/RowActions';
 import { formatMoment } from '../access/formatting';
 import { problemMessage } from '../access/messages';
-import { ACTION_LABELS, ENTITY_LABELS, actionLabel, entityLabel } from './auditLabels';
+import { useCan } from '../access/SessionContext';
+import {
+  ACTION_LABELS,
+  ENTITY_LABELS,
+  ENTITY_NOUNS,
+  actionLabel,
+  entityLabel,
+  historyPath,
+  recordPath,
+} from './auditLabels';
 import { useAuditLog, type AuditQuery } from './useAuditLog';
 
 type AuditEntry = components['schemas']['AuditEntry'];
@@ -60,7 +71,45 @@ const COLUMNS: DataColumn<AuditEntry>[] = [
     mobile: 'meta',
     render: (entry) => entityLabel(entry.entity_type),
   },
+  {
+    id: 'record',
+    header: 'Registro',
+    mobile: 'meta',
+    render: (entry) => <RecordCell entry={entry} />,
+  },
 ];
+
+/**
+ * The name of the record the entry is about, as a link to it when there is a screen and the person may open it. An
+ * entry from before names were stored shows the name the record has now, and says so.
+ */
+function RecordCell({ entry }: { entry: AuditEntry }) {
+  const can = useCan();
+  if (entry.entity_label === null) {
+    return <>—</>;
+  }
+  const path = recordPath(entry.entity_type, entry.entity_id, can);
+  return (
+    <>
+      {path ? (
+        <Link component={RouterLink} to={path} underline="hover" sx={{ fontWeight: 500 }}>
+          {entry.entity_label}
+        </Link>
+      ) : (
+        entry.entity_label
+      )}
+      {entry.entity_label_is_current ? (
+        <Chip
+          size="small"
+          variant="outlined"
+          label="nombre actual"
+          title="Este movimiento es anterior a que se guardara el nombre: se muestra el que tiene hoy."
+          sx={{ ml: 1, height: 20, fontSize: 11 }}
+        />
+      ) : null}
+    </>
+  );
+}
 
 /** `date` input value (`2026-10-11`) to the start or end of that day in the person's time zone, as an instant. */
 function dayBoundary(day: string, end: boolean): string | undefined {
@@ -267,6 +316,7 @@ function DetailDialog({ entry, onClose }: { entry: AuditEntry | null; onClose: (
               <Typography variant="body2">
                 <strong>Sobre:</strong> {entityLabel(entry.entity_type)}
               </Typography>
+              {entry.entity_id ? <RecordLine entry={entry} onNavigate={onClose} /> : null}
               {entry.ip_address ? (
                 <Typography variant="body2">
                   <strong>Dirección IP:</strong> {entry.ip_address}
@@ -310,5 +360,39 @@ function DetailDialog({ entry, onClose }: { entry: AuditEntry | null; onClose: (
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+/** «Registro: Perfil «Comercial»» with a way to its screen and to its history. */
+function RecordLine({ entry, onNavigate }: { entry: AuditEntry; onNavigate: () => void }) {
+  const can = useCan();
+  if (entry.entity_id === null) {
+    return null;
+  }
+  const noun = ENTITY_NOUNS[entry.entity_type];
+  const path = recordPath(entry.entity_type, entry.entity_id, can);
+  const name = entry.entity_label === null ? null : `«${entry.entity_label}»`;
+  return (
+    <Typography variant="body2">
+      <strong>Registro:</strong>{' '}
+      {[noun, name].filter(Boolean).join(' ') || entityLabel(entry.entity_type)}
+      {entry.entity_label_is_current ? ' (nombre actual)' : ''}
+      {path ? (
+        <>
+          {' · '}
+          <Link component={RouterLink} to={path} onClick={onNavigate}>
+            Ver el {noun ? noun.toLowerCase() : 'registro'}
+          </Link>
+        </>
+      ) : null}
+      {' · '}
+      <Link
+        component={RouterLink}
+        to={historyPath(entry.entity_type, entry.entity_id)}
+        onClick={onNavigate}
+      >
+        Ver su historial
+      </Link>
+    </Typography>
   );
 }

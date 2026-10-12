@@ -233,6 +233,7 @@ Solo se agrega: nunca se edita ni se borra. Sin `updated_at`, `version` ni `dele
 | `action` | `VARCHAR(50)` | no | `create`, `update`, `deactivate`, `login`, `logout`, `lockout`, `unlock`, `device_revoke`, … El login fallido no se registra: con correos inventados cualquiera llenaría la tabla; el momento en que una cuenta se bloquea (`lockout`) sí |
 | `entity_type` | `VARCHAR(50)` | no | Nombre de la tabla |
 | `entity_id` | `BINARY(16)` | sí | Sin FK: apunta a cualquier tabla |
+| `entity_label` | `VARCHAR(190)` | sí | El nombre del registro **en el momento de escribir** la entrada (`AuditLogger` lo lee en la misma transacción). Leer el nombre actual reescribiría la historia en un renombre. Solo para tablas con `name` (`AuditEntityLabels`); las filas únicas de configuración no tienen. Las entradas anteriores a la rebanada 1.5c no lo tienen: la API muestra el nombre actual y lo marca (`entity_label_is_current`) |
 | `before_data`, `after_data` | `JSON` | sí | Solo los campos que cambiaron; nunca contraseñas ni tokens |
 | `ip_address` | `VARBINARY(16)` | sí | `INET6_ATON` |
 

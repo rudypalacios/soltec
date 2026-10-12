@@ -30,3 +30,38 @@ export const ACTION_LABELS: Record<string, string> = {
 
 export const entityLabel = (code: string): string => ENTITY_LABELS[code] ?? code;
 export const actionLabel = (code: string): string => ACTION_LABELS[code] ?? code;
+
+/** The record with its kind for a sentence («Perfil «Comercial»»). */
+export const ENTITY_NOUNS: Record<string, string> = {
+  users: 'Usuario',
+  roles: 'Perfil',
+  departments: 'Departamento',
+  margin_levels: 'Nivel de margen',
+  devices: 'Dispositivo',
+};
+
+/**
+ * The screen of a record, when there is one and the person may open it. Departments, margin levels and devices have
+ * no screen of their own (they are edited in a list), so they only show their name.
+ */
+export function recordPath(
+  entityType: string,
+  entityId: string | null,
+  can: (resource: string, action: string) => boolean,
+): string | null {
+  if (entityId === null) {
+    return null;
+  }
+  if (entityType === 'users' && can('users', 'edit')) {
+    return `/usuarios/${entityId}/editar`;
+  }
+  if (entityType === 'roles' && can('roles', 'view')) {
+    return `/perfiles/${entityId}`;
+  }
+  return null;
+}
+
+/** The address of the audit filtered to one record. */
+export function historyPath(entityType: string, entityId: string): string {
+  return `/auditoria?tipo=${encodeURIComponent(entityType)}&registro=${encodeURIComponent(entityId)}`;
+}
