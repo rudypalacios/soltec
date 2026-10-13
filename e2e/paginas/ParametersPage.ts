@@ -40,8 +40,21 @@ export class ParametersPage {
     await this.page.getByRole('option', { name: label, exact: true }).click();
   }
 
+  /**
+   * Types in the search box and waits for the filtered list. The screen asks for the filtered list a moment after
+   * the text changes (the text is deferred), and until it arrives it still shows the previous rows, which in a
+   * shared database include other scenarios' records. A scenario that acts on a row before that would be acting on
+   * a list that is about to change.
+   */
   async search(text: string): Promise<void> {
+    const filtered = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).searchParams.get('q') === text &&
+        response.ok(),
+    );
     await this.page.getByLabel('Buscar por nombre').fill(text);
+    await filtered;
   }
 
   /** Runs one action of a row («Editar», «Desactivar»). */
