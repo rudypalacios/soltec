@@ -21,6 +21,8 @@ final class AuthenticationMiddleware implements MiddlewareInterface
     public const USER_ATTRIBUTE = 'current_user';
     public const PUBLIC = 'public';
     public const AUTHENTICATED = 'authenticated';
+    /** Any session of an internal user: the options lists every form may read (ADR-0024). */
+    public const INTERNAL = 'internal';
 
     public function __construct(private readonly JwtService $jwt, private readonly CurrentUserLoader $users)
     {

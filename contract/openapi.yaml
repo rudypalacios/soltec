@@ -11,7 +11,7 @@ info:
     Conventions:
 
     - Every operation declares its access rule in `x-permission`: `public` (no session), `authenticated` (any user
-    with a session) or `<resource>.<action>` (for example `users.view`). A route without it fails a test (ADR-0012).
+    with a session), `internal` (a session of an internal user, for the options lists) or `<resource>.<action>` (for example `users.view`). A route without it fails a test (ADR-0012).
     A session with a restricted token (password change pending) only reaches operations marked `x-allows-restricted-token`.
     An operation marked `x-planned: true` is specified but not implemented yet; the flag is removed in the pull
     request that adds its route.
