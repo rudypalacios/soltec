@@ -174,12 +174,12 @@ paths:
       summary: List the active areas to choose from.
       description:
         For the selector of the forms that use this list. It returns only the id and the name of the active values,
-        sorted by name. It is authorized by viewing the list or by viewing product groups, so
-        whoever works in that section can choose or filter without any access to this one (ADR-0024). The complete list, with the
+        sorted by name. Any internal session may read it, so every form can fill its selectors and
+        filters without any access to this section (ADR-0024). The complete list, with the
         inactive values, still needs `areas.view`.
       tags:
         - Catalog structure
-      x-permission: areas.view|product_groups.view
+      x-permission: internal
       responses:
         '200':
           description: The active values.
@@ -540,12 +540,12 @@ paths:
       summary: List the active unit categories to choose from.
       description:
         For the selector of the forms that use this list. It returns only the id and the name of the active values,
-        sorted by name. It is authorized by viewing the list or by viewing units of measure, so
-        whoever works in that section can choose or filter without any access to this one (ADR-0024). The complete list, with the
+        sorted by name. Any internal session may read it, so every form can fill its selectors and
+        filters without any access to this section (ADR-0024). The complete list, with the
         inactive values, still needs `unit_categories.view`.
       tags:
         - Catalog structure
-      x-permission: unit_categories.view|units_of_measure.view
+      x-permission: internal
       responses:
         '200':
           description: The active values.

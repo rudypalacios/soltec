@@ -71,11 +71,11 @@ paths:
         (active internal users), so the selector never offers someone the server would refuse. With data scope `team`
         they are the caller's team (themselves, the people under them through the direct manager, directly or not, and
         their department); with `all`, any of them; with a scope that reaches nobody else (`own`), none. It is
-        authorized by viewing contacts, not by viewing users, because the selector must work for whoever works with
-        contacts whatever they may do in the user screens. Sorted by name; `q` searches name and email.
+        open to any internal session, not tied to viewing users, because a selector must work whatever the caller may do
+        in the user screens. The list always follows the caller's data scope over contacts. Sorted by name; `q` searches name and email.
       tags:
         - Contacts
-      x-permission: contacts.view
+      x-permission: internal
       parameters:
         - $ref: '#/components/parameters/Search'
         - name: limit

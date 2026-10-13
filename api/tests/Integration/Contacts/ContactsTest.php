@@ -440,13 +440,14 @@ final class ContactsTest extends AccessTestCase
         self::assertCount(2, $this->columnAt($limited, 'name', 'data'));
     }
 
-    public function testTheOwnerOptionsNeedPermissionToViewContactsAndNothingOnUsers(): void
+    public function testTheOwnerOptionsAreOpenToAnyInternalSessionButFollowTheScopeOverContacts(): void
     {
-        $viewer = $this->tokenWith('contacts', 'view');
-        $withoutView = $this->tokenWith('contacts', 'create', 'deactivate');
+        $roleless = $this->tokenFor($this->createUser('roleless@example.com')['id']);
 
-        self::assertSame(200, $this->api('GET', '/contacts/owner-options', $viewer)->getStatusCode());
-        self::assertSame(403, $this->api('GET', '/contacts/owner-options', $withoutView)->getStatusCode());
+        $response = $this->api('GET', '/contacts/owner-options', $roleless);
+        self::assertSame(200, $response->getStatusCode());
+        // Without a role the scope over contacts is `own`, which reaches nobody else.
+        self::assertSame([], $this->rowsAt($this->json($response), 'data'));
         self::assertSame(401, $this->api('GET', '/contacts/owner-options')->getStatusCode());
     }
 

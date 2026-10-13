@@ -105,15 +105,10 @@ return static function (App $app): void {
                 'permission' => $parameter->table . '.' . $action,
                 'parameter' => $parameter->slug,
             ];
-            if ($parameter->optionConsumers !== []) {
-                // Whoever administers the list or may view a section that consumes it (ADR-0024). Every other action
-                // on a section already requires its `view`, so the view is the whole condition.
-                $alternatives = [$parameter->table . '.view'];
-                foreach ($parameter->optionConsumers as $consumer) {
-                    $alternatives[] = $consumer . '.view';
-                }
+            if ($parameter->offersOptions) {
+                // Any internal session may read the options; the section itself still needs its `view` (ADR-0024).
                 $group->get($base . '/options', [ParameterController::class, 'options'])->setArguments([
-                    'permission' => implode('|', $alternatives),
+                    'permission' => 'internal',
                     'parameter' => $parameter->slug,
                 ]);
             }
@@ -129,7 +124,7 @@ return static function (App $app): void {
 
         $group->get('/contacts', [ContactController::class, 'list'])->setArgument('permission', 'contacts.view');
         $group->get('/contacts/owner-options', [ContactController::class, 'ownerOptions'])
-            ->setArgument('permission', 'contacts.view');
+            ->setArgument('permission', 'internal');
         $group->post('/contacts', [ContactController::class, 'create'])->setArgument('permission', 'contacts.create');
         $group->get('/contacts/{contactId}', [ContactController::class, 'show'])
             ->setArgument('permission', 'contacts.view');

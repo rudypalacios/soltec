@@ -145,8 +145,7 @@ function useParentOptions(view: ParameterView) {
   const can = useCan();
   const parentView = ALL_VIEWS.find((candidate) => candidate.slug === view.parent?.slug);
   const canList = parentView !== undefined && can(parentView.resource, 'view');
-  const canChoose =
-    parentView !== undefined && (canList || can(view.resource, 'view'));
+  const canChoose = parentView !== undefined;
   const list = useParameterValues(
     parentView ?? view,
     { status: 'all', per_page: PARENT_OPTIONS },
