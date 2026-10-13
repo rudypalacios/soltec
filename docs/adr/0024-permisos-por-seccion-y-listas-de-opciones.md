@@ -7,7 +7,7 @@ Administrar una sección (ver su lista completa, crear, editar, desactivar) es d
 
 ## Decisión
 - **Cada sección es su propio recurso de permisos**, con los cuatro permisos de siempre (`view`, `create`, `edit`, `deactivate`): `products`, `bundles`, `brands`, `areas`, `product_groups`, `units_of_measure` (categorías y unidades), `suppliers`, `contacts`, `clients`, y los cinco parámetros `contact_types`, `client_statuses`, `segments`, `tax_regimes` y `payment_methods`.
-- **Listas de opciones:** cada recurso que otro necesita ofrece `GET /v1/<recurso>/options`, que devuelve solo `id`, nombre y el dato mínimo para elegir (el `area_id` de un grupo, la categoría de una unidad, el color de un estado) de los valores **activos**. La autoriza el permiso del propio recurso **o cualquier permiso de un recurso consumidor**.
+- **Listas de opciones:** cada recurso que otro necesita ofrece `GET /v1/<recurso>/options`, que devuelve solo `id`, nombre y el dato mínimo para elegir (el `area_id` de un grupo, la categoría de una unidad, el color de un estado) de los valores **activos**. La autoriza el permiso `view` del propio recurso **o crear o editar en un recurso consumidor** (2026-10-13: antes decía «cualquier permiso»; quien solo ve o desactiva no llena formularios, y ver los nombres dentro de un registro no necesita la lista). La ruta declara las alternativas unidas con `|` (`areas.view|product_groups.create|product_groups.edit`).
 - **Consumidores** (un mapa en el código, no una tabla):
 
 | Opciones de | Las piden |
@@ -15,7 +15,8 @@ Administrar una sección (ver su lista completa, crear, editar, desactivar) es d
 | `contact_types` | `contacts`, `clients`, `suppliers` |
 | `client_statuses`, `segments`, `tax_regimes`, `payment_methods` | `clients` |
 | `brands`, `product_groups`, `units_of_measure`, `suppliers` | `products` |
-| `areas` | `products`, `clients` |
+| `unit_categories` | `units_of_measure` |
+| `areas` | `product_groups`, `products`, `clients` |
 | `products` | `bundles` |
 
 - **La administración sí exige el permiso del propio recurso:** la lista completa, los inactivos y el alta, edición y desactivación.
@@ -31,3 +32,4 @@ Administrar una sección (ver su lista completa, crear, editar, desactivar) es d
 - La matriz de permisos crece unas quince filas. La pantalla de perfiles las agrupa por sección para que siga siendo manejable en móvil.
 - Una opción devuelve poco (nombre y un dato): no filtra campos sensibles ni valores inactivos.
 - Agregar una sección es un recurso, su migración con el permiso a `admin` y una línea en el mapa de consumidores.
+- Una lista ofrece su ruta `/options` cuando tiene un consumidor, no antes: hoy `areas` y `unit_categories` (`optionConsumers` en `ParameterCatalog`). Las demás la reciben con su primer formulario.

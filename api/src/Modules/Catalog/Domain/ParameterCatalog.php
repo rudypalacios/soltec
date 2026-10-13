@@ -24,6 +24,7 @@ final class ParameterCatalog
                 'areas',
                 'areaId',
                 children: new ChildLink('product_groups', 'area_id', 'active_group_count', 'area_in_use'),
+                optionConsumers: ['product_groups'],
             ),
             new ParameterDefinition(
                 'product-groups',
@@ -37,6 +38,7 @@ final class ParameterCatalog
                 'unitCategoryId',
                 nameMax: 60,
                 children: new ChildLink('units_of_measure', 'category_id', 'active_unit_count', 'unit_category_in_use'),
+                optionConsumers: ['units_of_measure'],
             ),
             new ParameterDefinition(
                 'units-of-measure',

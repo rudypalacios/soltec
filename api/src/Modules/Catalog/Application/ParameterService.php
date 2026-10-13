@@ -24,6 +24,9 @@ use Soltec\Modules\Catalog\Persistence\ParameterRepository;
  */
 final class ParameterService
 {
+    /** The most a form shows in a selector; the lists are in the tens. */
+    private const OPTIONS_LIMIT = 500;
+
     public function __construct(
         private readonly Connection $connection,
         private readonly Clock $clock,
@@ -41,6 +44,12 @@ final class ParameterService
         Pagination $page,
     ): array {
         return $this->parameters->search($parameter, $text, $status, $parentId, $page);
+    }
+
+    /** @return list<array{id: string, name: string}> */
+    public function options(ParameterDefinition $parameter): array
+    {
+        return $this->parameters->options($parameter, self::OPTIONS_LIMIT);
     }
 
     public function get(ParameterDefinition $parameter, string $id): ParameterRecord

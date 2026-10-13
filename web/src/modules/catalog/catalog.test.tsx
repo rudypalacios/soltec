@@ -170,9 +170,25 @@ describe('catalog structure', () => {
     expect(calls[0]?.body).toEqual({ name: 'Conectores 2', area_id: RETIRED.id, version: 1 });
   });
 
-  it('cannot offer areas to someone who may not view them', async () => {
-    const { session } = createTestSession(
-      { 'GET /v1/product-groups': () => Response.json(page([GROUP])) },
+  it('offers the areas from the options list to whoever edits groups without any access to areas', async () => {
+    const calls: Call[] = [];
+    const { session, calls: all } = createTestSession(
+      {
+        'GET /v1/product-groups': () => Response.json(page([GROUP])),
+        // Only the active areas, with id and name: it is all a selector needs.
+        'GET /v1/areas/options': () =>
+          Response.json({
+            data: [
+              { id: WIRING.id, name: WIRING.name },
+              { id: POWER.id, name: POWER.name },
+            ],
+          }),
+        'POST /v1/product-groups': (call) => {
+          calls.push(call);
+          return Response.json({ ...GROUP, name: 'Cables' }, { status: 201 });
+        },
+      },
+      // Everything on groups and nothing on areas.
       withAccess(['product_groups']),
     );
     renderApp(session, '/catalogo');
@@ -180,11 +196,31 @@ describe('catalog structure', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Nuevo grupo de producto' }));
     const dialog = await screen.findByRole('dialog', { name: 'Nuevo grupo de producto' });
+    await user.type(within(dialog).getByLabelText(/Nombre/), 'Cables');
+    await user.click(within(dialog).getByRole('combobox', { name: /Área/ }));
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Cableado',
+      'Electricidad',
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Electricidad' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
-    expect(
-      within(dialog).getByText('No tienes permiso para ver las opciones de área.'),
-    ).toBeVisible();
-    expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toEqual({ name: 'Cables', area_id: POWER.id });
+    // The complete list of areas is the administration of that section: it was never asked for.
+    expect(all.some((call) => call.path === '/v1/areas')).toBe(false);
+  });
+
+  it('keeps asking for the complete list of areas from whoever may view them', async () => {
+    const { session, calls } = createTestSession(
+      { 'GET /v1/product-groups': () => Response.json(page([GROUP])), ...areasHandler },
+      withAccess(['product_groups', 'areas']),
+    );
+    renderApp(session, '/catalogo?parametro=product-groups');
+
+    await screen.findByRole('table', { name: 'Lista de grupos de producto' });
+    await waitFor(() => expect(calls.some((call) => call.path === '/v1/areas')).toBe(true));
+    expect(calls.some((call) => call.path === '/v1/areas/options')).toBe(false);
   });
 
   it('says how many active groups keep an area from being deactivated', async () => {

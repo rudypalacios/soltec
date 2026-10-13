@@ -112,6 +112,32 @@ final class ParameterRepository
         ];
     }
 
+    /**
+     * The active values with only what a form needs to choose one: id and name, by name. A form never needs more than
+     * a few hundred, so there is no paging.
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    public function options(ParameterDefinition $parameter, int $limit): array
+    {
+        $rows = $this->connection->createQueryBuilder()
+            ->select('LOWER(HEX(p.id)) AS id, p.name')
+            ->from($parameter->table, 'p')
+            ->where('p.deleted_at IS NULL')
+            ->orderBy('p.name')
+            ->addOrderBy('p.id')
+            ->setMaxResults($limit)
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $options = [];
+        foreach ($rows as $row) {
+            $options[] = ['id' => Uuid::fromHex(Row::string($row, 'id')), 'name' => Row::string($row, 'name')];
+        }
+
+        return $options;
+    }
+
     public function insert(
         ParameterDefinition $parameter,
         string $id,
