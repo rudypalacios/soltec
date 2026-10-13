@@ -118,3 +118,42 @@ test(
     await expect(page.getByText('No hay marcas con esos filtros.')).toBeVisible();
   },
 );
+
+test(
+  'whoever edits product groups chooses the area without any access to the areas section',
+  { tag: '@mobile' },
+  async ({ browser, admin, isMobile }) => {
+    const viewport = isMobile ? { width: 390, height: 844 } : undefined;
+    // Everything on groups and nothing on areas: the selector must still offer them (ADR-0024).
+    const role = await admin.createRole(
+      'E2E grupos',
+      { product_groups: ['view', 'create', 'edit', 'deactivate'] },
+      {},
+    );
+    const editor = await admin.createActiveUser('e2e-grupos', role.id);
+    const group = `E2E grupo ${uniqueSuffix()}`;
+
+    const page = await browser.newPage({ viewport });
+    await signIn(page, editor.email, editor.password);
+    const catalog = ParametersPage.catalog(page, isMobile);
+    await catalog.open();
+
+    await page.getByRole('button', { name: 'Nuevo grupo de producto' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nuevo grupo de producto' });
+    await dialog.getByLabel(/^Nombre/).fill(group);
+    await dialog.getByRole('combobox', { name: /Área/ }).click();
+    // The seeded areas are offered, though this profile cannot even open the section.
+    await expect(page.getByRole('option', { name: 'Cableado', exact: true })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Electricidad', exact: true })).toBeVisible();
+    await page.getByRole('option', { name: 'Cableado', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Guardar' }).click();
+    await expect(dialog).toBeHidden();
+
+    await catalog.search(group);
+    const groups = catalog.list('Lista de grupos de producto');
+    await expect(groups.getByText(group, { exact: true })).toBeVisible();
+    await expect(groups.getByText('Cableado', { exact: true })).toBeVisible();
+    // The areas list itself stays closed to this profile: there is no tab for it.
+    await expect(page.getByRole('tab', { name: 'Áreas', exact: true })).toHaveCount(0);
+  },
+);
