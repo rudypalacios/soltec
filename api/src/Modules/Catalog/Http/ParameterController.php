@@ -18,7 +18,7 @@ use Soltec\Modules\Catalog\Domain\ParameterDefinition;
 use Soltec\Modules\Catalog\Domain\ParameterRecord;
 
 /**
- * /v1/<slug> for every catalog parameter. The route says which parameter it serves in its `parameter` argument
+ * /v1/<slug> for every catalog list. The route says which parameter it serves in its `parameter` argument
  * (the slug), so one controller answers all of them.
  */
 final class ParameterController
@@ -36,10 +36,12 @@ final class ParameterController
         $query = Input::query($request);
         $text = $query->nullableText('q', 100);
         $status = $query->choice('status', ['active', 'inactive', 'all'], 'active');
+        $parameter = $this->parameter($request);
+        $parentId = $parameter->parent === null ? null : $query->nullableUuid($parameter->parent->column);
         $page = $query->pagination();
         $query->done();
 
-        $result = $this->parameters->list($this->parameter($request), $text, (string) $status, $page);
+        $result = $this->parameters->list($parameter, $text, (string) $status, $parentId, $page);
 
         return Json::write($response, [
             'data' => array_map(static fn (ParameterRecord $record): array => $record->toApi(), $result['records']),
@@ -51,11 +53,18 @@ final class ParameterController
     {
         $parameter = $this->parameter($request);
         $input = Input::body($request);
-        $name = $input->text('name', 1, 100);
+        $name = $input->text('name', 1, $parameter->nameMax);
         $color = $this->color($input, $parameter);
+        $parentId = $this->parentId($input, $parameter);
         $input->done();
 
-        $record = $this->parameters->create(ActorContext::fromRequest($request), $parameter, (string) $name, $color);
+        $record = $this->parameters->create(
+            ActorContext::fromRequest($request),
+            $parameter,
+            (string) $name,
+            $color,
+            $parentId,
+        );
 
         return Json::write($response, $record->toApi(), 201);
     }
@@ -76,8 +85,9 @@ final class ParameterController
         $id = $this->pathId($args, $parameter->idParameter);
         $input = Input::body($request);
         $version = $input->version();
-        $name = $input->text('name', 1, 100);
+        $name = $input->text('name', 1, $parameter->nameMax);
         $color = $this->color($input, $parameter);
+        $parentId = $this->parentId($input, $parameter);
         $input->done();
 
         $record = $this->parameters->update(
@@ -87,6 +97,7 @@ final class ParameterController
             (int) $version,
             (string) $name,
             $color,
+            $parentId,
         );
 
         return Json::write($response, $record->toApi());
@@ -130,6 +141,20 @@ final class ParameterController
         $slug = $route->getArgument('parameter');
 
         return ParameterCatalog::bySlug(is_string($slug) ? $slug : '');
+    }
+
+    /** The parent the value belongs to, required for the lists that have one and ignored for the rest. */
+    private function parentId(Input $input, ParameterDefinition $parameter): ?string
+    {
+        if ($parameter->parent === null) {
+            return null;
+        }
+        $parentId = $input->nullableUuid($parameter->parent->column);
+        if ($parentId === null && !$input->has($parameter->parent->column)) {
+            $input->fail($parameter->parent->column, 'required');
+        }
+
+        return $parentId;
     }
 
     /** The `#RRGGBB` color in upper case, required for the parameters that have one and ignored for the rest. */

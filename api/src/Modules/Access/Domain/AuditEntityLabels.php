@@ -23,6 +23,11 @@ final class AuditEntityLabels
         'segments',
         'tax_regimes',
         'payment_methods',
+        'brands',
+        'areas',
+        'product_groups',
+        'unit_categories',
+        'units_of_measure',
     ];
 
     /** Longest label stored: the column's width. */

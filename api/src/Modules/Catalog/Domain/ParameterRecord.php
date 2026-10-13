@@ -18,6 +18,9 @@ final class ParameterRecord
         public readonly DateTimeImmutable $updatedAt,
         public readonly int $version,
         public readonly ?DateTimeImmutable $deletedAt,
+        public readonly ?string $parentId = null,
+        /** @var array<string, mixed> members of the list's own shape: the named parent, the count of active children */
+        public readonly array $extra = [],
     ) {
     }
 
@@ -41,6 +44,6 @@ final class ParameterRecord
             $data['color'] = $this->color;
         }
 
-        return $data;
+        return $data + $this->extra;
     }
 }

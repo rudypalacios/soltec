@@ -340,7 +340,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 45;
+        ) === 65;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -361,7 +361,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         $this->resetCatalogParameters();
     }
 
-    /** Puts the five catalog parameters back to what the migration seeds. */
+    /** Puts the catalog lists back to what the migrations seed. */
     private function resetCatalogParameters(): void
     {
         $seed = [
@@ -380,7 +380,20 @@ abstract class AccessTestCase extends IntegrationTestCase
             ],
             'tax_regimes' => ['Pequeño contribuyente', 'General'],
             'payment_methods' => [],
+            'brands' => [],
+            'areas' => ['Aire Acondicionado', 'Electricidad', 'Cableado', 'Equipo', 'Otros'],
+            'unit_categories' => ['Cantidad', 'Longitud', 'Peso', 'Volumen', 'Superficie'],
         ];
+        $units = [
+            'Cantidad' => ['Unidad', 'Par', 'Caja', 'Rollo'],
+            'Longitud' => ['Metro', 'Centímetro', 'Milímetro', 'Pulgada', 'Pie'],
+            'Peso' => ['Kilogramo', 'Gramo', 'Libra', 'Onza'],
+            'Volumen' => ['Litro', 'Mililitro', 'Galón'],
+            'Superficie' => ['Metro cuadrado'],
+        ];
+        // Children first: groups point at areas and units at categories.
+        $this->connection->executeStatement('DELETE FROM product_groups');
+        $this->connection->executeStatement('DELETE FROM units_of_measure');
         foreach ($seed as $table => $values) {
             $this->connection->executeStatement('DELETE FROM ' . $table);
             foreach ($values as $key => $value) {
@@ -391,6 +404,16 @@ abstract class AccessTestCase extends IntegrationTestCase
                     . 'UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
                     ['id' => Uuid::toHex(Uuid::v7()), 'name' => $withColor ? $key : $value]
                     + ($withColor ? ['color' => $value] : []),
+                );
+            }
+        }
+        foreach ($units as $category => $names) {
+            foreach ($names as $name) {
+                $this->connection->executeStatement(
+                    'INSERT INTO units_of_measure (id, category_id, name, created_at, updated_at) '
+                    . 'SELECT UNHEX(:id), c.id, :name, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3) '
+                    . 'FROM unit_categories c WHERE c.name = :category',
+                    ['id' => Uuid::toHex(Uuid::v7()), 'name' => $name, 'category' => $category],
                 );
             }
         }

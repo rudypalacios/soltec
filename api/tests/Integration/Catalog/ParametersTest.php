@@ -7,7 +7,7 @@ namespace Soltec\Tests\Integration\Catalog;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Soltec\Tests\Integration\Access\AccessTestCase;
 
-/** The five catalog parameters share one implementation, so each behavior is checked against every one of them. */
+/** The lists without a parent share one implementation, so each behavior is checked against every one of them. */
 final class ParametersTest extends AccessTestCase
 {
     private string $adminToken;
@@ -27,6 +27,9 @@ final class ParametersTest extends AccessTestCase
             'segments' => ['segments', 'segments', 'segmentId'],
             'tax regimes' => ['tax-regimes', 'tax_regimes', 'taxRegimeId'],
             'payment methods' => ['payment-methods', 'payment_methods', 'paymentMethodId'],
+            'brands' => ['brands', 'brands', 'brandId'],
+            'areas' => ['areas', 'areas', 'areaId'],
+            'unit categories' => ['unit-categories', 'unit_categories', 'unitCategoryId'],
         ];
     }
 
@@ -274,7 +277,7 @@ final class ParametersTest extends AccessTestCase
 
         self::assertSame(8, $this->countRows('SELECT COUNT(*) FROM segments'));
         self::assertSame(6, $this->countRows('SELECT COUNT(*) FROM client_statuses'));
-        self::assertSame(45, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(65, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
     }
 
     /** @return array<string, string> */
