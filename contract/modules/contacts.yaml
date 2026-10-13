@@ -62,6 +62,45 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/contacts/owner-options:
+    get:
+      operationId: listContactOwnerOptions
+      summary: List the people the caller can hand a contact to.
+      description:
+        For the owner selector of the contact form. It returns exactly the people the update accepts as a new owner
+        (active internal users), so the selector never offers someone the server would refuse. With data scope `team`
+        they are the caller's team (themselves, the people under them through the direct manager, directly or not, and
+        their department); with `all`, any of them; with a scope that reaches nobody else (`own`), none. It is
+        authorized by editing contacts, not by viewing users, because the selector must work for who edits a contact whatever
+        they may do in the user screens. Sorted by name; `q` searches name and email.
+      tags:
+        - Contacts
+      x-permission: contacts.edit
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The people, at most `limit`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactOwnerOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/contacts/{contactId}:
     parameters:
       - $ref: '#/components/parameters/ContactId'
@@ -255,6 +294,15 @@ components:
             $ref: '#/components/schemas/Contact'
         meta:
           $ref: '#/components/schemas/PageMeta'
+    ContactOwnerOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
     ContactCreate:
       $ref: '#/components/schemas/ContactFields'
     ContactUpdate:

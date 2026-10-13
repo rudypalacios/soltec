@@ -162,6 +162,46 @@ final class ContactRepository
         ) !== false;
     }
 
+    /**
+     * The active internal users a contact can be handed to, by name.
+     *
+     * @param list<string>|null $onlyIds restrict to these users (a team); null for any of them
+     * @return list<array{id: string, name: string}>
+     */
+    public function ownerCandidates(?array $onlyIds, ?string $text, int $limit): array
+    {
+        $query = $this->connection->createQueryBuilder()
+            ->select('LOWER(HEX(u.id)) AS id, u.name')
+            ->from('users', 'u')
+            ->where("u.type = 'internal'")
+            ->andWhere('u.deleted_at IS NULL')
+            ->orderBy('u.name')
+            ->addOrderBy('u.id')
+            ->setMaxResults($limit);
+        if ($onlyIds !== null) {
+            if ($onlyIds === []) {
+                return [];
+            }
+            $placeholders = [];
+            foreach ($onlyIds as $index => $id) {
+                $placeholders[] = sprintf('UNHEX(:member_%d)', $index);
+                $query->setParameter('member_' . $index, Uuid::toHex($id));
+            }
+            $query->andWhere(sprintf('u.id IN (%s)', implode(', ', $placeholders)));
+        }
+        if ($text !== null && $text !== '') {
+            $query->andWhere('(u.name LIKE :text OR u.email LIKE :text)')
+                ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
+        }
+
+        $options = [];
+        foreach ($query->executeQuery()->fetchAllAssociative() as $row) {
+            $options[] = ['id' => Uuid::fromHex(Row::string($row, 'id')), 'name' => Row::string($row, 'name')];
+        }
+
+        return $options;
+    }
+
     /** `FROM contacts c` with the owner joined and the reader's data scope applied. */
     private function base(CurrentUser $reader, string $select): QueryBuilder
     {

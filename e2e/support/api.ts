@@ -88,9 +88,14 @@ export class AdminApi {
 
   /**
    * A user who already accepted the invitation, so it can sign in. Without `roleId` it gets the first custom profile
-   * (the `admin`-free default); a scenario that depends on what the user may do passes its own.
+   * (the `admin`-free default); a scenario that depends on what the user may do passes its own. `managerId` places
+   * the user under someone, which is what builds a team.
    */
-  async createActiveUser(prefix = 'e2e', roleId?: string): Promise<CreatedUser> {
+  async createActiveUser(
+    prefix = 'e2e',
+    roleId?: string,
+    managerId?: string,
+  ): Promise<CreatedUser> {
     const suffix = uniqueSuffix();
     const email = `${prefix}-${suffix}@example.test`;
     const name = `${prefix} ${suffix}`;
@@ -104,7 +109,12 @@ export class AdminApi {
     const user = await call<{ id: string }>('/users', {
       method: 'POST',
       token: this.token,
-      body: JSON.stringify({ name, email, role_ids: [role.id] }),
+      body: JSON.stringify({
+        name,
+        email,
+        role_ids: [role.id],
+        ...(managerId ? { manager_id: managerId } : {}),
+      }),
     });
     const invitation = await waitForLink(email);
     await call('/auth/invitations/accept', {

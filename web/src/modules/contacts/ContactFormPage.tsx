@@ -6,7 +6,7 @@ import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan, useCurrentUser } from '../access/SessionContext';
-import { ManagerSelect, type NamedRef } from '../organization/OrganizationFields';
+import { OwnerSelect, type NamedRef } from './OwnerSelect';
 import { useContact, useCreateContact, useUpdateContact } from './useContacts';
 
 type Contact = components['schemas']['Contact'];
@@ -76,7 +76,6 @@ const orNull = (value: string) => value.trim() || null;
 function ContactForm({ contact }: { contact: Contact | null }) {
   const navigate = useNavigate();
   const me = useCurrentUser();
-  const can = useCan();
   const create = useCreateContact();
   const update = useUpdateContact(contact?.id ?? '');
   const [name, setName] = useState(contact?.name ?? '');
@@ -90,11 +89,10 @@ function ContactForm({ contact }: { contact: Contact | null }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
 
-  // Handing a contact over needs a scope that reaches other people, and the list of people to choose from.
+  // Handing a contact over needs a scope that reaches other people. Who can be chosen comes from the contacts API,
+  // so it needs nothing on the user screens.
   const canHandOver =
-    contact !== null &&
-    (me?.scopes.contacts === 'team' || me?.scopes.contacts === 'all') &&
-    can('users', 'view');
+    contact !== null && (me?.scopes.contacts === 'team' || me?.scopes.contacts === 'all');
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -166,14 +164,7 @@ function ContactForm({ contact }: { contact: Contact | null }) {
       {field('País', country, setCountry, 'country', { maxLength: 100 })}
       {contact ? (
         canHandOver ? (
-          <ManagerSelect
-            value={owner}
-            onChange={setOwner}
-            error={fieldErrors.owner_id}
-            label="Responsable"
-            hint="Quien ingresó el contacto y lo ve en su lista. Cámbialo para pasárselo a otra persona."
-            required
-          />
+          <OwnerSelect value={owner} onChange={setOwner} error={fieldErrors.owner_id} />
         ) : (
           <TextField label="Responsable" value={contact.owner.name} disabled fullWidth />
         )

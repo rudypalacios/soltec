@@ -243,10 +243,10 @@ describe('contact form', () => {
     });
   });
 
-  it('only shows the owner to someone whose scope is their own contacts', async () => {
+  it('shows the owner as read-only to someone whose scope is their own contacts, whatever they see of users', async () => {
     const { session } = createTestSession(
       { [`GET /v1/contacts/${ANA.id}`]: () => Response.json(ANA) },
-      meWith({ contacts: ALL, users: ['view'] }, { contacts: 'own', users: 'all' }),
+      meWith({ contacts: ALL }, { contacts: 'own' }),
     );
     renderApp(session, `/contactos/${ANA.id}/editar`);
 
@@ -255,20 +255,25 @@ describe('contact form', () => {
     expect(owner).toHaveValue(ME.name);
   });
 
-  it('lets a wider scope hand the contact to another user', async () => {
+  it('lets a wider scope hand the contact to another user, offering only who the API lists', async () => {
     const calls: Call[] = [];
+    const optionCalls: Call[] = [];
     const bea = { id: '0192f1c2-7d3a-7a11-8f2e-0000000000a2', name: 'Bea Ruiz' };
     const { session } = createTestSession(
       {
         [`GET /v1/contacts/${ANA.id}`]: () => Response.json(ANA),
         'GET /v1/contacts': () => Response.json(page([ANA])),
-        'GET /v1/users': () => Response.json(page([bea, OWNER])),
+        'GET /v1/contacts/owner-options': (call) => {
+          optionCalls.push(call);
+          return Response.json({ data: [bea, OWNER] });
+        },
         [`PATCH /v1/contacts/${ANA.id}`]: (call) => {
           calls.push(call);
           return Response.json({ ...ANA, owner: bea, version: 2 });
         },
       },
-      meWith({ contacts: ALL, users: ['view'] }, { contacts: 'all', users: 'all' }),
+      // Nothing on users: the people to choose from come from the contacts API.
+      meWith({ contacts: ALL }, { contacts: 'all' }),
     );
     renderApp(session, `/contactos/${ANA.id}/editar`);
     const user = userEvent.setup();
@@ -276,7 +281,13 @@ describe('contact form', () => {
     const owner = await screen.findByRole('combobox', { name: /Responsable/ });
     expect(owner).toHaveValue(ME.name);
     await user.click(owner);
-    await user.click(await screen.findByRole('option', { name: 'Bea Ruiz' }));
+    // The owner's name in the box is not a search: the list is the whole of who can receive the contact.
+    expect(optionCalls.every((call) => !call.query.has('q'))).toBe(true);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Bea Ruiz',
+      ME.name,
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Bea Ruiz' }));
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));

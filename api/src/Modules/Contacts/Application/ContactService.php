@@ -116,6 +116,26 @@ final class ContactService
         return $this->get($caller, $id);
     }
 
+    /**
+     * Who the caller can hand a contact to: the same people {@see update()} accepts, so a picker built from this list
+     * never offers someone the server would then refuse. Active internal users; with scope `team` only the team, with
+     * `all` any of them and with a scope that reaches nobody else, nobody.
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    public function ownerOptions(CurrentUser $caller, ?string $text, int $limit): array
+    {
+        $scope = $caller->scopeFor(ContactRepository::RESOURCE);
+        if ($scope === DataScope::All) {
+            return $this->contacts->ownerCandidates(null, $text, $limit);
+        }
+        if ($scope === DataScope::Team) {
+            return $this->contacts->ownerCandidates($this->teamOf($caller), $text, $limit);
+        }
+
+        return [];
+    }
+
     /** Idempotent. */
     public function deactivate(CurrentUser $caller, ActorContext $actor, string $id): ContactRecord
     {
@@ -168,9 +188,14 @@ final class ContactService
         if (!$this->contacts->ownerCanOwn($newOwnerId)) {
             throw ValidationException::field('owner_id', 'not_found');
         }
-        $team = $caller->teamIds === [] ? [$caller->id] : $caller->teamIds;
-        if ($scope === DataScope::Team && !in_array($newOwnerId, $team, true)) {
+        if ($scope === DataScope::Team && !in_array($newOwnerId, $this->teamOf($caller), true)) {
             throw ValidationException::field('owner_id', 'out_of_scope');
         }
+    }
+
+    /** @return list<string> the caller and the people of their team; a user built without the team reaches themselves */
+    private function teamOf(CurrentUser $caller): array
+    {
+        return $caller->teamIds === [] ? [$caller->id] : $caller->teamIds;
     }
 }

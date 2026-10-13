@@ -81,19 +81,12 @@ export function ManagerSelect({
   forUserId,
   error,
   disabled,
-  label = 'Jefe directo',
-  hint = 'Opcional. Quien supervisa a esta persona.',
-  required = false,
 }: {
   value: NamedRef | null;
   onChange: (manager: NamedRef | null) => void;
   forUserId?: string;
   error?: string;
   disabled?: boolean;
-  /** The field's name and its help text, for the screens that pick an internal user for another role (an owner). */
-  label?: string;
-  hint?: string;
-  required?: boolean;
 }) {
   const [text, setText] = useState('');
   const deferredText = useDeferredValue(text);
@@ -124,10 +117,9 @@ export function ManagerSelect({
       renderInput={(params) => (
         <TextField
           {...params}
-          label={label}
-          required={required}
+          label="Jefe directo"
           error={Boolean(error)}
-          helperText={error ?? hint}
+          helperText={error ?? 'Opcional. Quien supervisa a esta persona.'}
         />
       )}
     />

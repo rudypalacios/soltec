@@ -354,6 +354,100 @@ final class ContactsTest extends AccessTestCase
         self::assertSame(200, $inside->getStatusCode());
     }
 
+    // ---- who a contact can be handed to ----
+
+    public function testTheOwnerOptionsOfScopeAllAreEveryActiveInternalUser(): void
+    {
+        $this->createUser('ana@example.com', name: 'Ana');
+        $this->createUser('gone@example.com', name: 'Gone');
+        $this->connection->executeStatement("UPDATE users SET deleted_at = NOW(3) WHERE email = 'gone@example.com'");
+        $this->connection->executeStatement("UPDATE users SET type = 'external' WHERE email = 'ana@example.com'");
+        $this->createUser('bea@example.com', name: 'Bea');
+
+        $options = $this->json($this->api('GET', '/contacts/owner-options', $this->adminToken));
+
+        // The inactive user and the external one are not offered; the caller themselves is.
+        self::assertSame(['Admin', 'Bea'], $this->columnAt($options, 'name', 'data'));
+        self::assertSame(['id', 'name'], array_keys($this->rowsAt($options, 'data')[0]));
+    }
+
+    public function testTheOwnerOptionsOfScopeTeamAreTheTeamAndTheyMatchWhatTheUpdateAccepts(): void
+    {
+        $lead = $this->createUser('lead@example.com', [$this->roleWith('team')], name: 'Lead');
+        $direct = $this->createUser('direct@example.com', name: 'Direct');
+        $indirect = $this->createUser('indirect@example.com', name: 'Indirect');
+        $outsider = $this->createUser('outsider@example.com', name: 'Outsider');
+        $this->placeUser($direct['id'], null, $lead['id']);
+        $this->placeUser($indirect['id'], null, $direct['id']);
+        $leadToken = $this->tokenFor($lead['id']);
+        $id = $this->create('Del lead', token: $leadToken);
+
+        $options = $this->json($this->api('GET', '/contacts/owner-options', $leadToken));
+        self::assertSame(['Direct', 'Indirect', 'Lead'], $this->columnAt($options, 'name', 'data'));
+
+        // Everyone it offers is accepted, and the one it leaves out is refused: the list and the rule cannot differ.
+        foreach ($this->columnAt($options, 'id', 'data') as $offered) {
+            $moved = $this->api('PATCH', '/contacts/' . $id, $leadToken, [
+                'version' => $this->json($this->api('GET', '/contacts/' . $id, $this->adminToken))['version'],
+                'name' => 'Del lead',
+                'owner_id' => $offered,
+            ]);
+            self::assertSame(200, $moved->getStatusCode(), $offered);
+            // Hand it back so the next one is tested from the same place.
+            $this->api('PATCH', '/contacts/' . $id, $this->adminToken, [
+                'version' => $this->json($this->api('GET', '/contacts/' . $id, $this->adminToken))['version'],
+                'name' => 'Del lead',
+                'owner_id' => $lead['id'],
+            ]);
+        }
+        self::assertNotContains($outsider['id'], $this->columnAt($options, 'id', 'data'));
+    }
+
+    public function testTheOwnerOptionsAreEmptyWhenTheScopeReachesNobodyElse(): void
+    {
+        [, $anaToken] = $this->advisor('ana@example.com', 'own');
+        $this->createUser('bea@example.com', name: 'Bea');
+
+        $options = $this->json($this->api('GET', '/contacts/owner-options', $anaToken));
+
+        self::assertSame([], $this->columnAt($options, 'name', 'data'));
+    }
+
+    public function testTheOwnerOptionsDoNotNeedAnyPermissionOnUsers(): void
+    {
+        $this->createUser('bea@example.com', name: 'Bea');
+        // Can edit contacts with scope `all` but cannot even list users.
+        $role = $this->createRole('Editor', ['contacts' => ['view', 'edit']], ['contacts' => 'all']);
+        $token = $this->tokenFor($this->createUser('editor@example.com', [$role], name: 'Editor')['id']);
+
+        self::assertSame(403, $this->api('GET', '/users', $token)->getStatusCode());
+        $options = $this->json($this->api('GET', '/contacts/owner-options', $token));
+
+        self::assertContains('Bea', $this->columnAt($options, 'name', 'data'));
+    }
+
+    public function testTheOwnerOptionsSearchByNameOrEmailAndAreLimited(): void
+    {
+        foreach (['Carlos', 'Carmen', 'Beatriz'] as $name) {
+            $this->createUser(strtolower($name) . '@example.com', name: $name);
+        }
+
+        $byName = $this->json($this->api('GET', '/contacts/owner-options?q=car', $this->adminToken));
+        self::assertSame(['Carlos', 'Carmen'], $this->columnAt($byName, 'name', 'data'));
+        $byEmail = $this->json($this->api('GET', '/contacts/owner-options?q=beatriz@', $this->adminToken));
+        self::assertSame(['Beatriz'], $this->columnAt($byEmail, 'name', 'data'));
+        $limited = $this->json($this->api('GET', '/contacts/owner-options?limit=2', $this->adminToken));
+        self::assertCount(2, $this->columnAt($limited, 'name', 'data'));
+    }
+
+    public function testTheOwnerOptionsNeedPermissionToEditContacts(): void
+    {
+        $viewer = $this->tokenWith('contacts', 'view', 'create', 'deactivate');
+
+        self::assertSame(403, $this->api('GET', '/contacts/owner-options', $viewer)->getStatusCode());
+        self::assertSame(401, $this->api('GET', '/contacts/owner-options')->getStatusCode());
+    }
+
     public function testTheMigrationCanBeRepeatedWithoutDuplicatingAnything(): void
     {
         $this->applyMigrationAgain('20261013000004');

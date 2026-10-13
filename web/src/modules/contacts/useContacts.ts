@@ -72,3 +72,19 @@ export function useSetContactActive() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
   });
 }
+
+/** The people the signed-in user can hand a contact to, as the API computes them from their data scope. */
+export function useContactOwnerOptions(text: string, enabled = true) {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['contacts', 'owner-options', text],
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/v1/contacts/owner-options', {
+          params: { query: { q: text || undefined, limit: 20 } },
+        }),
+      ),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}

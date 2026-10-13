@@ -116,6 +116,8 @@ return static function (App $app): void {
         }
 
         $group->get('/contacts', [ContactController::class, 'list'])->setArgument('permission', 'contacts.view');
+        $group->get('/contacts/owner-options', [ContactController::class, 'ownerOptions'])
+            ->setArgument('permission', 'contacts.edit');
         $group->post('/contacts', [ContactController::class, 'create'])->setArgument('permission', 'contacts.create');
         $group->get('/contacts/{contactId}', [ContactController::class, 'show'])
             ->setArgument('permission', 'contacts.view');

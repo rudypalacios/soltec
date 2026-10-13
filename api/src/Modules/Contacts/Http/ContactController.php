@@ -40,6 +40,19 @@ final class ContactController
         ]);
     }
 
+    /** The people the caller can hand a contact to, for the owner selector. */
+    public function ownerOptions(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $query = Input::query($request);
+        $text = $query->nullableText('q', 100);
+        $limit = $query->limit(50, 100);
+        $query->done();
+
+        return Json::write($response, [
+            'data' => $this->contacts->ownerOptions($this->caller($request), $text, $limit),
+        ]);
+    }
+
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $input = Input::body($request);
