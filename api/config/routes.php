@@ -105,6 +105,17 @@ return static function (App $app): void {
                 'permission' => $parameter->table . '.' . $action,
                 'parameter' => $parameter->slug,
             ];
+            if ($parameter->optionConsumers !== []) {
+                // Whoever administers the list or creates or edits in a form that consumes it (ADR-0024).
+                $alternatives = [$parameter->table . '.view'];
+                foreach ($parameter->optionConsumers as $consumer) {
+                    array_push($alternatives, $consumer . '.create', $consumer . '.edit');
+                }
+                $group->get($base . '/options', [ParameterController::class, 'options'])->setArguments([
+                    'permission' => implode('|', $alternatives),
+                    'parameter' => $parameter->slug,
+                ]);
+            }
             $group->get($base, [ParameterController::class, 'list'])->setArguments($rule('view'));
             $group->post($base, [ParameterController::class, 'create'])->setArguments($rule('create'));
             $group->get($item, [ParameterController::class, 'show'])->setArguments($rule('view'));

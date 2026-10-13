@@ -9,6 +9,7 @@ type ParameterPage = { data: ParameterValue[]; meta: components['schemas']['Page
 // The catalog lists have the same routes and bodies, and only the path placeholder differs. The generated client
 // types each path on its own, so these helpers state the shared shape once, through the `segments` one.
 const listPath = (view: ParameterView) => `/v1/${view.slug}` as '/v1/segments';
+const optionsPath = (view: ParameterView) => `/v1/${view.slug}/options` as '/v1/areas/options';
 const itemPath = (view: ParameterView) =>
   `/v1/${view.slug}/{${view.idParam}}` as '/v1/segments/{segmentId}';
 const setActivePath = (view: ParameterView, active: boolean) =>
@@ -71,5 +72,20 @@ export function useSetParameterValueActive(view: ParameterView) {
         }),
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['parameters', view.slug] }),
+  });
+}
+
+/**
+ * The id and name of the active values of a list, for the selector of another form. They come from the options list
+ * the API offers to whoever creates or edits in a form that consumes the list, so the form works without any
+ * permission on the list's own section (ADR-0024).
+ */
+export function useParameterOptions(view: ParameterView, enabled = true) {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['parameters', view.slug, 'options'],
+    queryFn: async () =>
+      unwrap(await apiClient.GET(optionsPath(view))) as { data: { id: string; name: string }[] },
+    enabled,
   });
 }
