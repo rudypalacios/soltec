@@ -49,8 +49,8 @@ const catalogs: Record<string, Handler> = {
   'GET /v1/resources': () =>
     Response.json({
       data: [
-        { code: 'roles', name: 'Perfiles' },
-        { code: 'users', name: 'Usuarios' },
+        { code: 'roles', name: 'Perfiles', scoped: false },
+        { code: 'users', name: 'Usuarios', scoped: true },
       ],
     }),
   // The API returns them alphabetically; the form shows them in reading order.
@@ -196,11 +196,13 @@ describe('creating a role', () => {
     const { session } = createTestSession(catalogs);
     renderApp(session, '/perfiles/nuevo');
 
-    const table = await screen.findByRole('table', { name: 'Permisos del perfil' });
+    const table = await screen.findByRole('table', { name: 'Permisos de Acceso' });
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
     expect(headers).toEqual([
+      // The first column holds the checkbox that switches the whole section.
+      '',
       'Módulo',
       'Ver',
       'Crear',
@@ -284,16 +286,16 @@ describe('creating a role', () => {
     expect(await screen.findByText('Ya está en uso.')).toBeInTheDocument();
   });
 
-  it('uses one card per module on a phone', async () => {
+  it('uses a single continuous table on a phone', async () => {
     setViewportWidth(390);
     const { session } = createTestSession(catalogs);
     renderApp(session, '/perfiles/nuevo');
 
-    const cards = await screen.findByLabelText('Permisos del perfil');
-    expect(within(cards).getByText('Usuarios')).toBeInTheDocument();
-    expect(within(cards).getByText('Perfiles')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(within(cards).getAllByRole('checkbox')).toHaveLength(8);
+    const table = await screen.findByRole('table', { name: 'Permisos del perfil' });
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(within(table).getByRole('rowheader', { name: 'Usuarios' })).toBeInTheDocument();
+    expect(within(table).getByRole('rowheader', { name: 'Perfiles' })).toBeInTheDocument();
+    expect(within(table).getAllByRole('checkbox')).toHaveLength(8);
   });
 });
 

@@ -257,7 +257,9 @@ final class RoleService
      * Validates the matrix against the catalogs and returns it typed and sorted: the matrix is a set, and sorting
      * makes equal matrices compare equal, so the audit shows only real changes.
      *
-     * Resource and permission codes must exist and scopes must be implemented in this slice.
+     * Resource and permission codes must exist and scopes must be implemented in this slice. Every action other than
+     * `view` needs `view` (`view_required`), and only a resource whose rows have an owner takes a scope
+     * (`not_applicable`).
      *
      * @param array<array-key, mixed> $permissions
      * @param array<array-key, mixed> $scopes
@@ -267,7 +269,9 @@ final class RoleService
      */
     private function parseMatrix(array $permissions, array $scopes): array
     {
-        $resources = array_column($this->roles->resources(), 'code');
+        $catalog = $this->roles->resources();
+        $resources = array_column($catalog, 'code');
+        $scoped = array_column(array_filter($catalog, static fn (array $item): bool => $item['scoped']), 'code');
         $actions = array_column($this->roles->permissions(), 'code');
         $errors = [];
 
@@ -284,6 +288,10 @@ final class RoleService
                 $errors[] = ['field' => $field, 'code' => 'invalid'];
                 continue;
             }
+            if ($list !== [] && !in_array('view', $list, true)) {
+                $errors[] = ['field' => $field, 'code' => 'view_required'];
+                continue;
+            }
             $parsedPermissions[$resource] = $list;
         }
 
@@ -293,6 +301,8 @@ final class RoleService
             $field = 'scopes.' . $resource;
             if (!in_array($resource, $resources, true)) {
                 $errors[] = ['field' => $field, 'code' => 'not_found'];
+            } elseif (!in_array($resource, $scoped, true)) {
+                $errors[] = ['field' => $field, 'code' => 'not_applicable'];
             } elseif (!is_string($scope) || !in_array($scope, self::SCOPES_IN_THIS_SLICE, true)) {
                 $errors[] = ['field' => $field, 'code' => 'invalid'];
             } else {

@@ -38,8 +38,10 @@ paths:
       description:
         'Business roles (P5) are created here by an administrator; only `admin` is seeded in this slice.
         The matrix is checked: permission and resource codes must exist. In this slice only internal roles can be
-        created, with the `own`, `team` and `all` scopes (`client` arrives with the client portal). Granting
-        permissions on `users` and `roles` is close to making someone an administrator.'
+        created, with the `own`, `team` and `all` scopes (`client` arrives with the client portal). Every action
+        other than `view` needs `view` on the same resource (`permissions.<resource>: view_required`), and only a
+        resource with `scoped` takes a scope (`scopes.<resource>: not_applicable`). Granting permissions on `users`
+        and `roles` is close to making someone an administrator.'
       tags:
         - Roles
       x-permission: roles.create
@@ -93,7 +95,8 @@ paths:
       operationId: updateRole
       summary: Update a role.
       description:
-        '`permissions` and `scopes`, when sent, replace the whole set. `user_type` cannot change. System
+        '`permissions` and `scopes`, when sent, replace the whole set, with the same checks as when creating
+        (`view_required`, `not_applicable`). `user_type` cannot change. System
         roles (`is_system`) cannot be edited: 409 `system_role_immutable`. A change applies to every holder of the
         role at their next request. A stale version answers 409 `conflict`.'
       tags:
@@ -184,7 +187,9 @@ paths:
     get:
       operationId: listResources
       summary: List the protected resources (one per module).
-      description: System table seeded by migrations; read-only.
+      description:
+        'System table seeded by migrations; read-only. `scoped` says whether the rows of the resource have an owner:
+        only then does a data scope apply to it, and a role that sets a scope on any other resource is rejected.'
       tags:
         - Access catalogs
       x-permission: roles.view
@@ -194,7 +199,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CatalogItemList'
+                $ref: '#/components/schemas/ResourceList'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -250,6 +255,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CatalogItem'
+    Resource:
+      type: object
+      required:
+        - code
+        - name
+        - scoped
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        scoped:
+          type: boolean
+          description: Whether the rows of the resource have an owner, so a data scope applies to it.
+    ResourceList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
     Role:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'
