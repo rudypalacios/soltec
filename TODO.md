@@ -105,7 +105,15 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - **Pantalla:** «Contactos» en el menú (`/contactos`, lista tabla/tarjetas, formulario de alta y edición); el responsable se elige solo con alcance `team` o `all` y el selector ofrece únicamente a quienes el servidor aceptaría; con `own` se muestra de solo lectura; sección «Contactos» en la matriz
   - **Fuera:** vínculos con clientes y proveedores (2.3b y 2.5), reasignación en bloque (2.5), lista `/options`, `contact_id` en el formulario de usuarios (Hito 9)
 - [ ] **2.3b Proveedores**: identificación NIT/CUI/ninguna única (ADR-0022), direcciones, vínculo con contactos y crédito
+  - **QA de permisos y opciones** (ADR-0024; pendiente desde el PR #54, se hace en `staging` con esta rebanada):
+    - Perfil con solo `suppliers.view`: el formulario y los filtros se llenan (tipos de contacto, contactos) sin `contact_types.view` ni `contacts.view`; no ve esas secciones en el menú, `GET /v1/contact-types` y `GET /v1/contacts` dan `403` y `/options` da `200`
+    - Sin `suppliers.create`, `edit` o `deactivate`: no aparecen el botón ni la acción y la API responde `403`; un perfil con acciones pero sin `view` no se guarda (web y servidor)
+    - «Crear contacto» desde el formulario de proveedor: el botón solo aparece con `contacts.create` y sin él la API da `403`; lo mismo con tipo de contacto
+    - Alcance en el selector de contactos del proveedor: `own`, `team` y `all`, y un usuario sin rol sobre `contacts` (regla confirmada el 2026-10-13: no se restringe por dueño)
+    - Usuario externo: `403` en cualquier `/options`; usuario interno sin rol: `200`, y vacías las listas con dueño
+    - Todo a 390 px y a 1280 px
 - [ ] **2.4a Productos**: costo con IVA y precio calculado, alerta de costo desactualizado, `deactivation_reason`, cascada desde el proveedor, acciones en bloque y selección de filas en `DataList`
+  - **QA de permisos y opciones** (ADR-0024): repetir los escenarios de 2.3b con perfil de solo `products.view`; marcas, grupos de producto, unidades, áreas (filtro) y proveedores se llenan sin acceso a sus secciones, y crear una marca, un grupo o un proveedor desde Productos exige el `create` de ese recurso
 - [ ] **2.4b Paquetes**: composición de productos con cantidad decimal y precio como suma
 - [ ] **2.5 Clientes**: prospecto y venta, perfil de facturación, varios asesores (`client_sellers`) con un responsable, vínculo de contactos, reasignación (individual y de cartera con los contactos), alcance `client`, FK `users.client_id`, `GET /v1/me/client` reducido, widget `quick_create_client` y pruebas de aislamiento por cliente
 - **Acordado:**
