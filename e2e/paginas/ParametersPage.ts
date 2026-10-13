@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * «Configuración › Parámetros» and «Catálogo», which share one screen. A list is a table on a desktop and cards on a phone, and so are its actions (a ⋮ menu
@@ -22,12 +22,21 @@ export class ParametersPage {
     await this.page.goto(this.path);
   }
 
+  /**
+   * Picks the list and waits until the screen shows it. The change of list is a router transition: until it commits,
+   * the previous list is still on screen, and a step that types or clicks right away does it on the old list, which
+   * then disappears with what was typed. (On a slow runner this was the whole window; `E2E_CPU_THROTTLE` reproduces it.)
+   */
   async choose(label: string): Promise<void> {
     if (this.isMobile) {
-      await this.page.getByRole('combobox', { name: this.selectLabel }).click();
+      const select = this.page.getByRole('combobox', { name: this.selectLabel });
+      await select.click();
       await this.page.getByRole('option', { name: label, exact: true }).click();
+      await expect(select).toHaveText(label);
     } else {
-      await this.page.getByRole('tab', { name: label }).click();
+      const tab = this.page.getByRole('tab', { name: label, exact: true });
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
     }
   }
 

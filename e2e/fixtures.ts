@@ -14,7 +14,14 @@ export const test = base.extend<{ admin: AdminApi }>({
   admin: async ({}, use) => {
     await use(await AdminApi.signIn());
   },
-  page: async ({ page }, use, testInfo) => {
+  page: async ({ page, context }, use, testInfo) => {
+    // E2E_CPU_THROTTLE=6 slows the browser down six times, to reproduce locally what a slow CI runner does to the
+    // timing of a scenario (a tab that has not changed yet when the next step already types).
+    const throttle = Number(process.env.E2E_CPU_THROTTLE ?? 1);
+    if (throttle > 1) {
+      const session = await context.newCDPSession(page);
+      await session.send('Emulation.setCPUThrottlingRate', { rate: throttle });
+    }
     const lines: string[] = [];
     const note = (line: string) => lines.push(`${new Date().toISOString().slice(11, 23)} ${line}`);
     page.on('response', (response) => {
