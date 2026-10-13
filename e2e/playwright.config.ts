@@ -23,6 +23,13 @@ export default defineConfig({
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
     },
+    {
+      // A phone at 390 px. Only the scenarios tagged @mobile run here: the older ones are written for the desktop
+      // layout (a table), and a scenario is tagged once it works on both.
+      name: 'mobile',
+      grep: /@mobile/,
+      use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } },
+    },
   ],
   webServer: [
     {

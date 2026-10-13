@@ -54,6 +54,12 @@ final class RolesTest extends AccessTestCase
             'unknown scope resource' => [['scopes' => ['payroll' => 'all']], 'scopes.payroll', 'not_found'],
             'client scope' => [['scopes' => ['users' => 'client']], 'scopes.users', 'invalid'],
             'nonsense scope' => [['scopes' => ['users' => 'galaxy']], 'scopes.users', 'invalid'],
+            'action without view' => [
+                ['permissions' => ['departments' => ['edit']]], 'permissions.departments', 'view_required',
+            ],
+            'scope of a resource without owner' => [
+                ['scopes' => ['departments' => 'all']], 'scopes.departments', 'not_applicable',
+            ],
             'external roles' => [['user_type' => 'external'], 'user_type', 'invalid'],
         ];
 
@@ -63,6 +69,43 @@ final class RolesTest extends AccessTestCase
             self::assertSame($code, $this->errorCodes($response)[$field] ?? null, $label);
         }
         self::assertSame(0, $this->countRows("SELECT COUNT(*) FROM roles WHERE is_system = 0"));
+    }
+
+    public function testAnUpdateHasTheSameRulesAsACreation(): void
+    {
+        $role = $this->json($this->createRoleVia());
+        $path = '/roles/' . $this->text($role, 'id');
+
+        $withoutView = $this->api('PATCH', $path, $this->adminToken, [
+            'version' => 1,
+            'permissions' => ['departments' => ['create', 'deactivate']],
+        ]);
+        $ownerless = $this->api('PATCH', $path, $this->adminToken, [
+            'version' => 1,
+            'scopes' => ['departments' => 'team'],
+        ]);
+
+        self::assertSame(422, $withoutView->getStatusCode());
+        self::assertSame('view_required', $this->errorCodes($withoutView)['permissions.departments'] ?? null);
+        self::assertSame(422, $ownerless->getStatusCode());
+        self::assertSame('not_applicable', $this->errorCodes($ownerless)['scopes.departments'] ?? null);
+        self::assertSame($role, $this->json($this->api('GET', $path, $this->adminToken)));
+    }
+
+    public function testSavingAWholeMatrixDropsAScopeThatNeverAppliedToItsResource(): void
+    {
+        // Roles saved before the matrix knew which resources have an owner carry a scope on all of them.
+        $legacy = $this->createRole('Legacy', ['departments' => ['view'], 'users' => ['view']], [
+            'departments' => 'all',
+            'users' => 'team',
+        ]);
+
+        $saved = $this->json($this->api('PATCH', '/roles/' . $legacy, $this->adminToken, [
+            'version' => 1,
+            'scopes' => ['users' => 'team'],
+        ]));
+
+        self::assertSame(['users' => 'team'], $saved['scopes']);
     }
 
     public function testRequiresANameAndAUserType(): void
@@ -99,16 +142,16 @@ final class RolesTest extends AccessTestCase
             'version' => 1,
             'name' => 'Sales team',
             'description' => 'Sells things',
-            'permissions' => ['roles' => ['view']],
-            'scopes' => ['roles' => 'all'],
+            'permissions' => ['audit_logs' => ['view']],
+            'scopes' => ['audit_logs' => 'all'],
         ]);
 
         self::assertSame(200, $response->getStatusCode());
         $updated = $this->json($response);
         self::assertSame('Sales team', $updated['name']);
         self::assertSame('Sells things', $updated['description']);
-        self::assertSame(['roles' => ['view']], $updated['permissions']);
-        self::assertSame(['roles' => 'all'], $updated['scopes']);
+        self::assertSame(['audit_logs' => ['view']], $updated['permissions']);
+        self::assertSame(['audit_logs' => 'all'], $updated['scopes']);
         self::assertSame(2, $updated['version']);
     }
 
@@ -245,7 +288,7 @@ final class RolesTest extends AccessTestCase
     public function testListedRolesCarryTheirOwnMatrix(): void
     {
         $this->createRoleVia(['name' => 'Alpha', 'permissions' => ['roles' => ['view']]]);
-        $this->createRoleVia(['name' => 'Beta', 'permissions' => ['users' => ['edit']]]);
+        $this->createRoleVia(['name' => 'Beta', 'permissions' => ['users' => ['view', 'edit']]]);
 
         $byName = [];
         foreach ($this->rowsAt($this->json($this->api('GET', '/roles', $this->adminToken)), 'data') as $row) {
@@ -253,7 +296,7 @@ final class RolesTest extends AccessTestCase
         }
 
         self::assertSame(['roles' => ['view']], $byName['Alpha']);
-        self::assertSame(['users' => ['edit']], $byName['Beta']);
+        self::assertSame(['users' => ['edit', 'view']], $byName['Beta']);
     }
 
     public function testAnUnknownRoleIsNotFound(): void
@@ -316,7 +359,20 @@ final class RolesTest extends AccessTestCase
             $this->columnAt($resources, 'code', 'data'),
         );
         self::assertSame(['create', 'deactivate', 'edit', 'view'], $this->columnAt($permissions, 'code', 'data'));
-        self::assertSame(['code', 'name'], array_keys($this->rowsAt($resources, 'data')[0]));
+        self::assertSame(['code', 'name', 'scoped'], array_keys($this->rowsAt($resources, 'data')[0]));
+        self::assertSame(['code', 'name'], array_keys($this->rowsAt($permissions, 'data')[0]));
+    }
+
+    public function testOnlyTheResourcesWithAnOwnerAreScoped(): void
+    {
+        $resources = $this->json($this->api('GET', '/resources', $this->adminToken));
+
+        $scoped = array_values(array_map(
+            fn (array $row): string => $this->text($row, 'code'),
+            array_filter($this->rowsAt($resources, 'data'), static fn (array $row): bool => $row['scoped'] === true),
+        ));
+
+        self::assertSame(['audit_logs', 'users'], $scoped);
     }
 
     /** @param array<string, mixed> $overrides */

@@ -308,7 +308,13 @@ abstract class AccessTestCase extends IntegrationTestCase
     /** Runs the seed migration a second time, as a half-applied deployment would. */
     protected function applySeedAgain(): void
     {
-        $this->connection->executeStatement('DELETE FROM phinxlog WHERE version = 20261009000004');
+        $this->applyMigrationAgain('20261009000004');
+    }
+
+    /** Runs one migration again, as a half-applied deployment would, or to check that it can be repeated. */
+    protected function applyMigrationAgain(string $version): void
+    {
+        $this->connection->executeStatement('DELETE FROM phinxlog WHERE version = ' . (int) $version);
         $applied = (new MigrationRunner($this->connection, new Paths(dirname(__DIR__, 3)), $this->config))->apply();
         self::assertCount(1, $applied);
     }

@@ -237,10 +237,23 @@ final class RoleRepository
         return is_numeric($count) ? (int) $count : 0;
     }
 
-    /** @return list<array{code: string, name: string}> */
+    /**
+     * `scoped` says whether the rows of the resource have an owner, so a data scope applies to it.
+     *
+     * @return list<array{code: string, name: string, scoped: bool}>
+     */
     public function resources(): array
     {
-        return $this->catalog('resources');
+        $rows = $this->connection->fetchAllAssociative('SELECT code, name, scoped FROM resources ORDER BY code');
+
+        return array_map(
+            static fn (array $row): array => [
+                'code' => Row::string($row, 'code'),
+                'name' => Row::string($row, 'name'),
+                'scoped' => Row::bool($row, 'scoped'),
+            ],
+            $rows,
+        );
     }
 
     /** @return list<array{code: string, name: string}> */
