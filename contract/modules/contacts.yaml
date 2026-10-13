@@ -67,15 +67,15 @@ paths:
       operationId: listContactOwnerOptions
       summary: List the people the caller can hand a contact to.
       description:
-        For the owner selector of the contact form. It returns exactly the people the update accepts as a new owner
+        For the owner selector of the contact form and the owner filter of the list. It returns exactly the people the update accepts as a new owner
         (active internal users), so the selector never offers someone the server would refuse. With data scope `team`
         they are the caller's team (themselves, the people under them through the direct manager, directly or not, and
         their department); with `all`, any of them; with a scope that reaches nobody else (`own`), none. It is
-        authorized by editing contacts, not by viewing users, because the selector must work for who edits a contact whatever
-        they may do in the user screens. Sorted by name; `q` searches name and email.
+        authorized by viewing contacts, not by viewing users, because the selector must work for whoever works with
+        contacts whatever they may do in the user screens. Sorted by name; `q` searches name and email.
       tags:
         - Contacts
-      x-permission: contacts.edit
+      x-permission: contacts.view
       parameters:
         - $ref: '#/components/parameters/Search'
         - name: limit

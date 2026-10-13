@@ -77,7 +77,7 @@ export function useSetParameterValueActive(view: ParameterView) {
 
 /**
  * The id and name of the active values of a list, for the selector of another form. They come from the options list
- * the API offers to whoever creates or edits in a form that consumes the list, so the form works without any
+ * the API offers to whoever may view a section that consumes the list, so the screen works without any
  * permission on the list's own section (ADR-0024).
  */
 export function useParameterOptions(view: ParameterView, enabled = true) {

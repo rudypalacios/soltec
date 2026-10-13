@@ -440,11 +440,13 @@ final class ContactsTest extends AccessTestCase
         self::assertCount(2, $this->columnAt($limited, 'name', 'data'));
     }
 
-    public function testTheOwnerOptionsNeedPermissionToEditContacts(): void
+    public function testTheOwnerOptionsNeedPermissionToViewContactsAndNothingOnUsers(): void
     {
-        $viewer = $this->tokenWith('contacts', 'view', 'create', 'deactivate');
+        $viewer = $this->tokenWith('contacts', 'view');
+        $withoutView = $this->tokenWith('contacts', 'create', 'deactivate');
 
-        self::assertSame(403, $this->api('GET', '/contacts/owner-options', $viewer)->getStatusCode());
+        self::assertSame(200, $this->api('GET', '/contacts/owner-options', $viewer)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/contacts/owner-options', $withoutView)->getStatusCode());
         self::assertSame(401, $this->api('GET', '/contacts/owner-options')->getStatusCode());
     }
 

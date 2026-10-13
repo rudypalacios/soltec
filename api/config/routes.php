@@ -106,10 +106,11 @@ return static function (App $app): void {
                 'parameter' => $parameter->slug,
             ];
             if ($parameter->optionConsumers !== []) {
-                // Whoever administers the list or creates or edits in a form that consumes it (ADR-0024).
+                // Whoever administers the list or may view a section that consumes it (ADR-0024). Every other action
+                // on a section already requires its `view`, so the view is the whole condition.
                 $alternatives = [$parameter->table . '.view'];
                 foreach ($parameter->optionConsumers as $consumer) {
-                    array_push($alternatives, $consumer . '.create', $consumer . '.edit');
+                    $alternatives[] = $consumer . '.view';
                 }
                 $group->get($base . '/options', [ParameterController::class, 'options'])->setArguments([
                     'permission' => implode('|', $alternatives),
@@ -128,7 +129,7 @@ return static function (App $app): void {
 
         $group->get('/contacts', [ContactController::class, 'list'])->setArgument('permission', 'contacts.view');
         $group->get('/contacts/owner-options', [ContactController::class, 'ownerOptions'])
-            ->setArgument('permission', 'contacts.edit');
+            ->setArgument('permission', 'contacts.view');
         $group->post('/contacts', [ContactController::class, 'create'])->setArgument('permission', 'contacts.create');
         $group->get('/contacts/{contactId}', [ContactController::class, 'show'])
             ->setArgument('permission', 'contacts.view');

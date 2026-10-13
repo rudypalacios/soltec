@@ -7,7 +7,7 @@ Administrar una sección (ver su lista completa, crear, editar, desactivar) es d
 
 ## Decisión
 - **Cada sección es su propio recurso de permisos**, con los cuatro permisos de siempre (`view`, `create`, `edit`, `deactivate`): `products`, `bundles`, `brands`, `areas`, `product_groups`, `units_of_measure` (categorías y unidades), `suppliers`, `contacts`, `clients`, y los cinco parámetros `contact_types`, `client_statuses`, `segments`, `tax_regimes` y `payment_methods`.
-- **Listas de opciones:** cada recurso que otro necesita ofrece `GET /v1/<recurso>/options`, que devuelve solo `id`, nombre y el dato mínimo para elegir (el `area_id` de un grupo, la categoría de una unidad, el color de un estado) de los valores **activos**. La autoriza el permiso `view` del propio recurso **o crear o editar en un recurso consumidor** (2026-10-13: antes decía «cualquier permiso»; quien solo ve o desactiva no llena formularios, y ver los nombres dentro de un registro no necesita la lista). La ruta declara las alternativas unidas con `|` (`areas.view|product_groups.create|product_groups.edit`).
+- **Listas de opciones:** cada recurso que otro necesita ofrece `GET /v1/<recurso>/options`, que devuelve solo `id`, nombre y el dato mínimo para elegir (el `area_id` de un grupo, la categoría de una unidad, el color de un estado) de los valores **activos**. La autoriza el permiso `view` del propio recurso **o `view` de un recurso consumidor** (2026-10-13: antes decía «cualquier permiso» y luego «crear o editar»; quien puede ver una sección puede ver los valores que esa sección usa, aunque no administre su origen. Como toda acción exige `view`, el `view` del consumidor cubre también a quien crea o edita). Las listas de recursos con dueño respetan el alcance: hoy, los posibles dueños de un contacto se calculan con el alcance del llamante sobre `contacts`. La ruta declara las alternativas unidas con `|` (`areas.view|product_groups.view`).
 - **Consumidores** (un mapa en el código, no una tabla):
 
 | Opciones de | Las piden |
@@ -19,7 +19,7 @@ Administrar una sección (ver su lista completa, crear, editar, desactivar) es d
 | `areas` | `product_groups`, `products`, `clients` |
 | `products` | `bundles` |
 
-- **La administración sí exige el permiso del propio recurso:** la lista completa, los inactivos y el alta, edición y desactivación.
+- **La administración sí exige el permiso del propio recurso:** la lista completa, los inactivos y el alta, edición y desactivación. Ver no es crear: quien solo puede ver una sección elige entre las opciones, pero no crea ni edita proveedores, contactos ni marcas desde ella.
 - **Recursos de audiencia externa:** un rol externo solo recibe recursos marcados para clientes externos (hoy `client_profile`, ADR-0025). Guardar un rol externo con un recurso interno se rechaza.
 - El alcance de datos (`own`, `team`, `all`, `client`) solo aplica a los recursos con dueño: `contacts` y `clients`.
 

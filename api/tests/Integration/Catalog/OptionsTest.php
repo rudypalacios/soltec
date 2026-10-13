@@ -32,10 +32,10 @@ final class OptionsTest extends AccessTestCase
         self::assertSame(['id', 'name'], array_keys($this->rowsAt($options, 'data')[0]));
     }
 
-    public function testWhoCreatesOrEditsProductGroupsMayChooseTheAreaWithoutAnyAccessToAreas(): void
+    public function testWhoWorksInProductGroupsMayChooseTheAreaWithoutAnyAccessToAreas(): void
     {
-        foreach (['create', 'edit'] as $action) {
-            $token = $this->tokenWith('product_groups', 'view', $action);
+        foreach (['view', 'create', 'edit'] as $action) {
+            $token = $this->tokenWith('product_groups', ...array_unique(['view', $action]));
 
             $options = $this->api('GET', '/areas/options', $token);
             self::assertSame(200, $options->getStatusCode(), $action);
@@ -47,11 +47,12 @@ final class OptionsTest extends AccessTestCase
         }
     }
 
-    public function testViewingOrDeactivatingProductGroupsIsNotEnoughToReadTheOptions(): void
+    public function testWithoutViewingProductGroupsTheOptionsStayClosed(): void
     {
-        $viewer = $this->tokenWith('product_groups', 'view', 'deactivate');
+        // Nothing but the view opens a section, so an action alone (a role saved without its view) reads nothing.
+        $withoutView = $this->tokenWith('product_groups', 'create', 'edit', 'deactivate');
 
-        self::assertSame(403, $this->api('GET', '/areas/options', $viewer)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/areas/options', $withoutView)->getStatusCode());
     }
 
     public function testWhoManagesAreasReadsTheOptionsToo(): void
@@ -63,7 +64,7 @@ final class OptionsTest extends AccessTestCase
 
     public function testTheOptionsOfOneListAreNotOpenedByTheConsumersOfAnother(): void
     {
-        $units = $this->tokenWith('units_of_measure', 'view', 'create');
+        $units = $this->tokenWith('units_of_measure', 'view');
 
         self::assertSame(200, $this->api('GET', '/unit-categories/options', $units)->getStatusCode());
         self::assertSame(403, $this->api('GET', '/areas/options', $units)->getStatusCode());

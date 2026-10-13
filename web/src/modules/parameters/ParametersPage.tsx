@@ -138,16 +138,15 @@ interface ParentChoice {
 /**
  * The values of the list a view's values belong to (the areas, for groups). Whoever may view that list gets all of
  * it, inactive ones included, so a value under an inactive parent can still be found by its filter. Whoever only
- * creates or edits in this list gets the active ones from the options list: the form needs nothing on the parent's
- * own section (ADR-0024). Whoever does neither gets nothing, and the screen says so.
+ * views this list (and so can filter, create or edit in it) gets the active ones from the options list: the screen
+ * needs nothing on the parent's own section (ADR-0024). Whoever may not view this list never reaches the screen.
  */
 function useParentOptions(view: ParameterView) {
   const can = useCan();
   const parentView = ALL_VIEWS.find((candidate) => candidate.slug === view.parent?.slug);
   const canList = parentView !== undefined && can(parentView.resource, 'view');
   const canChoose =
-    parentView !== undefined &&
-    (canList || can(view.resource, 'create') || can(view.resource, 'edit'));
+    parentView !== undefined && (canList || can(view.resource, 'view'));
   const list = useParameterValues(
     parentView ?? view,
     { status: 'all', per_page: PARENT_OPTIONS },
