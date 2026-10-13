@@ -17,6 +17,7 @@ const SECTIONS: readonly SectionDefinition[] = [
     label: 'Catálogo',
     resources: ['brands', 'areas', 'product_groups', 'unit_categories', 'units_of_measure'],
   },
+  { id: 'contacts', label: 'Contactos', resources: ['contacts'] },
   {
     id: 'settings',
     label: 'Configuración',

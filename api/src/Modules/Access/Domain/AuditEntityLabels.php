@@ -28,6 +28,7 @@ final class AuditEntityLabels
         'product_groups',
         'unit_categories',
         'units_of_measure',
+        'contacts',
     ];
 
     /** Longest label stored: the column's width. */

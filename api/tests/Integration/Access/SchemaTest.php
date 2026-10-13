@@ -18,8 +18,8 @@ final class SchemaTest extends AccessTestCase
     {
         self::assertSame(
             [
-                'areas', 'audit_logs', 'brands', 'client_statuses', 'company', 'contact_types', 'departments',
-                'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'roles',
+                'areas', 'audit_logs', 'brands', 'client_statuses', 'company', 'contact_types', 'contacts',
+                'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'roles',
                 'security_settings', 'segments', 'sequences', 'tax_regimes', 'unit_categories', 'units_of_measure',
                 'users',
             ],
@@ -38,12 +38,12 @@ final class SchemaTest extends AccessTestCase
         self::assertSame('internal', $role['user_type']);
         self::assertNull($role['deleted_at']);
         self::assertSame(
-            65,
+            69,
             $this->countRows('SELECT COUNT(*) FROM role_permissions'),
             'Access, departments, margin levels and the catalog have every verb; the settings only view and edit.',
         );
         self::assertSame(
-            array_fill(0, 9, 'all'),
+            array_fill(0, 10, 'all'),
             $this->connection->fetchFirstColumn('SELECT scope FROM role_scopes ORDER BY resource_code'),
         );
     }
@@ -84,8 +84,8 @@ final class SchemaTest extends AccessTestCase
 
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM roles WHERE code = 'admin'"));
         self::assertSame($adminBefore, $this->adminRoleId());
-        self::assertSame(65, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
-        self::assertSame(9, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
+        self::assertSame(69, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(10, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
     }
 
     public function testDroppingTheMarginLevelSortOrderWorksWhetherOrNotTheColumnIsThere(): void
