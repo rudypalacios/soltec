@@ -14,6 +14,9 @@ export interface CreatedUser {
 interface Role {
   id: string;
   code: string | null;
+  name: string;
+  permissions: Record<string, string[]>;
+  scopes: Record<string, string>;
 }
 
 const PASSWORD = 'E2e-user-password-1';
@@ -51,6 +54,18 @@ export class AdminApi {
       }),
     });
     return new AdminApi(access_token);
+  }
+
+  /** The profile with this exact name, as the API holds it. */
+  async roleNamed(name: string): Promise<Role> {
+    const roles = await call<{ data: Role[] }>(`/roles?q=${encodeURIComponent(name)}`, {
+      token: this.token,
+    });
+    const role = roles.data.find((candidate) => candidate.name === name);
+    if (!role) {
+      throw new Error(`There is no profile named "${name}".`);
+    }
+    return role;
   }
 
   /** A user with the `admin`-free default profile who already accepted the invitation, so it can sign in. */

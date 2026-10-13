@@ -70,10 +70,10 @@ Las siembran las migraciones; PK `code`.
 
 | Tabla | Columnas | Ejemplos |
 |---|---|---|
-| `resources` | `code VARCHAR(50)` PK, `name VARCHAR(100)` | `users`, `roles`, `clients` |
+| `resources` | `code VARCHAR(50)` PK, `name VARCHAR(100)`, `scoped TINYINT(1)` | `users`, `roles`, `clients` |
 | `permissions` | `code VARCHAR(50)` PK, `name VARCHAR(100)` | `view`, `create`, `edit`, `deactivate` |
 
-Un módulo nuevo exige su `resource` y una migración que lo cree y se lo conceda al perfil `admin` (ADR-0012).
+Un módulo nuevo exige su `resource` y una migración que lo cree y se lo conceda al perfil `admin` (ADR-0012). `scoped` dice si las filas del recurso tienen dueño, y solo entonces tiene sentido un alcance de datos: `users` y `audit_logs` lo tienen; la API rechaza un alcance sobre cualquier otro (`not_applicable`) y la matriz no lo ofrece. La migración que crea un recurso fija su `scoped`. Toda acción distinta de `view` exige `view` sobre el mismo recurso (`view_required`).
 
 ### `user_roles` (unión)
 `user_id`, `role_id`. PK compuesta (`user_id`, `role_id`); índice por `role_id`. Sin campos comunes. Un usuario interno puede tener varios perfiles; un externo solo perfiles externos (regla en el código).

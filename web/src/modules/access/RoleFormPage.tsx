@@ -9,18 +9,19 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ApiError, type components } from '@soltec/shared';
+import {
+  ApiError,
+  matrixOfRole,
+  toPayload,
+  type components,
+  type MatrixValue,
+} from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { FormActions } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessages, problemMessage } from './messages';
-import {
-  PermissionMatrix,
-  toPayload,
-  type MatrixScope,
-  type MatrixValue,
-} from './PermissionMatrix';
+import { PermissionMatrix, type MatrixResource } from './PermissionMatrix';
 import { useCan } from './SessionContext';
 import {
   useAccessCatalogs,
@@ -87,24 +88,9 @@ export function RoleFormPage() {
   );
 }
 
-function matrixOf(
-  role: { permissions: Record<string, string[]>; scopes: Record<string, string> } | undefined,
-): MatrixValue {
-  if (!role) {
-    return EMPTY;
-  }
-  const scopes: Record<string, MatrixScope> = {};
-  for (const [resource, scope] of Object.entries(role.scopes)) {
-    if (scope === 'own' || scope === 'team' || scope === 'all') {
-      scopes[resource] = scope;
-    }
-  }
-  return { permissions: role.permissions, scopes };
-}
-
 interface RoleFormProps {
   role: Awaited<ReturnType<typeof useRole>['data']>;
-  resources: { code: string; name: string }[];
+  resources: MatrixResource[];
   actions: { code: string; name: string }[];
   widgetCatalog: components['schemas']['WidgetCatalog']['data'];
 }
@@ -116,7 +102,7 @@ function RoleForm({ role, resources, actions, widgetCatalog }: RoleFormProps) {
   const update = useUpdateRole(role?.id ?? '');
   const [name, setName] = useState(role?.name ?? '');
   const [description, setDescription] = useState(role?.description ?? '');
-  const [matrix, setMatrix] = useState<MatrixValue>(() => matrixOf(role));
+  const [matrix, setMatrix] = useState<MatrixValue>(() => (role ? matrixOfRole(role) : EMPTY));
   // A new profile starts with the whole home screen: an empty one would greet its people with nothing.
   const [widgets, setWidgets] = useState<WidgetCode[]>(
     () => role?.widgets ?? widgetCatalog.map((widget) => widget.code),
@@ -132,7 +118,8 @@ function RoleForm({ role, resources, actions, widgetCatalog }: RoleFormProps) {
     event.preventDefault();
     setFieldErrors({});
     setFailure(null);
-    const { permissions, scopes } = toPayload(matrix);
+    const scoped = resources.filter((resource) => resource.scoped).map((resource) => resource.code);
+    const { permissions, scopes } = toPayload(matrix, scoped);
     const details = {
       name: name.trim(),
       description: description.trim() === '' ? null : description.trim(),

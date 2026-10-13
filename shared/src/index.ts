@@ -5,6 +5,16 @@ export { ApiError, toApiError, unwrap, unwrapEmpty } from './api/errors';
 export { AuthSession } from './auth/session';
 export type { AuthSessionOptions, SessionState } from './auth/session';
 export { can } from './domain/permissions';
+export {
+  checkState,
+  countWithAccess,
+  hasAccess,
+  matrixOfRole,
+  setActions,
+  setScope,
+  toPayload,
+} from './domain/permissionMatrix';
+export type { CheckState, MatrixScope, MatrixValue } from './domain/permissionMatrix';
 export { calculatePrice, isValidCost, PriceError } from './domain/price';
 export type { Price, PriceErrorCode, PriceInput } from './domain/price';
 export { percentToRate, rateToPercent } from './domain/rates';
