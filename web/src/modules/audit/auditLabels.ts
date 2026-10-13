@@ -9,6 +9,11 @@ export const ENTITY_LABELS: Record<string, string> = {
   sequences: 'Numeración',
   margin_levels: 'Niveles de margen',
   devices: 'Dispositivos',
+  contact_types: 'Tipos de contacto',
+  client_statuses: 'Estados de cliente',
+  segments: 'Segmentos',
+  tax_regimes: 'Regímenes fiscales',
+  payment_methods: 'Formas de pago',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -38,10 +43,15 @@ export const ENTITY_NOUNS: Record<string, string> = {
   departments: 'Departamento',
   margin_levels: 'Nivel de margen',
   devices: 'Dispositivo',
+  contact_types: 'Tipo de contacto',
+  client_statuses: 'Estado de cliente',
+  segments: 'Segmento',
+  tax_regimes: 'Régimen fiscal',
+  payment_methods: 'Forma de pago',
 };
 
 /**
- * The screen of a record, when there is one and the person may open it. Departments, margin levels and devices have
+ * The screen of a record, when there is one and the person may open it. Departments, margin levels, parameters and devices have
  * no screen of their own (they are edited in a list), so they only show their name.
  */
 export function recordPath(

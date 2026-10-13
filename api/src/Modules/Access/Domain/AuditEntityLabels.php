@@ -12,7 +12,18 @@ namespace Soltec\Modules\Access\Domain;
 final class AuditEntityLabels
 {
     /** @var list<string> */
-    private const TABLES = ['users', 'roles', 'departments', 'margin_levels', 'devices'];
+    private const TABLES = [
+        'users',
+        'roles',
+        'departments',
+        'margin_levels',
+        'devices',
+        'contact_types',
+        'client_statuses',
+        'segments',
+        'tax_regimes',
+        'payment_methods',
+    ];
 
     /** Longest label stored: the column's width. */
     public const MAX_LENGTH = 190;

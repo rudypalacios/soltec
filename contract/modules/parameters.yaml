@@ -1,0 +1,1114 @@
+paths:
+  /v1/contact-types:
+    get:
+      operationId: listContactTypes
+      summary: List contact types.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of contact types.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactTypePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createContactType
+      summary: Create a contact type.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactTypeCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contact-types/{contactTypeId}:
+    parameters:
+      - $ref: '#/components/parameters/ContactTypeId'
+    get:
+      operationId: getContactType
+      summary: Get a contact type by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.view
+      responses:
+        '200':
+          description: The contact type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateContactType
+      summary: Edit a contact type.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactTypeUpdate'
+      responses:
+        '200':
+          description: The updated contact type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contact-types/{contactTypeId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ContactTypeId'
+    post:
+      operationId: deactivateContactType
+      summary: Deactivate a contact type.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.deactivate
+      responses:
+        '200':
+          description: The deactivated contact type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contact-types/{contactTypeId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ContactTypeId'
+    post:
+      operationId: reactivateContactType
+      summary: Reactivate a contact type.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: contact_types.deactivate
+      responses:
+        '200':
+          description: The reactivated contact type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/client-statuses:
+    get:
+      operationId: listClientStatuses
+      summary: List client statuses.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of client statuses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatusPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createClientStatus
+      summary: Create a client status.
+      description: The name must be unique among active values (422 `taken`); the color must be `#RRGGBB` (422 `invalid`).
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientStatusCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/client-statuses/{clientStatusId}:
+    parameters:
+      - $ref: '#/components/parameters/ClientStatusId'
+    get:
+      operationId: getClientStatus
+      summary: Get a client status by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.view
+      responses:
+        '200':
+          description: The client status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateClientStatus
+      summary: Edit a client status.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientStatusUpdate'
+      responses:
+        '200':
+          description: The updated client status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/client-statuses/{clientStatusId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ClientStatusId'
+    post:
+      operationId: deactivateClientStatus
+      summary: Deactivate a client status.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.deactivate
+      responses:
+        '200':
+          description: The deactivated client status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/client-statuses/{clientStatusId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ClientStatusId'
+    post:
+      operationId: reactivateClientStatus
+      summary: Reactivate a client status.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: client_statuses.deactivate
+      responses:
+        '200':
+          description: The reactivated client status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/segments:
+    get:
+      operationId: listSegments
+      summary: List segments.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: segments.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of segments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SegmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createSegment
+      summary: Create a segment.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog parameters
+      x-permission: segments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SegmentCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/segments/{segmentId}:
+    parameters:
+      - $ref: '#/components/parameters/SegmentId'
+    get:
+      operationId: getSegment
+      summary: Get a segment by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: segments.view
+      responses:
+        '200':
+          description: The segment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateSegment
+      summary: Edit a segment.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: segments.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SegmentUpdate'
+      responses:
+        '200':
+          description: The updated segment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/segments/{segmentId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/SegmentId'
+    post:
+      operationId: deactivateSegment
+      summary: Deactivate a segment.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: segments.deactivate
+      responses:
+        '200':
+          description: The deactivated segment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/segments/{segmentId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/SegmentId'
+    post:
+      operationId: reactivateSegment
+      summary: Reactivate a segment.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: segments.deactivate
+      responses:
+        '200':
+          description: The reactivated segment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tax-regimes:
+    get:
+      operationId: listTaxRegimes
+      summary: List tax regimes.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of tax regimes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegimePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createTaxRegime
+      summary: Create a tax regime.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxRegimeCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegime'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tax-regimes/{taxRegimeId}:
+    parameters:
+      - $ref: '#/components/parameters/TaxRegimeId'
+    get:
+      operationId: getTaxRegime
+      summary: Get a tax regime by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.view
+      responses:
+        '200':
+          description: The tax regime.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegime'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateTaxRegime
+      summary: Edit a tax regime.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaxRegimeUpdate'
+      responses:
+        '200':
+          description: The updated tax regime.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegime'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tax-regimes/{taxRegimeId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaxRegimeId'
+    post:
+      operationId: deactivateTaxRegime
+      summary: Deactivate a tax regime.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.deactivate
+      responses:
+        '200':
+          description: The deactivated tax regime.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegime'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tax-regimes/{taxRegimeId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaxRegimeId'
+    post:
+      operationId: reactivateTaxRegime
+      summary: Reactivate a tax regime.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: tax_regimes.deactivate
+      responses:
+        '200':
+          description: The reactivated tax regime.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxRegime'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/payment-methods:
+    get:
+      operationId: listPaymentMethods
+      summary: List payment methods.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of payment methods.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createPaymentMethod
+      summary: Create a payment method.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentMethodCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/payment-methods/{paymentMethodId}:
+    parameters:
+      - $ref: '#/components/parameters/PaymentMethodId'
+    get:
+      operationId: getPaymentMethod
+      summary: Get a payment method by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.view
+      responses:
+        '200':
+          description: The payment method.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updatePaymentMethod
+      summary: Edit a payment method.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentMethodUpdate'
+      responses:
+        '200':
+          description: The updated payment method.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/payment-methods/{paymentMethodId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/PaymentMethodId'
+    post:
+      operationId: deactivatePaymentMethod
+      summary: Deactivate a payment method.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.deactivate
+      responses:
+        '200':
+          description: The deactivated payment method.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/payment-methods/{paymentMethodId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/PaymentMethodId'
+    post:
+      operationId: reactivatePaymentMethod
+      summary: Reactivate a payment method.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: payment_methods.deactivate
+      responses:
+        '200':
+          description: The reactivated payment method.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    ContactTypeId:
+      name: contactTypeId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ClientStatusId:
+      name: clientStatusId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    SegmentId:
+      name: segmentId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    TaxRegimeId:
+      name: taxRegimeId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    PaymentMethodId:
+      name: paymentMethodId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    HexColor:
+      type: string
+      pattern: '^#[0-9A-Fa-f]{6}$'
+      description: A color as `#RRGGBB`. The API stores it in upper case. The web offers eight fixed colors but accepts any.
+      examples:
+        - '#0B6BB0'
+    ContactType:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    ContactTypePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactType'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ContactTypeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    ContactTypeUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    ClientStatus:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - color
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            color:
+              $ref: '#/components/schemas/HexColor'
+    ClientStatusPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientStatus'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ClientStatusCreate:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        color:
+          $ref: '#/components/schemas/HexColor'
+    ClientStatusUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+            - color
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+            color:
+              $ref: '#/components/schemas/HexColor'
+    Segment:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    SegmentPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Segment'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    SegmentCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    SegmentUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    TaxRegime:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    TaxRegimePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxRegime'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    TaxRegimeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    TaxRegimeUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    PaymentMethod:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    PaymentMethodPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    PaymentMethodCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    PaymentMethodUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100

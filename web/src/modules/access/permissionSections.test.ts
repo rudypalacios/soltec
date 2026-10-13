@@ -16,6 +16,17 @@ describe('groupBySection', () => {
     ]);
   });
 
+  it('groups the catalog parameters in their own section, after the settings', () => {
+    const sections = groupBySection(
+      ['segments', 'company', 'contact_types', 'client_statuses'].map(resource),
+    );
+
+    expect(sections.map((section) => [section.label, section.items.map((i) => i.code)])).toEqual([
+      ['Configuración', ['company']],
+      ['Parámetros', ['contact_types', 'client_statuses', 'segments']],
+    ]);
+  });
+
   it('drops the sections with no module', () => {
     const sections = groupBySection([resource('departments')]);
 
