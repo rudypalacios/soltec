@@ -44,7 +44,8 @@ final class ContractTest extends TestCase
                 }
                 self::assertIsArray($operation);
                 $rule = $operation['x-permission'] ?? null;
-                // `public`, `authenticated`, or `resource.action`; several of the latter joined with `|` (any one is enough).
+                // `public`, `authenticated` or `resource.action`; several of the latter joined with `|` when any
+                // one is enough.
                 $valid = is_string($rule)
                     && preg_match('/^(public|authenticated|[a-z_]+\.[a-z_]+(\|[a-z_]+\.[a-z_]+)*)$/', $rule) === 1;
                 if (!$valid) {
