@@ -1,0 +1,447 @@
+paths:
+  /v1/suppliers/options:
+    get:
+      operationId: listSupplierOptions
+      summary: List the active suppliers to choose from.
+      description:
+        For the selector of the forms that use suppliers (products). It returns only the id, the code and the name of
+        the active suppliers, sorted by name; `q` searches name and code. Any internal session may read it, so
+        a form can fill its selector without any access to this section (ADR-0024). The complete list, with the
+        inactive ones, still needs `suppliers.view`.
+      tags:
+        - Suppliers
+      x-permission: internal
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The suppliers, at most `limit`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/suppliers:
+    get:
+      operationId: listSuppliers
+      summary: List suppliers.
+      description:
+        Inactive suppliers are hidden unless status says otherwise. Suppliers have no owner and no data scope, so whoever
+        may view the section sees every one (ADR-0025). Sorted by name. `q` searches the name, the legal name, the
+        identification and the code. The list carries no addresses or people; they come with the single supplier.
+      tags:
+        - Suppliers
+      x-permission: suppliers.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of suppliers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createSupplier
+      summary: Create a supplier.
+      description:
+        The code is assigned from the `supplier` numbering. The identification is a NIT (with its check digit) or a
+        CUI (13 digits), required for those types and refused for `none`; it cannot repeat among active suppliers
+        (409 `identification_taken`, which never says whose it is, ADR-0022). Contact types must be active (422
+        `not_found` on `contacts.<n>.contact_type_id`). When no address is marked primary, the first one is.
+      tags:
+        - Suppliers
+      x-permission: suppliers.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/suppliers/{supplierId}:
+    parameters:
+      - $ref: '#/components/parameters/SupplierId'
+    get:
+      operationId: getSupplier
+      summary: Get a supplier by id.
+      description:
+        Returns the supplier, active or not, with its addresses and its people. The people belong to the supplier, so
+        whoever can view it sees them whole; no permission over `contacts` or `contact_types` is involved.
+      tags:
+        - Suppliers
+      x-permission: suppliers.view
+      responses:
+        '200':
+          description: The supplier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateSupplier
+      summary: Edit a supplier.
+      description:
+        Replaces the supplier's data as a whole, so a field left out is cleared; the addresses and the people are
+        replaced as sets, in the order sent. A stale version answers 409 `conflict`; an identification already used by
+        another active supplier, 409 `identification_taken`. A contact type that was switched off after the supplier
+        used it is still accepted for that supplier.
+      tags:
+        - Suppliers
+      x-permission: suppliers.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierUpdate'
+      responses:
+        '200':
+          description: The updated supplier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/suppliers/{supplierId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/SupplierId'
+    post:
+      operationId: deactivateSupplier
+      summary: Deactivate a supplier.
+      description:
+        Logical deactivation. It never blocks, and frees its identification for another supplier. Its products will be
+        deactivated with it once they exist (ADR-0023). Idempotent.
+      tags:
+        - Suppliers
+      x-permission: suppliers.deactivate
+      responses:
+        '200':
+          description: The deactivated supplier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/suppliers/{supplierId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/SupplierId'
+    post:
+      operationId: reactivateSupplier
+      summary: Reactivate a supplier.
+      description: Idempotent. When another active supplier uses its identification now, it answers 409 `identification_taken`.
+      tags:
+        - Suppliers
+      x-permission: suppliers.deactivate
+      responses:
+        '200':
+          description: The reactivated supplier.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    SupplierId:
+      name: supplierId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    IdentificationType:
+      type: string
+      enum:
+        - nit
+        - cui
+        - none
+    SupplierAddress:
+      type: object
+      required:
+        - label
+        - address
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: For example "Oficina" or "Bodega".
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        zone:
+          type: [string, 'null']
+          maxLength: 100
+        country:
+          type: [string, 'null']
+          maxLength: 100
+        is_primary:
+          type: boolean
+          default: false
+          description: At most one address is primary (422 `duplicate` on the second one).
+    SupplierContactFields:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        job_title:
+          type: [string, 'null']
+          maxLength: 100
+        phone:
+          type: [string, 'null']
+          maxLength: 40
+        mobile:
+          type: [string, 'null']
+          maxLength: 40
+        email:
+          type: [string, 'null']
+          maxLength: 190
+          description: Stored in lower case.
+        address:
+          type: [string, 'null']
+          maxLength: 255
+        zone:
+          type: [string, 'null']
+          maxLength: 100
+        country:
+          type: [string, 'null']
+          maxLength: 100
+    SupplierContactInput:
+      allOf:
+        - $ref: '#/components/schemas/SupplierContactFields'
+        - type: object
+          properties:
+            contact_type_id:
+              type: [string, 'null']
+              format: uuid
+              description: An active contact type.
+    SupplierContact:
+      allOf:
+        - $ref: '#/components/schemas/SupplierContactFields'
+        - type: object
+          required:
+            - job_title
+            - contact_type
+            - phone
+            - mobile
+            - email
+            - address
+            - zone
+            - country
+          properties:
+            contact_type:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+    SupplierFields:
+      type: object
+      required:
+        - name
+        - identification_type
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 190
+        legal_name:
+          type: [string, 'null']
+          maxLength: 190
+        identification_type:
+          $ref: '#/components/schemas/IdentificationType'
+        identification:
+          type: [string, 'null']
+          maxLength: 30
+          description:
+            A NIT with its check digit (`6647912-6`, hyphen and case optional) or a CUI of 13 digits. Required for
+            `nit` and `cui`, refused for `none` (422 `not_applicable`); invalid when the check digit fails.
+        credit_days:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 65535
+        credit_limit:
+          type: [string, 'null']
+          description: A decimal string with up to two decimals and twelve integer digits, for example `15000.50`.
+    SupplierSummary:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - code
+            - name
+            - legal_name
+            - identification_type
+            - identification
+            - credit_days
+            - credit_limit
+            - is_active
+          properties:
+            code:
+              type: string
+              description: Assigned from the `supplier` numbering, for example `PRV-0001`.
+            name:
+              type: string
+            legal_name:
+              type: [string, 'null']
+            identification_type:
+              $ref: '#/components/schemas/IdentificationType'
+            identification:
+              type: [string, 'null']
+              description: Shown with the hyphen before the check digit when it is a NIT.
+            credit_days:
+              type: [integer, 'null']
+            credit_limit:
+              type: [string, 'null']
+            is_active:
+              type: boolean
+    Supplier:
+      allOf:
+        - $ref: '#/components/schemas/SupplierSummary'
+        - type: object
+          required:
+            - addresses
+            - contacts
+          properties:
+            addresses:
+              type: array
+              items:
+                $ref: '#/components/schemas/SupplierAddress'
+            contacts:
+              type: array
+              items:
+                $ref: '#/components/schemas/SupplierContact'
+    SupplierPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupplierSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    SupplierOption:
+      type: object
+      required:
+        - id
+        - code
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        name:
+          type: string
+    SupplierOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupplierOption'
+    SupplierCreate:
+      allOf:
+        - $ref: '#/components/schemas/SupplierFields'
+        - type: object
+          properties:
+            addresses:
+              type: array
+              maxItems: 50
+              items:
+                $ref: '#/components/schemas/SupplierAddress'
+            contacts:
+              type: array
+              maxItems: 50
+              items:
+                $ref: '#/components/schemas/SupplierContactInput'
+    SupplierUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/SupplierCreate'

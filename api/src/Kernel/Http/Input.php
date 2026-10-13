@@ -245,6 +245,82 @@ final class Input
         return $value >= $min && $value <= $max ? $value : $this->reject($field, 'out_of_range');
     }
 
+    /** A JSON boolean; absent or null is $default. */
+    public function optionalBoolean(string $field, bool $default = false): bool
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return $default;
+        }
+        if (!is_bool($value)) {
+            $this->reject($field, 'invalid');
+
+            return $default;
+        }
+
+        return $value;
+    }
+
+    /** Like integer() but absent or null means "no value", for nullable columns. */
+    public function optionalInteger(string $field, int $min, int $max): ?int
+    {
+        return ($this->data[$field] ?? null) === null ? null : $this->integer($field, $min, $max);
+    }
+
+    /**
+     * A non-negative decimal sent as a string such as "1500.5" (so no float ever touches it) or as an integer,
+     * returned with exactly $scale decimals. Absent, null or empty means "no value".
+     */
+    public function optionalDecimal(string $field, int $integerDigits, int $scale): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $pattern = sprintf('/^(\d{1,%d})(?:\.(\d{1,%d}))?$/', $integerDigits, $scale);
+        if ((!is_string($value) && !is_int($value)) || preg_match($pattern, (string) $value, $match) !== 1) {
+            return $this->reject($field, 'invalid');
+        }
+
+        return $match[1] . '.' . str_pad($match[2] ?? '', $scale, '0');
+    }
+
+    /**
+     * A list of JSON objects, at most $max of them; absent or null is an empty list. Each item is read with
+     * {@see nested()} using the prefix "<field>.<position>".
+     *
+     * @return array<int, array<array-key, mixed>> the items by their position in the list
+     */
+    public function objectList(string $field, int $max): array
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return [];
+        }
+        if (!is_array($value) || !array_is_list($value)) {
+            $this->reject($field, 'invalid');
+
+            return [];
+        }
+        if (count($value) > $max) {
+            $this->reject($field, 'too_many');
+
+            return [];
+        }
+
+        $items = [];
+        foreach ($value as $position => $item) {
+            if (!is_array($item) || ($item !== [] && array_is_list($item))) {
+                $this->reject($field . '.' . $position, 'invalid');
+
+                continue;
+            }
+            $items[$position] = $item;
+        }
+
+        return $items;
+    }
+
     /**
      * A rate from 0 up to (not including) 1, sent as a string such as "0.12" so no float ever touches it, and
      * returned with five decimals ("0.12000"), the precision of the DECIMAL(6,5) columns.

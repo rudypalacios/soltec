@@ -86,6 +86,15 @@ export class AdminApi {
     });
   }
 
+  /** A supplier, created through the API; `fields` are the ones of the creation body. */
+  async createSupplier(fields: Record<string, unknown>): Promise<{ id: string; name: string }> {
+    return call<{ id: string; name: string }>('/suppliers', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify(fields),
+    });
+  }
+
   /**
    * A user who already accepted the invitation, so it can sign in. Without `roleId` it gets the first custom profile
    * (the `admin`-free default); a scenario that depends on what the user may do passes its own. `managerId` places

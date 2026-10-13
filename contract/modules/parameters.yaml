@@ -1,4 +1,29 @@
 paths:
+  /v1/contact-types/options:
+    get:
+      operationId: listContactTypeOptions
+      summary: List the active contact types to choose from.
+      description:
+        For the selector of the forms that use this list (the people of a supplier). It returns only the id and the
+        name of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `contact_types.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/contact-types:
     get:
       operationId: listContactTypes

@@ -20,9 +20,8 @@ erDiagram
     CONTACTS ||--o{ CLIENT_CONTACTS : ""
     CLIENTS ||--o{ CLIENT_CONTACTS : ""
     CONTACT_TYPES ||--o{ CLIENT_CONTACTS : "rol"
-    CONTACTS ||--o{ SUPPLIER_CONTACTS : ""
-    SUPPLIERS ||--o{ SUPPLIER_CONTACTS : ""
-    CONTACT_TYPES ||--o{ SUPPLIER_CONTACTS : "rol"
+    SUPPLIERS ||--o{ SUPPLIER_CONTACTS : "personas propias"
+    CONTACT_TYPES |o--o{ SUPPLIER_CONTACTS : "rol"
     SUPPLIERS ||--o{ SUPPLIER_ADDRESSES : ""
     CLIENTS ||--o{ CLIENT_ADDRESSES : ""
     CLIENTS ||--o| CLIENT_BILLING_PROFILES : "solo clientes de venta"
@@ -87,8 +86,10 @@ Una persona. Su dueño decide quién la ve (ADR-0025).
 
 Índices: `uq_contacts_code`, `idx_contacts_owner (owner_id)`, `idx_contacts_name (name)`, `idx_contacts_updated`.
 
-### `client_contacts` y `supplier_contacts` (uniones)
-`client_id` (o `supplier_id`), `contact_id`, `contact_type_id`. PK compuesta de las tres: una persona puede tener varios roles con el mismo cliente. Índice por `contact_id`. Sin campos comunes: quitar un vínculo lo borra y queda en la auditoría. Las crean el proveedor (2.3b) y el cliente (2.5).
+### `client_contacts` (unión)
+`client_id`, `contact_id`, `contact_type_id`. PK compuesta de las tres: una persona puede tener varios roles con el mismo cliente. Índice por `contact_id`. Sin campos comunes: quitar un vínculo lo borra y queda en la auditoría. La crea el cliente (2.5).
+
+Los contactos de un **proveedor** no son filas de `contacts`: son personas propias del proveedor (`supplier_contacts`, sección 10), sin dueño ni alcance, y los ve quien vea el proveedor (ADR-0025, enmienda del 2026-10-14).
 
 ## 10 Proveedores
 
@@ -106,16 +107,32 @@ Una persona. Su dueño decide quién la ve (ADR-0025).
 | `credit_limit` | `DECIMAL(14,2)` | sí | |
 
 ### `supplier_addresses` y `client_addresses`
-Misma forma, dos tablas para conservar las llaves foráneas.
+Misma forma, dos tablas para conservar las llaves foráneas. Un registro se edita reemplazando el conjunto completo de sus direcciones, así que las filas no llevan `version` ni `deleted_at`: quitar una la borra y queda en la auditoría del dueño (antes y después). Solo `id` y las columnas de abajo.
 
 | Columna | Tipo | Notas |
 |---|---|---|
 | `supplier_id` / `client_id` | `BINARY(16)` | FK |
+| `sort_order` | `SMALLINT UNSIGNED` | Orden en que se enviaron |
 | `label` | `VARCHAR(60)` | «Oficina», «Bodega»… |
 | `address` | `VARCHAR(255)` | |
 | `zone`, `country` | `VARCHAR(100)` | Opcionales |
-| `is_primary` | `TINYINT(1)` | |
-| `primary_marker` | generada | `IF(is_primary = 1 AND deleted_at IS NULL, <dueño_id>, NULL)`; índice único: una sola principal activa por dueño |
+| `is_primary` | `TINYINT(1)` | Si ninguna se marca, la primera lo es (regla del código) |
+| `primary_marker` | generada | `IF(is_primary = 1, <dueño_id>, NULL)`; índice único: una sola principal por dueño |
+
+### `supplier_contacts`
+Las personas del proveedor. Pertenecen al proveedor, no a un asesor: sin dueño, sin alcance y sin permiso propio (los ve y edita quien tenga `suppliers.view` / `suppliers.edit`). Se reemplazan como conjunto, igual que las direcciones.
+
+| Columna | Tipo | Nulo | Notas |
+|---|---|---|---|
+| `supplier_id` | `BINARY(16)` | no | FK `suppliers` |
+| `sort_order` | `SMALLINT UNSIGNED` | no | |
+| `name` | `VARCHAR(150)` | no | |
+| `job_title` | `VARCHAR(100)` | sí | Cargo |
+| `contact_type_id` | `BINARY(16)` | sí | FK `contact_types`; debe estar activo al asignarlo |
+| `phone`, `mobile` | `VARCHAR(40)` | sí | |
+| `email` | `VARCHAR(190)` | sí | En minúsculas |
+| `address` | `VARCHAR(255)` | sí | |
+| `zone`, `country` | `VARCHAR(100)` | sí | |
 
 ## 11 Productos y paquetes
 
