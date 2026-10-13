@@ -29,6 +29,21 @@ export const color = {
   error: { main: '#B3261E', tint: '#FCE8E6' },
 } as const;
 
+/**
+ * The eight colors a client status can take (slice 2.1). The API accepts any `#RRGGBB`; the screen offers these so the
+ * statuses stay readable together. Every one reaches 4.5:1 against white, so the name beside the dot can use it too.
+ */
+export const statusPalette = [
+  { name: 'Azul', value: '#0B6BB0' },
+  { name: 'Turquesa', value: '#00796B' },
+  { name: 'Verde', value: '#1E7A4C' },
+  { name: 'Ámbar', value: '#9A5800' },
+  { name: 'Gris', value: '#7C8996' },
+  { name: 'Rojo', value: '#B3261E' },
+  { name: 'Morado', value: '#6B4FA3' },
+  { name: 'Magenta', value: '#B0306A' },
+] as const;
+
 export const font = {
   family:
     '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',

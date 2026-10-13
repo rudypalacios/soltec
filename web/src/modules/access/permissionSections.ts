@@ -17,6 +17,11 @@ const SECTIONS: readonly SectionDefinition[] = [
     label: 'Configuración',
     resources: ['company', 'financial_settings', 'margin_levels', 'sequences', 'security_settings'],
   },
+  {
+    id: 'parameters',
+    label: 'Parámetros',
+    resources: ['contact_types', 'client_statuses', 'segments', 'tax_regimes', 'payment_methods'],
+  },
 ];
 
 const OTHER = { id: 'other', label: 'Otros' } as const;

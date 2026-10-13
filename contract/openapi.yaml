@@ -48,6 +48,8 @@ tags:
     description: Roles (perfiles) with their permission matrix and data scopes.
   - name: Departments
     description: Departments of the organization. The direct manager of each user lives in the user.
+  - name: Catalog parameters
+    description: Lookup lists that other sections draw their options from (contact types, client statuses, segments, tax regimes, payment methods).
   - name: Settings
     description: Company data and logo, tax rates, and the numbering of documents.
   - name: Margin levels

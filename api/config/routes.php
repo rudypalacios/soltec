@@ -21,6 +21,8 @@ use Soltec\Modules\Access\Http\MeController;
 use Soltec\Modules\Access\Http\RoleController;
 use Soltec\Modules\Access\Http\SecuritySettingsController;
 use Soltec\Modules\Access\Http\UserController;
+use Soltec\Modules\Catalog\Domain\ParameterCatalog;
+use Soltec\Modules\Catalog\Http\ParameterController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Settings\Http\BrandingController;
 use Soltec\Modules\Settings\Http\CompanyController;
@@ -93,6 +95,24 @@ return static function (App $app): void {
             ->setArgument('permission', 'departments.deactivate');
         $group->post('/departments/{departmentId}/reactivate', [DepartmentController::class, 'reactivate'])
             ->setArgument('permission', 'departments.deactivate');
+
+        // Catalog parameters: five tables served by one controller; the route says which one in `parameter`.
+        foreach (ParameterCatalog::all() as $parameter) {
+            $base = '/' . $parameter->slug;
+            $item = $base . '/{' . $parameter->idParameter . '}';
+            $rule = static fn (string $action): array => [
+                'permission' => $parameter->table . '.' . $action,
+                'parameter' => $parameter->slug,
+            ];
+            $group->get($base, [ParameterController::class, 'list'])->setArguments($rule('view'));
+            $group->post($base, [ParameterController::class, 'create'])->setArguments($rule('create'));
+            $group->get($item, [ParameterController::class, 'show'])->setArguments($rule('view'));
+            $group->patch($item, [ParameterController::class, 'update'])->setArguments($rule('edit'));
+            $group->post($item . '/deactivate', [ParameterController::class, 'deactivate'])
+                ->setArguments($rule('deactivate'));
+            $group->post($item . '/reactivate', [ParameterController::class, 'reactivate'])
+                ->setArguments($rule('deactivate'));
+        }
 
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');

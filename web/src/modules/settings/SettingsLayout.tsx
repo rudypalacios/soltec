@@ -10,7 +10,9 @@ export function SettingsLayout() {
   const can = useCan();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const sections = SETTINGS_SECTIONS.filter((section) => can(section.resource, 'view'));
+  const sections = SETTINGS_SECTIONS.filter((section) =>
+    section.resources.some((resource) => can(resource, 'view')),
+  );
   const current = sections.find((section) => pathname.startsWith(section.path));
 
   if (sections.length === 0) {
@@ -56,6 +58,8 @@ export function SettingsLayout() {
 /** `/configuracion` alone goes to the first section the user may open. */
 export function SettingsIndex() {
   const can = useCan();
-  const first = SETTINGS_SECTIONS.find((section) => can(section.resource, 'view'));
+  const first = SETTINGS_SECTIONS.find((section) =>
+    section.resources.some((resource) => can(resource, 'view')),
+  );
   return first ? <Navigate to={first.path} replace /> : null;
 }
