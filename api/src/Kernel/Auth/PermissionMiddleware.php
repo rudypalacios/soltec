@@ -12,7 +12,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Routing\RouteContext;
 use Soltec\Kernel\Http\ApiException;
 
-/** Checks the `<resource>.<action>` permission a route declares. Denies by default. */
+/**
+ * Checks the permission a route declares. Denies by default. The rule is `<resource>.<action>`, or several of them
+ * joined with `|` when any one is enough (the options lists of ADR-0024: who may administer a section or edit one that
+ * consumes it).
+ */
 final class PermissionMiddleware implements MiddlewareInterface
 {
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -27,11 +31,15 @@ final class PermissionMiddleware implements MiddlewareInterface
         }
 
         $user = $request->getAttribute(AuthenticationMiddleware::USER_ATTRIBUTE);
-        [$resource, $action] = array_pad(explode('.', $permission, 2), 2, '');
-        if (!$user instanceof CurrentUser || !$user->can($resource, $action)) {
-            throw ApiException::forbidden();
+        if ($user instanceof CurrentUser) {
+            foreach (explode('|', $permission) as $alternative) {
+                [$resource, $action] = array_pad(explode('.', $alternative, 2), 2, '');
+                if ($user->can($resource, $action)) {
+                    return $handler->handle($request);
+                }
+            }
         }
 
-        return $handler->handle($request);
+        throw ApiException::forbidden();
     }
 }

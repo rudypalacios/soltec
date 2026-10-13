@@ -27,6 +27,14 @@ final class ParameterDefinition
         public readonly ?ParentLink $parent = null,
         /** Set when values of another list belong to each value of this one. */
         public readonly ?ChildLink $children = null,
+        /**
+         * Permission resources of the forms that choose a value of this list. Whoever creates or edits in one of them
+         * may read the options list (id and name of the active values) without any permission on this section
+         * (ADR-0024). Empty when no form consumes the list yet, so it offers no options route.
+         *
+         * @var list<string>
+         */
+        public readonly array $optionConsumers = [],
     ) {
     }
 }

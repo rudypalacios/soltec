@@ -49,6 +49,12 @@ final class ParameterController
         ]);
     }
 
+    /** The active values with id and name, for the selectors of other forms. */
+    public function options(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return Json::write($response, ['data' => $this->parameters->options($this->parameter($request))]);
+    }
+
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $parameter = $this->parameter($request);

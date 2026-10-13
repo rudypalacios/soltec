@@ -36,6 +36,7 @@ import {
   type ParameterView,
 } from './parameterViews';
 import {
+  useParameterOptions,
   useParameterValues,
   useSaveParameterValue,
   useSetParameterValueActive,
@@ -127,18 +128,36 @@ function ColoredName({ value }: { value: ParameterValue }) {
   );
 }
 
-/** The values of the list a view's values belong to (the areas, for groups), when the user may view them. */
+/** A parent as a selector needs it. */
+interface ParentChoice {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+/**
+ * The values of the list a view's values belong to (the areas, for groups). Whoever may view that list gets all of
+ * it, inactive ones included, so a value under an inactive parent can still be found by its filter. Whoever only
+ * creates or edits in this list gets the active ones from the options list: the form needs nothing on the parent's
+ * own section (ADR-0024). Whoever does neither gets nothing, and the screen says so.
+ */
 function useParentOptions(view: ParameterView) {
   const can = useCan();
   const parentView = ALL_VIEWS.find((candidate) => candidate.slug === view.parent?.slug);
-  const allowed = parentView !== undefined && can(parentView.resource, 'view');
-  // «all» so a value under an inactive parent can still be found by its filter; the dialog drops the inactive ones.
-  const query = useParameterValues(
+  const canList = parentView !== undefined && can(parentView.resource, 'view');
+  const canChoose =
+    parentView !== undefined &&
+    (canList || can(view.resource, 'create') || can(view.resource, 'edit'));
+  const list = useParameterValues(
     parentView ?? view,
     { status: 'all', per_page: PARENT_OPTIONS },
-    allowed,
+    canList,
   );
-  return { allowed, options: allowed ? query.data?.data : undefined };
+  const active = useParameterOptions(parentView ?? view, canChoose && !canList);
+  const options: ParentChoice[] | undefined = canList
+    ? list.data?.data
+    : active.data?.data.map((option) => ({ ...option, is_active: true }));
+  return { allowed: canChoose, options: canChoose ? options : undefined };
 }
 
 /** Why an action on a value failed, with the counts and names the API sends back. */
