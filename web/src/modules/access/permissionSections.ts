@@ -13,6 +13,11 @@ const SECTIONS: readonly SectionDefinition[] = [
   { id: 'access', label: 'Acceso', resources: ['users', 'roles', 'audit_logs'] },
   { id: 'organization', label: 'Organización', resources: ['departments'] },
   {
+    id: 'catalog',
+    label: 'Catálogo',
+    resources: ['brands', 'areas', 'product_groups', 'unit_categories', 'units_of_measure'],
+  },
+  {
     id: 'settings',
     label: 'Configuración',
     resources: ['company', 'financial_settings', 'margin_levels', 'sequences', 'security_settings'],

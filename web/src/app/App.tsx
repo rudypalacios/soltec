@@ -25,6 +25,7 @@ import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
 import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
+import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
@@ -112,6 +113,7 @@ export function App() {
             </RequirePermission>
           }
         />
+        <Route path="catalogo" element={<CatalogPage />} />
         <Route
           path="auditoria"
           element={

@@ -1,0 +1,1147 @@
+paths:
+  /v1/brands:
+    get:
+      operationId: listBrands
+      summary: List brands.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. The list has no data scope; whoever may
+        view it sees all its values.
+      tags:
+        - Catalog structure
+      x-permission: brands.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of brands.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createBrand
+      summary: Create a brand.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog structure
+      x-permission: brands.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/brands/{brandId}:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    get:
+      operationId: getBrand
+      summary: Get a brand by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog structure
+      x-permission: brands.view
+      responses:
+        '200':
+          description: The brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateBrand
+      summary: Edit a brand.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog structure
+      x-permission: brands.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandUpdate'
+      responses:
+        '200':
+          description: The updated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/brands/{brandId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    post:
+      operationId: deactivateBrand
+      summary: Deactivate a brand.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: brands.deactivate
+      responses:
+        '200':
+          description: The deactivated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/brands/{brandId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    post:
+      operationId: reactivateBrand
+      summary: Reactivate a brand.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: brands.deactivate
+      responses:
+        '200':
+          description: The reactivated brand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Brand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/areas:
+    get:
+      operationId: listAreas
+      summary: List areas.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. The list has no data scope; whoever may
+        view it sees all its values.
+      tags:
+        - Catalog structure
+      x-permission: areas.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of areas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AreaPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createArea
+      summary: Create a area.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog structure
+      x-permission: areas.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AreaCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/areas/{areaId}:
+    parameters:
+      - $ref: '#/components/parameters/AreaId'
+    get:
+      operationId: getArea
+      summary: Get a area by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog structure
+      x-permission: areas.view
+      responses:
+        '200':
+          description: The area.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateArea
+      summary: Edit a area.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog structure
+      x-permission: areas.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AreaUpdate'
+      responses:
+        '200':
+          description: The updated area.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/areas/{areaId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/AreaId'
+    post:
+      operationId: deactivateArea
+      summary: Deactivate a area.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent. Refused while it has active groups (409 `area_in_use`, with `active_group_count`); deactivate or move them first.
+      tags:
+        - Catalog structure
+      x-permission: areas.deactivate
+      responses:
+        '200':
+          description: The deactivated area.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/areas/{areaId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/AreaId'
+    post:
+      operationId: reactivateArea
+      summary: Reactivate a area.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: areas.deactivate
+      responses:
+        '200':
+          description: The reactivated area.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/product-groups:
+    get:
+      operationId: listProductGroups
+      summary: List product groups.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. The list has no data scope; whoever may
+        view it sees all its values. Filter by `area_id` to see the values of one area.
+      tags:
+        - Catalog structure
+      x-permission: product_groups.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/AreaIdFilter'
+      responses:
+        '200':
+          description: A page of product groups.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroupPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createProductGroup
+      summary: Create a product group.
+      description: The name must be unique among active values (422 `taken`). The area must exist and be active (422 `not_found` on `area_id`); `area_id` is required.
+      tags:
+        - Catalog structure
+      x-permission: product_groups.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductGroupCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/product-groups/{productGroupId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductGroupId'
+    get:
+      operationId: getProductGroup
+      summary: Get a product group by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog structure
+      x-permission: product_groups.view
+      responses:
+        '200':
+          description: The product group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateProductGroup
+      summary: Edit a product group.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`. Moving to another area needs an active one (422 `not_found`); keeping an inactive one is allowed.
+      tags:
+        - Catalog structure
+      x-permission: product_groups.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductGroupUpdate'
+      responses:
+        '200':
+          description: The updated product group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/product-groups/{productGroupId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ProductGroupId'
+    post:
+      operationId: deactivateProductGroup
+      summary: Deactivate a product group.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: product_groups.deactivate
+      responses:
+        '200':
+          description: The deactivated product group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/product-groups/{productGroupId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ProductGroupId'
+    post:
+      operationId: reactivateProductGroup
+      summary: Reactivate a product group.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent. Refused while the area is inactive (422 `parent_inactive` on `area_id`).
+      tags:
+        - Catalog structure
+      x-permission: product_groups.deactivate
+      responses:
+        '200':
+          description: The reactivated product group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/unit-categories:
+    get:
+      operationId: listUnitCategories
+      summary: List unit categories.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. The list has no data scope; whoever may
+        view it sees all its values.
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of unit categories.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategoryPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createUnitCategory
+      summary: Create a unit category.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitCategoryCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/unit-categories/{unitCategoryId}:
+    parameters:
+      - $ref: '#/components/parameters/UnitCategoryId'
+    get:
+      operationId: getUnitCategory
+      summary: Get a unit category by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.view
+      responses:
+        '200':
+          description: The unit category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateUnitCategory
+      summary: Edit a unit category.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitCategoryUpdate'
+      responses:
+        '200':
+          description: The updated unit category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/unit-categories/{unitCategoryId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/UnitCategoryId'
+    post:
+      operationId: deactivateUnitCategory
+      summary: Deactivate a unit category.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent. Refused while it has active units (409 `unit_category_in_use`, with `active_unit_count`); deactivate or move them first.
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.deactivate
+      responses:
+        '200':
+          description: The deactivated unit category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/unit-categories/{unitCategoryId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/UnitCategoryId'
+    post:
+      operationId: reactivateUnitCategory
+      summary: Reactivate a unit category.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: unit_categories.deactivate
+      responses:
+        '200':
+          description: The reactivated unit category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitCategory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/units-of-measure:
+    get:
+      operationId: listUnitsOfMeasure
+      summary: List units of measure.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. The list has no data scope; whoever may
+        view it sees all its values. Filter by `category_id` to see the values of one category.
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/UnitCategoryIdFilter'
+      responses:
+        '200':
+          description: A page of units of measure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasurePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createUnitOfMeasure
+      summary: Create a unit of measure.
+      description: The name must be unique among active values (422 `taken`). The category must exist and be active (422 `not_found` on `category_id`); `category_id` is required.
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitOfMeasureCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/units-of-measure/{unitOfMeasureId}:
+    parameters:
+      - $ref: '#/components/parameters/UnitOfMeasureId'
+    get:
+      operationId: getUnitOfMeasure
+      summary: Get a unit of measure by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.view
+      responses:
+        '200':
+          description: The unit of measure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateUnitOfMeasure
+      summary: Edit a unit of measure.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`. Moving to another category needs an active one (422 `not_found`); keeping an inactive one is allowed.
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitOfMeasureUpdate'
+      responses:
+        '200':
+          description: The updated unit of measure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/units-of-measure/{unitOfMeasureId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/UnitOfMeasureId'
+    post:
+      operationId: deactivateUnitOfMeasure
+      summary: Deactivate a unit of measure.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.deactivate
+      responses:
+        '200':
+          description: The deactivated unit of measure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/units-of-measure/{unitOfMeasureId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/UnitOfMeasureId'
+    post:
+      operationId: reactivateUnitOfMeasure
+      summary: Reactivate a unit of measure.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent. Refused while the category is inactive (422 `parent_inactive` on `category_id`).
+      tags:
+        - Catalog structure
+      x-permission: units_of_measure.deactivate
+      responses:
+        '200':
+          description: The reactivated unit of measure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitOfMeasure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    BrandId:
+      name: brandId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    AreaId:
+      name: areaId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductGroupId:
+      name: productGroupId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    UnitCategoryId:
+      name: unitCategoryId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    UnitOfMeasureId:
+      name: unitOfMeasureId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    AreaIdFilter:
+      name: area_id
+      in: query
+      required: false
+      description: Only the values that belong to this area.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    UnitCategoryIdFilter:
+      name: category_id
+      in: query
+      required: false
+      description: Only the values that belong to this category.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    Brand:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    BrandPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Brand'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    BrandCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    BrandUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    Area:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - active_group_count
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            active_group_count:
+              type: integer
+              minimum: 0
+              description: Active groups under it; it can be deactivated only when this is 0.
+    AreaPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Area'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    AreaCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    AreaUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    ProductGroup:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - area
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            area:
+              $ref: '#/components/schemas/NamedRef'
+    ProductGroupPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductGroup'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ProductGroupCreate:
+      type: object
+      required:
+        - name
+        - area_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        area_id:
+          $ref: '#/components/schemas/Uuid'
+    ProductGroupUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+            - area_id
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+            area_id:
+              $ref: '#/components/schemas/Uuid'
+    UnitCategory:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - active_unit_count
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            active_unit_count:
+              type: integer
+              minimum: 0
+              description: Active units under it; it can be deactivated only when this is 0.
+    UnitCategoryPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnitCategory'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    UnitCategoryCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+    UnitCategoryUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 60
+    UnitOfMeasure:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+            - category
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+            category:
+              $ref: '#/components/schemas/NamedRef'
+    UnitOfMeasurePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnitOfMeasure'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    UnitOfMeasureCreate:
+      type: object
+      required:
+        - name
+        - category_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        category_id:
+          $ref: '#/components/schemas/Uuid'
+    UnitOfMeasureUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+            - category_id
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 60
+            category_id:
+              $ref: '#/components/schemas/Uuid'
