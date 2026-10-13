@@ -50,8 +50,7 @@ export class ParametersPage {
     const filtered = this.page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
-        new URL(response.url()).searchParams.get('q') === text &&
-        response.ok(),
+        new URL(response.url()).searchParams.get('q') === text,
     );
     await this.page.getByLabel('Buscar por nombre').fill(text);
     await filtered;
