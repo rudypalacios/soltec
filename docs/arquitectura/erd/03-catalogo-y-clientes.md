@@ -47,7 +47,7 @@ Cinco tablas con la misma forma (ADR-0016): una tabla por parámetro y un solo c
 | Tabla | Parámetro | Columnas propias | Siembra |
 |---|---|---|---|
 | `contact_types` | PM1 | — | Comercial, Compras, Facturación |
-| `client_statuses` | PM2 | `color CHAR(7)` (`#RRGGBB`) | Prospecto aprobado / por activar, Activo (nuevo), Activo (recurrente), En riesgo / inactivo temporal, Inactivo / dormido, Perdido (colores provisionales) |
+| `client_statuses` | PM2 | `color CHAR(7)` (`#RRGGBB`; la web ofrece 8 colores fijos, la API acepta cualquiera) | Prospecto aprobado / por activar, Activo (nuevo), Activo (recurrente), En riesgo / inactivo temporal, Inactivo / dormido, Perdido: Azul, Turquesa, Verde, Ámbar, Gris y Rojo (paleta en `TODO.md`) |
 | `segments` | PM5 | — | Restaurantes, Industria Manufacturera, Departamentos/Interiorismo, Construcción, Finanzas, Educación, Servicios, Retail |
 | `tax_regimes` | PM6 | — | Pequeño contribuyente, General |
 | `payment_methods` | PM7 | — | (vacía; pendiente) |
