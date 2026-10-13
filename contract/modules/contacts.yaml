@@ -1,0 +1,315 @@
+paths:
+  /v1/contacts:
+    get:
+      operationId: listContacts
+      summary: List the contacts the caller reaches.
+      description:
+        Inactive contacts are hidden unless status says otherwise. The data scope of `contacts` decides whose contacts
+        appear (ADR-0025) with the owner as the criterion, so `own` lists only the ones the caller entered, `team` those
+        of the caller's team and `all` every one. Linking a contact to a client or a supplier never widens that. Sorted
+        by name. `q` searches the name, email, phones and code.
+      tags:
+        - Contacts
+      x-permission: contacts.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/ContactOwnerFilter'
+      responses:
+        '200':
+          description: A page of contacts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createContact
+      summary: Create a contact.
+      description:
+        The caller becomes the owner and the code is assigned from the `contact` numbering. Only the name is required;
+        the email is not unique (two advisers may keep the same person).
+      tags:
+        - Contacts
+      x-permission: contacts.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contacts/owner-options:
+    get:
+      operationId: listContactOwnerOptions
+      summary: List the people the caller can hand a contact to.
+      description:
+        For the owner selector of the contact form. It returns exactly the people the update accepts as a new owner
+        (active internal users), so the selector never offers someone the server would refuse. With data scope `team`
+        they are the caller's team (themselves, the people under them through the direct manager, directly or not, and
+        their department); with `all`, any of them; with a scope that reaches nobody else (`own`), none. It is
+        authorized by editing contacts, not by viewing users, because the selector must work for who edits a contact whatever
+        they may do in the user screens. Sorted by name; `q` searches name and email.
+      tags:
+        - Contacts
+      x-permission: contacts.edit
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The people, at most `limit`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactOwnerOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/ContactId'
+    get:
+      operationId: getContact
+      summary: Get a contact by id.
+      description:
+        Returns the contact, active or not. One outside the caller's data scope answers 404, never 403, so it does not
+        reveal that it exists.
+      tags:
+        - Contacts
+      x-permission: contacts.view
+      responses:
+        '200':
+          description: The contact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateContact
+      summary: Edit a contact.
+      description:
+        Replaces the contact's data as a whole, so a field left out is cleared. `owner_id` is the exception, because
+        leaving it out keeps the owner. A different owner hands the contact over and needs a scope that reaches other
+        people (`own` answers 403); with `team` the new owner must belong to the caller's team (422 `out_of_scope`) and
+        in every case be an active internal user (422 `not_found`). A stale version answers 409 `conflict`.
+      tags:
+        - Contacts
+      x-permission: contacts.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactUpdate'
+      responses:
+        '200':
+          description: The updated contact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contacts/{contactId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ContactId'
+    post:
+      operationId: deactivateContact
+      summary: Deactivate a contact.
+      description: Logical deactivation. It never blocks and drags nothing along (ADR-0023). Idempotent.
+      tags:
+        - Contacts
+      x-permission: contacts.deactivate
+      responses:
+        '200':
+          description: The deactivated contact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/contacts/{contactId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ContactId'
+    post:
+      operationId: reactivateContact
+      summary: Reactivate a contact.
+      description: Idempotent.
+      tags:
+        - Contacts
+      x-permission: contacts.deactivate
+      responses:
+        '200':
+          description: The reactivated contact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    ContactId:
+      name: contactId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ContactOwnerFilter:
+      name: owner_id
+      in: query
+      required: false
+      description: Only the contacts of this owner, among the ones the caller reaches.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    ContactFields:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: [string, 'null']
+          maxLength: 40
+        mobile:
+          type: [string, 'null']
+          maxLength: 40
+        email:
+          type: [string, 'null']
+          maxLength: 190
+          description: Stored in lower case.
+        address:
+          type: [string, 'null']
+          maxLength: 255
+        zone:
+          type: [string, 'null']
+          maxLength: 100
+        country:
+          type: [string, 'null']
+          maxLength: 100
+    Contact:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - $ref: '#/components/schemas/ContactFields'
+        - type: object
+          required:
+            - code
+            - name
+            - phone
+            - mobile
+            - email
+            - address
+            - zone
+            - country
+            - owner
+            - is_active
+          properties:
+            code:
+              type: string
+              description: Assigned from the `contact` numbering, for example `CON-0001`.
+            owner:
+              $ref: '#/components/schemas/NamedRef'
+            is_active:
+              type: boolean
+    ContactPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contact'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ContactOwnerOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+    ContactCreate:
+      $ref: '#/components/schemas/ContactFields'
+    ContactUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/ContactFields'
+        - type: object
+          properties:
+            owner_id:
+              $ref: '#/components/schemas/Uuid'

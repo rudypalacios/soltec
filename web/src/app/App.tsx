@@ -25,6 +25,8 @@ import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
 import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
+import { ContactCreatePage, ContactEditPage } from '../modules/contacts/ContactFormPage';
+import { ContactsPage } from '../modules/contacts/ContactsPage';
 import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
@@ -114,6 +116,30 @@ export function App() {
           }
         />
         <Route path="catalogo" element={<CatalogPage />} />
+        <Route
+          path="contactos"
+          element={
+            <RequirePermission resource="contacts" action="view">
+              <ContactsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="contactos/nuevo"
+          element={
+            <RequirePermission resource="contacts" action="create">
+              <ContactCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="contactos/:contactId/editar"
+          element={
+            <RequirePermission resource="contacts" action="edit">
+              <ContactEditPage />
+            </RequirePermission>
+          }
+        />
         <Route
           path="auditoria"
           element={

@@ -68,20 +68,53 @@ export class AdminApi {
     return role;
   }
 
-  /** A user with the `admin`-free default profile who already accepted the invitation, so it can sign in. */
-  async createActiveUser(prefix = 'e2e'): Promise<CreatedUser> {
+  /** An internal profile with the given permissions and data scopes, named uniquely. */
+  async createRole(
+    prefix: string,
+    permissions: Record<string, string[]>,
+    scopes: Record<string, string>,
+  ): Promise<Role> {
+    return call<Role>('/roles', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify({
+        name: `${prefix} ${uniqueSuffix()}`,
+        user_type: 'internal',
+        permissions,
+        scopes,
+      }),
+    });
+  }
+
+  /**
+   * A user who already accepted the invitation, so it can sign in. Without `roleId` it gets the first custom profile
+   * (the `admin`-free default); a scenario that depends on what the user may do passes its own. `managerId` places
+   * the user under someone, which is what builds a team.
+   */
+  async createActiveUser(
+    prefix = 'e2e',
+    roleId?: string,
+    managerId?: string,
+  ): Promise<CreatedUser> {
     const suffix = uniqueSuffix();
     const email = `${prefix}-${suffix}@example.test`;
     const name = `${prefix} ${suffix}`;
     const roles = await call<{ data: Role[] }>('/roles?per_page=100', { token: this.token });
-    const role = roles.data.find((candidate) => candidate.code === null) ?? roles.data[0];
+    const role = roleId
+      ? { id: roleId }
+      : (roles.data.find((candidate) => candidate.code === null) ?? roles.data[0]);
     if (!role) {
       throw new Error('There is no profile to give to the new user.');
     }
     const user = await call<{ id: string }>('/users', {
       method: 'POST',
       token: this.token,
-      body: JSON.stringify({ name, email, role_ids: [role.id] }),
+      body: JSON.stringify({
+        name,
+        email,
+        role_ids: [role.id],
+        ...(managerId ? { manager_id: managerId } : {}),
+      }),
     });
     const invitation = await waitForLink(email);
     await call('/auth/invitations/accept', {
