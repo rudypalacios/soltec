@@ -5,6 +5,7 @@ import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
+import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
@@ -28,6 +29,7 @@ import {
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
+import { CATALOG_VIEWS } from '../modules/parameters/parameterViews';
 import { SETTINGS_SECTIONS } from '../modules/settings/sections';
 import { color } from '../theme/tokens';
 import { Brand } from './Brand';
@@ -63,6 +65,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/departamentos',
     icon: <AccountTreeOutlined />,
     permissions: [{ resource: 'departments', action: 'view' }],
+  },
+  {
+    label: 'Catálogo',
+    path: '/catalogo',
+    icon: <CategoryOutlined />,
+    permissions: CATALOG_VIEWS.map((view) => ({ resource: view.resource, action: 'view' })),
   },
   {
     label: 'Auditoría',

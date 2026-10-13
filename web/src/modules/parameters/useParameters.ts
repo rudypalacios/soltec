@@ -6,7 +6,7 @@ import type { ParameterValue, ParameterView } from './parameterViews';
 type ListQuery = NonNullable<paths['/v1/segments']['get']['parameters']['query']>;
 type ParameterPage = { data: ParameterValue[]; meta: components['schemas']['PageMeta'] };
 
-// The five parameters have the same routes and bodies, and only the path placeholder differs. The generated client
+// The catalog lists have the same routes and bodies, and only the path placeholder differs. The generated client
 // types each path on its own, so these helpers state the shared shape once, through the `segments` one.
 const listPath = (view: ParameterView) => `/v1/${view.slug}` as '/v1/segments';
 const itemPath = (view: ParameterView) =>
@@ -17,13 +17,17 @@ const setActivePath = (view: ParameterView, active: boolean) =>
 const itemParams = (view: ParameterView, id: string) =>
   ({ [view.idParam]: id }) as { segmentId: string };
 
-export function useParameterValues(view: ParameterView, query: ListQuery) {
+/** The lists with a parent also filter by it (`area_id`, `category_id`). */
+type ValuesQuery = ListQuery & { area_id?: string; category_id?: string };
+
+export function useParameterValues(view: ParameterView, query: ValuesQuery, enabled = true) {
   const apiClient = useApiClient();
   return useQuery({
     queryKey: ['parameters', view.slug, 'list', query],
     queryFn: async () =>
       unwrap(await apiClient.GET(listPath(view), { params: { query } })) as ParameterPage,
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
@@ -32,8 +36,16 @@ export function useSaveParameterValue(view: ParameterView) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; color?: string; id?: string; version?: number }) => {
-      const { id, version, ...fields } = input;
+    mutationFn: async (input: {
+      name: string;
+      color?: string;
+      /** The parent's id, sent under the list's own field (`area_id`, `category_id`). */
+      parentId?: string;
+      id?: string;
+      version?: number;
+    }) => {
+      const { id, version, parentId, ...rest } = input;
+      const fields = view.parent && parentId ? { ...rest, [view.parent.field]: parentId } : rest;
       return id !== undefined && version !== undefined
         ? unwrap(
             await apiClient.PATCH(itemPath(view), {

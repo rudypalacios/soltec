@@ -50,6 +50,8 @@ tags:
     description: Departments of the organization. The direct manager of each user lives in the user.
   - name: Catalog parameters
     description: Lookup lists that other sections draw their options from (contact types, client statuses, segments, tax regimes, payment methods).
+  - name: Catalog structure
+    description: Brands, areas, product groups, unit categories and units of measure that classify the products.
   - name: Settings
     description: Company data and logo, tax rates, and the numbering of documents.
   - name: Margin levels
@@ -126,7 +128,7 @@ components:
     Conflict:
       description:
         A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `invitation_not_pending`, `system_role_immutable`,
-        `department_in_use`, `default_margin_level`).
+        `department_in_use`, `default_margin_level`, `area_in_use`, `unit_category_in_use`).
       content:
         application/problem+json:
           schema:
@@ -241,6 +243,8 @@ components:
         - last_admin
         - system_role_immutable
         - department_in_use
+        - area_in_use
+        - unit_category_in_use
         - default_margin_level
         - auth_not_configured
     Problem:
@@ -267,6 +271,12 @@ components:
         active_user_count:
           type: integer
           description: With `department_in_use`, how many active users the department still has.
+        active_group_count:
+          type: integer
+          description: With `area_in_use`, how many active product groups the area still has.
+        active_unit_count:
+          type: integer
+          description: With `unit_category_in_use`, how many active units the category still has.
         password_min_length:
           type: integer
           description: With a field error on a password, the minimum length the company requires.

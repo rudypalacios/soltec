@@ -14,6 +14,11 @@ export const ENTITY_LABELS: Record<string, string> = {
   segments: 'Segmentos',
   tax_regimes: 'Regímenes fiscales',
   payment_methods: 'Formas de pago',
+  brands: 'Marcas',
+  areas: 'Áreas',
+  product_groups: 'Grupos de producto',
+  unit_categories: 'Categorías de unidad',
+  units_of_measure: 'Unidades de medida',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -48,6 +53,11 @@ export const ENTITY_NOUNS: Record<string, string> = {
   segments: 'Segmento',
   tax_regimes: 'Régimen fiscal',
   payment_methods: 'Forma de pago',
+  brands: 'Marca',
+  areas: 'Área',
+  product_groups: 'Grupo de producto',
+  unit_categories: 'Categoría de unidad',
+  units_of_measure: 'Unidad de medida',
 };
 
 /**

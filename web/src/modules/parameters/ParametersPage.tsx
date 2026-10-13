@@ -13,6 +13,7 @@ import {
   Tabs,
   TextField,
 } from '@mui/material';
+import { ApiError } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ACTION_ICONS } from '../../components/actionIcons';
@@ -28,7 +29,12 @@ import { statusPalette } from '../../theme/tokens';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ColorField } from './ColorField';
-import { PARAMETER_VIEWS, type ParameterValue, type ParameterView } from './parameterViews';
+import {
+  ALL_VIEWS,
+  PARAMETER_VIEWS,
+  type ParameterValue,
+  type ParameterView,
+} from './parameterViews';
 import {
   useParameterValues,
   useSaveParameterValue,
@@ -36,17 +42,31 @@ import {
 } from './useParameters';
 
 const PER_PAGE = 25;
+const PARENT_OPTIONS = 100;
 const TAB_PARAM = 'parametro';
 
-/**
- * `/configuracion/parametros`: the lookup lists other sections draw their options from. One tab per list, only the
- * ones the user may view (a select on a phone); the tab lives in the address so a reload stays on it.
- */
+/** `/configuracion/parametros`: the lookup lists other sections draw their options from. */
 export function ParametersPage() {
+  return <ParameterLists views={PARAMETER_VIEWS} tabsLabel="Parámetros" selectLabel="Parámetro" />;
+}
+
+/**
+ * One tab per list, only the ones the user may view (a select on a phone); the tab lives in the address so a reload
+ * stays on it. Serves the parameters and the product structure alike.
+ */
+export function ParameterLists({
+  views: allViews,
+  tabsLabel,
+  selectLabel,
+}: {
+  views: readonly ParameterView[];
+  tabsLabel: string;
+  selectLabel: string;
+}) {
   const can = useCan();
   const isMobile = useIsMobile();
   const [params, setParams] = useSearchParams();
-  const views = PARAMETER_VIEWS.filter((view) => can(view.resource, 'view'));
+  const views = allViews.filter((view) => can(view.resource, 'view'));
   const current = views.find((view) => view.slug === params.get(TAB_PARAM)) ?? views[0];
 
   if (!current) {
@@ -60,7 +80,7 @@ export function ParametersPage() {
       {isMobile ? (
         <TextField
           select
-          label="Parámetro"
+          label={selectLabel}
           value={current.slug}
           onChange={(event) => select(event.target.value)}
           fullWidth
@@ -76,7 +96,7 @@ export function ParametersPage() {
         <Tabs
           value={current.slug}
           onChange={(_event, slug: string) => select(slug)}
-          aria-label="Parámetros"
+          aria-label={tabsLabel}
           sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
         >
           {views.map((view) => (
@@ -107,6 +127,40 @@ function ColoredName({ value }: { value: ParameterValue }) {
   );
 }
 
+/** The values of the list a view's values belong to (the areas, for groups), when the user may view them. */
+function useParentOptions(view: ParameterView) {
+  const can = useCan();
+  const parentView = ALL_VIEWS.find((candidate) => candidate.slug === view.parent?.slug);
+  const allowed = parentView !== undefined && can(parentView.resource, 'view');
+  // «all» so a value under an inactive parent can still be found by its filter; the dialog drops the inactive ones.
+  const query = useParameterValues(
+    parentView ?? view,
+    { status: 'all', per_page: PARENT_OPTIONS },
+    allowed,
+  );
+  return { allowed, options: allowed ? query.data?.data : undefined };
+}
+
+/** Why an action on a value failed, with the counts and names the API sends back. */
+function failureMessage(view: ParameterView, value: ParameterValue, error: unknown): string {
+  if (error instanceof ApiError) {
+    const { children, parent } = view;
+    if (children && error.code === children.errorCode) {
+      const count = error.details[children.countField];
+      const text = typeof count === 'number' ? children.label(count) : 'valores activos';
+      return `No se puede desactivar «${value.name}»: tiene ${text}. ${children.hint}`;
+    }
+    if (parent && error.fieldErrors[parent.field] === 'parent_inactive') {
+      const name = value[parent.key]?.name;
+      const which = name ? `${parent.label.toLowerCase()} «${name}»` : parent.label.toLowerCase();
+      return `No se puede reactivar «${value.name}»: ${which} está desactivada. Reactívala primero.`;
+    }
+  }
+  return problemMessage(error, {
+    validation_failed: `Ya hay un valor activo llamado «${value.name}». Renombra uno de los dos primero.`,
+  });
+}
+
 function ParameterList({ view }: { view: ParameterView }) {
   const can = useCan();
   const filters = useListFilters();
@@ -118,12 +172,15 @@ function ParameterList({ view }: { view: ParameterView }) {
     open: boolean;
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [parentFilter, setParentFilter] = useState('');
+  const parents = useParentOptions(view);
 
   const values = useParameterValues(view, {
     q: filters.query,
     status: filters.status,
     page: filters.page + 1,
     per_page: PER_PAGE,
+    ...(view.parent && parentFilter ? { [view.parent.field]: parentFilter } : {}),
   });
   const setActive = useSetParameterValueActive(view);
 
@@ -136,11 +193,7 @@ function ParameterList({ view }: { view: ParameterView }) {
     try {
       await setActive.mutateAsync({ id: value.id, active: activate });
     } catch (error) {
-      setFailure(
-        problemMessage(error, {
-          validation_failed: `Ya hay un valor activo llamado «${value.name}». Renombra uno de los dos primero.`,
-        }),
-      );
+      setFailure(failureMessage(view, value, error));
     } finally {
       setPending({ ...pending, open: false });
     }
@@ -168,6 +221,7 @@ function ParameterList({ view }: { view: ParameterView }) {
     return actions;
   };
 
+  const { parent, children } = view;
   const columns: DataColumn<ParameterValue>[] = [
     {
       id: 'name',
@@ -176,6 +230,26 @@ function ParameterList({ view }: { view: ParameterView }) {
       minWidth: 200,
       render: (value) => <ColoredName value={value} />,
     },
+    ...(parent
+      ? [
+          {
+            id: 'parent',
+            header: parent.label,
+            mobile: 'subtitle' as const,
+            render: (value: ParameterValue) => value[parent.key]?.name ?? '',
+          },
+        ]
+      : []),
+    ...(children
+      ? [
+          {
+            id: 'children',
+            header: children.header,
+            mobile: 'subtitle' as const,
+            render: (value: ParameterValue) => children.label(value[children.countField] ?? 0),
+          },
+        ]
+      : []),
     {
       id: 'status',
       header: 'Estado',
@@ -201,6 +275,25 @@ function ParameterList({ view }: { view: ParameterView }) {
         onSearchChange={filters.setText}
       >
         <StatusFilter value={filters.status} onChange={filters.setStatus} />
+        {parent && parents.allowed ? (
+          <TextField
+            select
+            label={parent.label}
+            value={parentFilter}
+            onChange={(event) => {
+              setParentFilter(event.target.value);
+              filters.resetPage();
+            }}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+          >
+            <MenuItem value="">{parent.allLabel}</MenuItem>
+            {(parents.options ?? []).map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : null}
       </FilterBar>
 
       {failure ? (
@@ -263,28 +356,44 @@ function ValueDialog({
   onClose: () => void;
 }) {
   const save = useSaveParameterValue(view);
+  const parents = useParentOptions(view);
+  const { parent } = view;
+  const [parentId, setParentId] = useState(parent ? (value?.[parent.key]?.id ?? '') : '');
   const [name, setName] = useState(value?.name ?? '');
   const [colorValue, setColorValue] = useState(value?.color ?? statusPalette[0].value);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [parentError, setParentError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // Active parents, plus the one the value already has even if it was deactivated since (ADR-0023).
+  const parentChoices = (parents.options ?? []).filter(
+    (option) => option.is_active || option.id === (parent ? value?.[parent.key]?.id : undefined),
+  );
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setFieldError(null);
+    setParentError(null);
     setFailure(null);
     try {
       await save.mutateAsync({
         name: name.trim(),
         color: view.hasColor ? colorValue : undefined,
+        parentId: parent ? parentId : undefined,
         id: value?.id,
         version: value?.version,
       });
       onClose();
     } catch (error) {
-      const fields = fieldMessages(error, { name: { taken: view.takenMessage } });
+      const fields = fieldMessages(error, {
+        name: { taken: view.takenMessage },
+        ...(parent
+          ? { [parent.field]: { not_found: `Elige ${parent.label.toLowerCase()} activa.` } }
+          : {}),
+      });
       setFieldError(fields.name ?? null);
+      setParentError(parent ? (fields[parent.field] ?? null) : null);
       setFailure(
-        fields.name
+        fields.name || (parent && fields[parent.field])
           ? null
           : problemMessage(error, {
               conflict:
@@ -315,11 +424,34 @@ function ValueDialog({
               onChange={(event) => setName(event.target.value)}
               error={fieldError !== null}
               helperText={fieldError}
-              slotProps={{ htmlInput: { maxLength: 100 } }}
+              slotProps={{ htmlInput: { maxLength: view.nameMax } }}
               required
               fullWidth
               autoFocus
             />
+            {parent ? (
+              <TextField
+                select
+                label={parent.label}
+                value={parentId}
+                onChange={(event) => setParentId(event.target.value)}
+                error={parentError !== null || !parents.allowed}
+                helperText={
+                  parents.allowed
+                    ? parentError
+                    : `No tienes permiso para ver las opciones de ${parent.label.toLowerCase()}.`
+                }
+                disabled={!parents.allowed}
+                required
+                fullWidth
+              >
+                {parentChoices.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
             {view.hasColor ? (
               <ColorField value={colorValue} onChange={setColorValue} disabled={save.isPending} />
             ) : null}
@@ -329,7 +461,11 @@ function ValueDialog({
           <Button variant="outlined" color="inherit" onClick={onClose} disabled={save.isPending}>
             Cancelar
           </Button>
-          <Button type="submit" variant="contained" disabled={save.isPending || !name.trim()}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={save.isPending || !name.trim() || (parent !== undefined && !parentId)}
+          >
             Guardar
           </Button>
         </DialogActions>

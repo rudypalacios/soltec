@@ -27,6 +27,17 @@ describe('groupBySection', () => {
     ]);
   });
 
+  it('groups the product structure in its own section, after the organization', () => {
+    const sections = groupBySection(
+      ['units_of_measure', 'departments', 'brands', 'areas'].map(resource),
+    );
+
+    expect(sections.map((section) => [section.label, section.items.map((i) => i.code)])).toEqual([
+      ['Organización', ['departments']],
+      ['Catálogo', ['brands', 'areas', 'units_of_measure']],
+    ]);
+  });
+
   it('drops the sections with no module', () => {
     const sections = groupBySection([resource('departments')]);
 
