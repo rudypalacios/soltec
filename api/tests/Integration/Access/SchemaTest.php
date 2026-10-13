@@ -18,8 +18,9 @@ final class SchemaTest extends AccessTestCase
     {
         self::assertSame(
             [
-                'audit_logs', 'company', 'departments', 'financial_settings', 'margin_levels', 'roles',
-                'security_settings', 'sequences', 'users',
+                'audit_logs', 'client_statuses', 'company', 'contact_types', 'departments', 'financial_settings',
+                'margin_levels', 'payment_methods', 'roles', 'security_settings', 'segments', 'sequences',
+                'tax_regimes', 'users',
             ],
             $this->connection->fetchFirstColumn('SELECT code FROM resources ORDER BY code'),
         );
@@ -36,9 +37,9 @@ final class SchemaTest extends AccessTestCase
         self::assertSame('internal', $role['user_type']);
         self::assertNull($role['deleted_at']);
         self::assertSame(
-            25,
+            45,
             $this->countRows('SELECT COUNT(*) FROM role_permissions'),
-            'Access, departments and margin levels have every verb; the settings only view and edit.',
+            'Access, departments, margin levels and the parameters have every verb; the settings only view and edit.',
         );
         self::assertSame(
             array_fill(0, 9, 'all'),
@@ -82,7 +83,7 @@ final class SchemaTest extends AccessTestCase
 
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM roles WHERE code = 'admin'"));
         self::assertSame($adminBefore, $this->adminRoleId());
-        self::assertSame(25, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(45, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(9, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
     }
 

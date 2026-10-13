@@ -74,10 +74,9 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Configuración',
     path: '/configuracion',
     icon: <SettingsOutlined />,
-    permissions: SETTINGS_SECTIONS.map((section) => ({
-      resource: section.resource,
-      action: 'view',
-    })),
+    permissions: SETTINGS_SECTIONS.flatMap((section) =>
+      section.resources.map((resource) => ({ resource, action: 'view' })),
+    ),
   },
 ];
 

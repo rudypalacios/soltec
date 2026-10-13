@@ -340,7 +340,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 25;
+        ) === 45;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -358,6 +358,42 @@ abstract class AccessTestCase extends IntegrationTestCase
         $this->connection->executeStatement('DELETE FROM role_scopes WHERE ' . $custom);
         $this->connection->executeStatement('DELETE FROM roles WHERE is_system = 0');
         $this->resetSettings();
+        $this->resetCatalogParameters();
+    }
+
+    /** Puts the five catalog parameters back to what the migration seeds. */
+    private function resetCatalogParameters(): void
+    {
+        $seed = [
+            'contact_types' => ['Comercial', 'Compras', 'Facturación'],
+            'client_statuses' => [
+                'Prospecto aprobado / por activar' => '#0B6BB0',
+                'Activo (nuevo)' => '#00796B',
+                'Activo (recurrente)' => '#1E7A4C',
+                'En riesgo / inactivo temporal' => '#9A5800',
+                'Inactivo / dormido' => '#7C8996',
+                'Perdido' => '#B3261E',
+            ],
+            'segments' => [
+                'Restaurantes', 'Industria Manufacturera', 'Departamentos/Interiorismo', 'Construcción', 'Finanzas',
+                'Educación', 'Servicios', 'Retail',
+            ],
+            'tax_regimes' => ['Pequeño contribuyente', 'General'],
+            'payment_methods' => [],
+        ];
+        foreach ($seed as $table => $values) {
+            $this->connection->executeStatement('DELETE FROM ' . $table);
+            foreach ($values as $key => $value) {
+                $withColor = $table === 'client_statuses';
+                $this->connection->executeStatement(
+                    'INSERT INTO ' . $table . ' (id, name, ' . ($withColor ? 'color, ' : '')
+                    . 'created_at, updated_at) VALUES (UNHEX(:id), :name, ' . ($withColor ? ':color, ' : '')
+                    . 'UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))',
+                    ['id' => Uuid::toHex(Uuid::v7()), 'name' => $withColor ? $key : $value]
+                    + ($withColor ? ['color' => $value] : []),
+                );
+            }
+        }
     }
 
     /** Puts the single-row settings and the sequences back to what the migration seeds. */

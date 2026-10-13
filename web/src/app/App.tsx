@@ -25,6 +25,7 @@ import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
 import { FinancialPage } from '../modules/settings/FinancialPage';
 import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
+import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
 import { useBranding } from '../modules/settings/useSettings';
@@ -153,6 +154,7 @@ export function App() {
               </RequirePermission>
             }
           />
+          <Route path="parametros" element={<ParametersPage />} />
           <Route
             path="seguridad"
             element={
