@@ -23,6 +23,7 @@ use Soltec\Modules\Access\Http\SecuritySettingsController;
 use Soltec\Modules\Access\Http\UserController;
 use Soltec\Modules\Catalog\Domain\ParameterCatalog;
 use Soltec\Modules\Catalog\Http\ParameterController;
+use Soltec\Modules\Contacts\Http\ContactController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Settings\Http\BrandingController;
 use Soltec\Modules\Settings\Http\CompanyController;
@@ -113,6 +114,19 @@ return static function (App $app): void {
             $group->post($item . '/reactivate', [ParameterController::class, 'reactivate'])
                 ->setArguments($rule('deactivate'));
         }
+
+        $group->get('/contacts', [ContactController::class, 'list'])->setArgument('permission', 'contacts.view');
+        $group->get('/contacts/owner-options', [ContactController::class, 'ownerOptions'])
+            ->setArgument('permission', 'contacts.edit');
+        $group->post('/contacts', [ContactController::class, 'create'])->setArgument('permission', 'contacts.create');
+        $group->get('/contacts/{contactId}', [ContactController::class, 'show'])
+            ->setArgument('permission', 'contacts.view');
+        $group->patch('/contacts/{contactId}', [ContactController::class, 'update'])
+            ->setArgument('permission', 'contacts.edit');
+        $group->post('/contacts/{contactId}/deactivate', [ContactController::class, 'deactivate'])
+            ->setArgument('permission', 'contacts.deactivate');
+        $group->post('/contacts/{contactId}/reactivate', [ContactController::class, 'reactivate'])
+            ->setArgument('permission', 'contacts.deactivate');
 
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');

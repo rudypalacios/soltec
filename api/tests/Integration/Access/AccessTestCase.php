@@ -340,7 +340,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 65;
+        ) === 69;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */
@@ -348,7 +348,10 @@ abstract class AccessTestCase extends IntegrationTestCase
     {
         // The hierarchy points users at users: unlink it before deleting them.
         $this->connection->executeStatement('UPDATE users SET manager_id = NULL');
-        $tables = ['audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'users', 'departments'];
+        $tables = [
+            'audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'contacts', 'users',
+            'departments',
+        ];
         foreach ($tables as $table) {
             $this->connection->executeStatement('DELETE FROM ' . $table);
         }
@@ -449,7 +452,7 @@ abstract class AccessTestCase extends IntegrationTestCase
             );
         }
         $seeded = ['client' => ['CLI', 'none'], 'supplier' => ['PRV', 'none'], 'quote' => ['COT', 'month'],
-            'project' => ['PRY', 'month'], 'purchase_order' => ['OC', 'month']];
+            'project' => ['PRY', 'month'], 'purchase_order' => ['OC', 'month'], 'contact' => ['CON', 'none']];
         foreach ($seeded as $code => [$prefix, $period]) {
             $this->connection->executeStatement(
                 'UPDATE sequences SET prefix = :prefix, padding = 4, period = :period, period_key = NULL, '

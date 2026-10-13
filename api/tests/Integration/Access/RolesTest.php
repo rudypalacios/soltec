@@ -353,8 +353,8 @@ final class RolesTest extends AccessTestCase
 
         self::assertSame(
             [
-                'areas', 'audit_logs', 'brands', 'client_statuses', 'company', 'contact_types', 'departments',
-                'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'roles',
+                'areas', 'audit_logs', 'brands', 'client_statuses', 'company', 'contact_types', 'contacts',
+                'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'roles',
                 'security_settings', 'segments', 'sequences', 'tax_regimes', 'unit_categories', 'units_of_measure',
                 'users',
             ],
@@ -374,7 +374,7 @@ final class RolesTest extends AccessTestCase
             array_filter($this->rowsAt($resources, 'data'), static fn (array $row): bool => $row['scoped'] === true),
         ));
 
-        self::assertSame(['audit_logs', 'users'], $scoped);
+        self::assertSame(['audit_logs', 'contacts', 'users'], $scoped);
     }
 
     /** @param array<string, mixed> $overrides */

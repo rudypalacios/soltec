@@ -45,10 +45,10 @@ describe('groupBySection', () => {
   });
 
   it('puts a module nobody listed under «Otros», so a new one never goes missing', () => {
-    const sections = groupBySection(['users', 'payroll', 'contacts'].map(resource));
+    const sections = groupBySection(['users', 'payroll', 'invoices'].map(resource));
 
     expect(sections.map((section) => section.label)).toEqual(['Acceso', 'Otros']);
-    expect(sections[1]?.items.map((item) => item.code)).toEqual(['payroll', 'contacts']);
+    expect(sections[1]?.items.map((item) => item.code)).toEqual(['payroll', 'invoices']);
   });
 
   it('is empty without modules', () => {

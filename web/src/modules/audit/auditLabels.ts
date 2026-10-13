@@ -19,6 +19,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   product_groups: 'Grupos de producto',
   unit_categories: 'Categorías de unidad',
   units_of_measure: 'Unidades de medida',
+  contacts: 'Contactos',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -58,6 +59,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   product_groups: 'Grupo de producto',
   unit_categories: 'Categoría de unidad',
   units_of_measure: 'Unidad de medida',
+  contacts: 'Contacto',
 };
 
 /**
@@ -77,6 +79,9 @@ export function recordPath(
   }
   if (entityType === 'roles' && can('roles', 'view')) {
     return `/perfiles/${entityId}`;
+  }
+  if (entityType === 'contacts' && can('contacts', 'edit')) {
+    return `/contactos/${entityId}/editar`;
   }
   return null;
 }

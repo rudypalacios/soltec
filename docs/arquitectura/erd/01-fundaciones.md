@@ -188,7 +188,7 @@ Numeración única y a prueba de concurrencia (clientes, proveedores, cotizacion
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `code` | `VARCHAR(50)` | `client`, `supplier`, `quote`, `project`, `purchase_order` |
+| `code` | `VARCHAR(50)` | `client`, `supplier`, `quote`, `project`, `purchase_order`; la rebanada 2.3a agrega `contact` (`CON`, sin período) |
 | `name` | `VARCHAR(100)` | Texto para la pantalla |
 | `prefix` | `VARCHAR(10)` | Letras y dígitos |
 | `padding` | `TINYINT UNSIGNED` | Ceros a la izquierda (no recorta) |

@@ -52,6 +52,8 @@ tags:
     description: Lookup lists that other sections draw their options from (contact types, client statuses, segments, tax regimes, payment methods).
   - name: Catalog structure
     description: Brands, areas, product groups, unit categories and units of measure that classify the products.
+  - name: Contacts
+    description: People that advisers keep, each owned by the user who entered it.
   - name: Settings
     description: Company data and logo, tax rates, and the numbering of documents.
   - name: Margin levels
