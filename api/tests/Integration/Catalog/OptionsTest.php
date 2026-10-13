@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Soltec\Tests\Integration\Catalog;
 
+use Soltec\Kernel\Uuid;
+use Soltec\Modules\Access\Persistence\UserRepository;
 use Soltec\Tests\Integration\Access\AccessTestCase;
 
-/** ADR-0024: who fills a form may choose among the values of another section without any access to that section. */
+/** ADR-0024: any internal session may choose among the values of another section without access to that section. */
 final class OptionsTest extends AccessTestCase
 {
     private string $adminToken;
@@ -32,50 +34,44 @@ final class OptionsTest extends AccessTestCase
         self::assertSame(['id', 'name'], array_keys($this->rowsAt($options, 'data')[0]));
     }
 
-    public function testWhoCreatesOrEditsProductGroupsMayChooseTheAreaWithoutAnyAccessToAreas(): void
+    public function testAnyInternalUserReadsTheOptionsWithoutAnyPermissionOnTheSection(): void
     {
-        foreach (['create', 'edit'] as $action) {
-            $token = $this->tokenWith('product_groups', 'view', $action);
+        // A role with nothing on catalog sections, and a user with no role at all.
+        $unrelated = $this->tokenWith('contacts', 'view');
+        $roleless = $this->tokenFor($this->createUser('roleless@example.com')['id']);
 
-            $options = $this->api('GET', '/areas/options', $token);
-            self::assertSame(200, $options->getStatusCode(), $action);
-            self::assertContains('Cableado', $this->columnAt($this->json($options), 'name', 'data'), $action);
-
-            // The administration of the section still needs its own permission.
-            self::assertSame(403, $this->api('GET', '/areas', $token)->getStatusCode(), $action);
-            self::assertSame(403, $this->api('POST', '/areas', $token, ['name' => 'Nueva'])->getStatusCode(), $action);
+        foreach ([$unrelated, $roleless] as $token) {
+            foreach (['/areas/options', '/unit-categories/options'] as $path) {
+                self::assertSame(200, $this->api('GET', $path, $token)->getStatusCode(), $path);
+            }
+            // The section itself keeps its own permissions: the list, the creation and the edition.
+            self::assertSame(403, $this->api('GET', '/areas', $token)->getStatusCode());
+            self::assertSame(403, $this->api('POST', '/areas', $token, ['name' => 'Nueva'])->getStatusCode());
         }
     }
 
-    public function testViewingOrDeactivatingProductGroupsIsNotEnoughToReadTheOptions(): void
+    public function testAnExternalUserNeverReadsTheOptions(): void
     {
-        $viewer = $this->tokenWith('product_groups', 'view', 'deactivate');
+        $id = Uuid::v7();
+        $this->service(UserRepository::class)->insert(
+            $id,
+            'external',
+            'Cliente',
+            'cliente@example.com',
+            null,
+            false,
+            $this->clock->now(),
+        );
+        $token = $this->tokenFor($id);
 
-        self::assertSame(403, $this->api('GET', '/areas/options', $viewer)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/areas/options', $token)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/unit-categories/options', $token)->getStatusCode());
     }
 
-    public function testWhoManagesAreasReadsTheOptionsToo(): void
+    public function testNeedsASession(): void
     {
-        $token = $this->tokenWith('areas', 'view');
-
-        self::assertSame(200, $this->api('GET', '/areas/options', $token)->getStatusCode());
-    }
-
-    public function testTheOptionsOfOneListAreNotOpenedByTheConsumersOfAnother(): void
-    {
-        $units = $this->tokenWith('units_of_measure', 'view', 'create');
-
-        self::assertSame(200, $this->api('GET', '/unit-categories/options', $units)->getStatusCode());
-        self::assertSame(403, $this->api('GET', '/areas/options', $units)->getStatusCode());
-    }
-
-    public function testNeedsASessionAndSomePermission(): void
-    {
-        $nobody = $this->tokenFor($this->createUser('nobody@example.com')['id']);
-
         self::assertSame(401, $this->api('GET', '/areas/options')->getStatusCode());
-        self::assertSame(403, $this->api('GET', '/areas/options', $nobody)->getStatusCode());
-        self::assertSame(403, $this->api('GET', '/unit-categories/options', $nobody)->getStatusCode());
+        self::assertSame(401, $this->api('GET', '/unit-categories/options')->getStatusCode());
     }
 
     public function testAListNobodyConsumesYetHasNoOptionsRoute(): void

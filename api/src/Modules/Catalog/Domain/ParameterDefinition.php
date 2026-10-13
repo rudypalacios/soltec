@@ -28,13 +28,11 @@ final class ParameterDefinition
         /** Set when values of another list belong to each value of this one. */
         public readonly ?ChildLink $children = null,
         /**
-         * Permission resources of the forms that choose a value of this list. Whoever creates or edits in one of them
-         * may read the options list (id and name of the active values) without any permission on this section
-         * (ADR-0024). Empty when no form consumes the list yet, so it offers no options route.
-         *
-         * @var list<string>
+         * Set when a form already chooses a value of this list: the API then serves `/options` (id and name of the
+         * active values) to any internal session (ADR-0024). Off until the first form needs it, so no unused route
+         * is specified.
          */
-        public readonly array $optionConsumers = [],
+        public readonly bool $offersOptions = false,
     ) {
     }
 }

@@ -14,8 +14,8 @@ use Soltec\Kernel\Http\ApiException;
 
 /**
  * Checks the permission a route declares. Denies by default. The rule is `<resource>.<action>`, or several of them
- * joined with `|` when any one is enough (the options lists of ADR-0024: who may administer a section or edit one that
- * consumes it).
+ * joined with `|` when any one is enough, or one of the markers `public`, `authenticated` and `internal` (a session of
+ * an internal user, which the options lists of ADR-0024 use: no external client reads the company's lists).
  */
 final class PermissionMiddleware implements MiddlewareInterface
 {
@@ -31,6 +31,13 @@ final class PermissionMiddleware implements MiddlewareInterface
         }
 
         $user = $request->getAttribute(AuthenticationMiddleware::USER_ATTRIBUTE);
+        if ($permission === AuthenticationMiddleware::INTERNAL) {
+            if ($user instanceof CurrentUser && $user->type === 'internal') {
+                return $handler->handle($request);
+            }
+
+            throw ApiException::forbidden();
+        }
         if ($user instanceof CurrentUser) {
             foreach (explode('|', $permission) as $alternative) {
                 [$resource, $action] = array_pad(explode('.', $alternative, 2), 2, '');
