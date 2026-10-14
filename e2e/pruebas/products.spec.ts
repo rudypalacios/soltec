@@ -245,16 +245,20 @@ test('whoever edits products creates a brand from the form only with the permiss
   await expect(editorPage.getByRole('combobox', { name: /^Área y grupo/ })).toHaveValue(
     group.label,
   );
-  await expect(editorPage.getByRole('button', { name: 'Crear marca' })).toHaveCount(0);
-  await expect(editorPage.getByRole('button', { name: 'Crear grupo' })).toHaveCount(0);
+  // Without `create` on brands, a brand that does not exist is not offered for creation.
+  await editorPage.getByRole('combobox', { name: /^Marca/ }).fill(`Marca ${suffix}`);
+  await expect(editorPage.getByText('Nada coincide')).toBeVisible();
+  await expect(editorPage.getByRole('option', { name: /^Crear/ })).toHaveCount(0);
 
   const branderPage = await browser.newPage();
   await signIn(branderPage, brander.email, brander.password);
   await branderPage.goto(`/productos/${product.id}/editar`);
-  await branderPage.getByRole('button', { name: 'Crear marca' }).click();
   const brandName = `Marca ${suffix}`;
+  await branderPage.getByRole('combobox', { name: /^Marca/ }).fill(brandName);
+  await branderPage.getByRole('option', { name: `Crear "${brandName}"` }).click();
   const dialog = branderPage.getByRole('dialog', { name: 'Nueva marca' });
-  await dialog.getByLabel(/^Nombre/).fill(brandName);
+  // The dialog starts from what was typed in the search.
+  await expect(dialog.getByLabel(/^Nombre/)).toHaveValue(brandName);
   await dialog.getByRole('button', { name: 'Crear' }).click();
   await expect(branderPage.getByRole('combobox', { name: /^Marca/ })).toHaveValue(brandName);
 });
@@ -293,5 +297,39 @@ test(
     const dialog = page.getByRole('dialog', { name: 'Ver con otro margen' });
     await expect(dialog.getByText(/^Q\s?\d+\.\d{2}$/)).toBeVisible();
     await dialog.getByRole('button', { name: 'Cerrar' }).click();
+  },
+);
+
+test(
+  'a supplier is registered from the search of the product form and the product is saved with it',
+  { tag: '@mobile' },
+  async ({ page, admin, isMobile }) => {
+    const suffix = uniqueSuffix();
+    const supplierName = `E2E alta ${suffix}`;
+    const productName = `E2E producto alta ${suffix}`;
+    const group = await admin.createProductGroup();
+    await signIn(page, ADMIN.email, ADMIN.password);
+    const products = new ProductsPage(page, isMobile);
+    await page.goto('/productos/nuevo');
+
+    await products.fillForm({ name: productName, cost: '10' });
+    await page.getByRole('combobox', { name: /^Proveedor/ }).fill(supplierName);
+    await page.getByRole('option', { name: `Crear "${supplierName}"` }).click();
+    const dialog = page.getByRole('dialog', { name: 'Nuevo proveedor' });
+    await expect(dialog.getByLabel(/^Nombre/)).toHaveValue(supplierName);
+    await dialog.getByRole('combobox', { name: 'Identificación' }).click();
+    await page.getByRole('option', { name: 'Sin identificación' }).click();
+    await dialog.getByRole('button', { name: 'Crear' }).click();
+    await expect(dialog).toBeHidden();
+    // Back in the product form, with what was typed kept and the new supplier chosen.
+    await expect(page.getByRole('combobox', { name: /^Proveedor/ })).toHaveValue(supplierName);
+    await expect(page.getByRole('textbox', { name: /^Nombre/ })).toHaveValue(productName);
+
+    await products.choose(/^Área y grupo/, group.label);
+    await products.choose(/^Unidad de medida/, 'Unidad');
+    await products.save();
+    await page.waitForURL((url) => url.pathname === '/productos');
+    await products.search(productName);
+    await expect(products.list.getByText(supplierName)).toBeVisible();
   },
 );

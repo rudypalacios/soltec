@@ -8,7 +8,7 @@ import {
   MenuItem,
   TextField,
 } from '@mui/material';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { fieldMessages, problemMessage } from '../access/messages';
 import type { ParameterView } from './parameterViews';
 import { useSaveParameterValue } from './useParameters';
@@ -30,6 +30,7 @@ export function QuickParameterDialog({
   onClose,
   onCreated,
   parents,
+  initialName = '',
 }: {
   view: ParameterView;
   open: boolean;
@@ -37,6 +38,8 @@ export function QuickParameterDialog({
   onCreated: (created: Choice) => void;
   /** The values to choose the parent among, for a list that has one. */
   parents?: Choice[];
+  /** The name to start with, when the person already typed it to search (the «Crear "…"» option). */
+  initialName?: string;
 }) {
   const save = useSaveParameterValue(view);
   const [name, setName] = useState('');
@@ -44,6 +47,15 @@ export function QuickParameterDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
   const parentField = view.parent?.field;
+
+  // Each time it opens it starts from what was typed, with no leftovers of the previous attempt.
+  useEffect(() => {
+    if (open) {
+      setName(initialName);
+      setErrors({});
+      setFailure(null);
+    }
+  }, [open, initialName]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
