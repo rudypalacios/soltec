@@ -26,6 +26,9 @@ final class BundleController
     /** The most components a bundle takes: a bundle of hundreds of lines is a mistake, and every read adds them up. */
     private const MAX_ITEMS = 100;
 
+    /** The most bundles a bulk action takes, as in Products. */
+    private const MAX_BULK = 500;
+
     public function __construct(private readonly BundleService $bundles)
     {
     }
@@ -125,6 +128,35 @@ final class BundleController
         $view = $this->bundles->reactivate(ActorContext::fromRequest($request), $this->pathId($args, 'bundleId'));
 
         return Json::write($response, $view->toApi());
+    }
+
+    public function deactivateMany(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return Json::write($response, $this->bundles->deactivateMany(
+            ActorContext::fromRequest($request),
+            $this->ids($request),
+        ));
+    }
+
+    public function reactivateMany(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return Json::write($response, $this->bundles->reactivateMany(
+            ActorContext::fromRequest($request),
+            $this->ids($request),
+        ));
+    }
+
+    /** @return list<string> the `ids` of a bulk body */
+    private function ids(ServerRequestInterface $request): array
+    {
+        $input = Input::body($request);
+        $ids = (array) $input->uuidList('ids');
+        if (count($ids) > self::MAX_BULK) {
+            $input->fail('ids', 'too_many');
+        }
+        $input->done();
+
+        return $ids;
     }
 
     /** The fields a person types. An empty optional field is stored as nothing. */

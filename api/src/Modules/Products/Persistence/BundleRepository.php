@@ -209,6 +209,57 @@ final class BundleRepository
         );
     }
 
+    /**
+     * What the bulk actions need to decide per bundle, with the rows locked in id order so two bulk changes never wait
+     * on each other in opposite orders.
+     *
+     * @param list<string> $ids
+     * @return array<string, array{active: bool, group_active: bool}> by id; missing ids are not in it
+     */
+    public function lockedStates(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        [$in, $params] = $this->inList($ids);
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT LOWER(HEX(b.id)) AS id, b.deleted_at, g.deleted_at AS group_deleted_at '
+            . 'FROM bundles b JOIN product_groups g ON g.id = b.group_id WHERE b.id IN (' . $in . ') '
+            . 'ORDER BY b.id FOR UPDATE',
+            $params,
+        );
+
+        $states = [];
+        foreach ($rows as $row) {
+            $states[Uuid::fromHex(Row::string($row, 'id'))] = [
+                'active' => ($row['deleted_at'] ?? null) === null,
+                'group_active' => ($row['group_deleted_at'] ?? null) === null,
+            ];
+        }
+
+        return $states;
+    }
+
+    /**
+     * Deactivates (a date) or reactivates (null) the given bundles and bumps their version.
+     *
+     * @param list<string> $ids
+     */
+    public function setDeletedAtMany(array $ids, ?DateTimeImmutable $deletedAt, DateTimeImmutable $now): void
+    {
+        foreach (array_chunk($ids, 200) as $chunk) {
+            [$in, $params] = $this->inList($chunk);
+            $this->connection->executeStatement(
+                'UPDATE bundles SET deleted_at = :deleted_at, updated_at = :now, version = version + 1 '
+                . 'WHERE id IN (' . $in . ')',
+                $params + [
+                    'deleted_at' => $deletedAt === null ? null : Timestamps::toDb($deletedAt),
+                    'now' => Timestamps::toDb($now),
+                ],
+            );
+        }
+    }
+
     /** Whether the row of a table the bundle points at exists and is active; the locked read is for a save. */
     public function isActive(string $table, string $id): bool
     {

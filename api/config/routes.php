@@ -179,6 +179,10 @@ return static function (App $app): void {
         $group->get('/bundles/candidates', [BundleController::class, 'candidates'])
             ->setArgument('permission', 'bundles.view');
         $group->post('/bundles', [BundleController::class, 'create'])->setArgument('permission', 'bundles.create');
+        $group->post('/bundles/deactivate', [BundleController::class, 'deactivateMany'])
+            ->setArgument('permission', 'bundles.deactivate');
+        $group->post('/bundles/reactivate', [BundleController::class, 'reactivateMany'])
+            ->setArgument('permission', 'bundles.deactivate');
         $group->get('/bundles/{bundleId}', [BundleController::class, 'show'])
             ->setArgument('permission', 'bundles.view');
         $group->patch('/bundles/{bundleId}', [BundleController::class, 'update'])
