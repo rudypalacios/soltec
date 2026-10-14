@@ -7,6 +7,7 @@ namespace Soltec\Modules\Settings\Application;
 use Soltec\Kernel\Http\ValidationException;
 use Soltec\Modules\Settings\Domain\MarginLevelRecord;
 use Soltec\Modules\Settings\Domain\Price;
+use Soltec\Modules\Settings\Domain\PriceBasis;
 use Soltec\Modules\Settings\Domain\PriceCalculator;
 use Soltec\Modules\Settings\Domain\PriceException;
 use Soltec\Modules\Settings\Persistence\FinancialSettingsRepository;
@@ -24,6 +25,34 @@ final class PriceService
         private readonly MarginLevelRepository $levelRepository,
         private readonly FinancialSettingsRepository $settings,
     ) {
+    }
+
+    /**
+     * The level and rates to price many costs with. Prices always start from the cost, never from another price: a
+     * different level is a different basis for the same cost, so a margin is never applied on top of a margin.
+     *
+     * @param string|null $marginLevelId null for the default level
+     * @throws ValidationException `margin_level_id` unknown or deactivated
+     */
+    public function basis(?string $marginLevelId): PriceBasis
+    {
+        $level = $marginLevelId === null ? $this->levels->default() : $this->levelRepository->find($marginLevelId);
+        if ($level === null || !$level->isActive()) {
+            throw ValidationException::field('margin_level_id', 'invalid');
+        }
+        $settings = $this->settings->get();
+
+        return new PriceBasis($level, $settings->vatRate, $settings->incomeTaxRate, $settings->staleCostDays);
+    }
+
+    /** The price of a stored cost, or null when it would not fit (an extreme rate), which a list shows as no price. */
+    public function priceFor(PriceBasis $basis, string $cost): ?Price
+    {
+        try {
+            return $this->calculator->calculate($cost, $basis->vatRate, $basis->incomeTaxRate, $basis->level->rate);
+        } catch (PriceException) {
+            return null;
+        }
     }
 
     /**

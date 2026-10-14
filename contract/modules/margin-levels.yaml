@@ -1,4 +1,29 @@
 paths:
+  /v1/margin-levels/options:
+    get:
+      operationId: listMarginLevelOptions
+      summary: List the active margin levels to choose from.
+      description:
+        For the selector of the screens that show prices (the product list). It returns the id, the name and the rate
+        of the active levels, sorted by margin, and which one is the default. Any internal session may read it, so a
+        price list can offer them without any access to this section (ADR-0024). The complete list, with the inactive
+        levels, still needs `margin_levels.view`.
+      tags:
+        - Margin levels
+      x-permission: internal
+      responses:
+        '200':
+          description: The active levels.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarginLevelOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/margin-levels:
     get:
       operationId: listMarginLevels
@@ -243,6 +268,32 @@ components:
       schema:
         $ref: '#/components/schemas/Uuid'
   schemas:
+    MarginLevelOption:
+      type: object
+      required:
+        - id
+        - name
+        - rate
+        - is_default
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        rate:
+          type: string
+          description: The share of the selling price that is margin, as a decimal string such as `0.33000`.
+        is_default:
+          type: boolean
+    MarginLevelOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginLevelOption'
     MarginLevel:
       allOf:
         - $ref: '#/components/schemas/RecordMeta'

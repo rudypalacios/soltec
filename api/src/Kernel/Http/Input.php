@@ -209,6 +209,17 @@ final class Input
         return $this->reject($field, 'invalid');
     }
 
+    /** A UUID that must be there (a required reference). */
+    public function requiredUuid(string $field): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return $this->missing($field, true);
+        }
+
+        return is_string($value) && Uuid::isValid($value) ? $value : $this->reject($field, 'invalid');
+    }
+
     /** A UUID, or null when absent, null or empty (for optional references and filters). */
     public function nullableUuid(string $field): ?string
     {
@@ -283,6 +294,17 @@ final class Input
         }
 
         return $match[1] . '.' . str_pad($match[2] ?? '', $scale, '0');
+    }
+
+    /** Like optionalDecimal() but the value must be there. */
+    public function requiredDecimal(string $field, int $integerDigits, int $scale): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return $this->missing($field, true);
+        }
+
+        return $this->optionalDecimal($field, $integerDigits, $scale);
     }
 
     /**

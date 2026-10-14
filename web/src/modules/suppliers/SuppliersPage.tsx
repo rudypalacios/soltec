@@ -145,8 +145,8 @@ export function SuppliersPage() {
         title={pending?.activate ? 'Reactivar proveedor' : 'Desactivar proveedor'}
         message={
           pending?.activate
-            ? `«${pending.supplier.name}» volverá a aparecer en las listas y a poder elegirse.`
-            : `«${pending?.supplier.name ?? ''}» dejará de aparecer en las listas activas. Sus datos y su identificación se conservan: para volver a registrarlo se reactiva este mismo proveedor.`
+            ? `«${pending.supplier.name}» volverá a aparecer en las listas y a poder elegirse. Sus productos desactivados con él no se reactivan solos: se reactivan desde Productos.`
+            : `«${pending?.supplier.name ?? ''}» dejará de aparecer en las listas activas y sus productos activos también se desactivarán. Sus datos y su identificación se conservan: para volver a registrarlo se reactiva este mismo proveedor.`
         }
         confirmLabel={pending?.activate ? 'Reactivar' : 'Desactivar'}
         destructive={pending?.activate === false}

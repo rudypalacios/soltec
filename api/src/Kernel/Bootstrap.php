@@ -25,6 +25,8 @@ use Soltec\Kernel\Mail\PhpMailerTransport;
 use Soltec\Modules\Access\Deploy\AccessRequirements;
 use Soltec\Modules\Access\Deploy\AdminFromEnvStep;
 use Soltec\Modules\Access\Persistence\PermissionLoader;
+use Soltec\Modules\Products\Application\ProductDeactivationCascade;
+use Soltec\Modules\Suppliers\Application\DeactivationCascade;
 
 use function DI\autowire;
 use function DI\factory;
@@ -83,6 +85,7 @@ final class Bootstrap
                 PostMigrationStep::class => autowire(AdminFromEnvStep::class),
                 ResponseFactoryInterface::class => new ResponseFactory(),
                 MailTransport::class => autowire(PhpMailerTransport::class),
+                DeactivationCascade::class => autowire(ProductDeactivationCascade::class),
                 Connection::class => factory(
                     static fn (Config $settings): Connection => ConnectionFactory::create($settings),
                 ),
