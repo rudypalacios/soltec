@@ -133,11 +133,20 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - **Criterio de cierre del Hito 2:** las rebanadas en `develop` y desplegadas en `staging`; el E2E de cada una en verde; ERD y `TODO.md` al día; P3 anotada como provisional; pendientes de abajo registrados
 - **Pendientes anotados (no bloquean el hito):**
   - Formas de pago: sin siembra hasta que el usuario las defina
-  - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior. El usuario propuso, para mucho más adelante, un sistema interno de solicitudes y avisos («tal usuario pidió tal cosa a tal área») que sustituya los «avísale al administrador / a tu jefe»; ver la nota del motor de estados y las notificaciones del Hito 3
+  - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior; ver «Solicitudes internas y avisos» abajo
   - Volcado de estructura del legacy: el usuario lo entregará; se revisa antes del Hito 3
   - Regla completa del CUI (dígito verificador y municipio) si hiciera falta
   - Valores de costo desactualizado (`stale_cost_days`, hoy 90) y colores de los estados: provisionales
 - **Fuera:** cotizaciones, conversión automática a cliente, aviso a cotizaciones vigentes, inventario y stock, descuento y anidación de paquetes, conversiones entre unidades, historial de compras, pantallas del usuario externo (Hito 9), PM3, PM4, PM8 y PM13.
+
+### Solicitudes internas y avisos entre áreas (idea del usuario, 2026-10-14; **no se construye ahora**)
+Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal área») que sustituya los «avísale a administración / a tu jefe». Se decide al planear el hito donde ya existan tareas, notificaciones y tickets: lo más probable es el **Hito 7 (helpdesk extendido)**, y antes solo si el Hito 3 ya trae lo necesario. Hasta entonces el cierre del flujo de catálogo y clientes va primero.
+- **Cómo se llega con la lista completa:** cada rebanada que escriba un mensaje del tipo «consulta con tu jefe / pide a administración» lo anota aquí. La solicitud sería una tarea con destinatario (quién pide, qué, a qué área o rol) sobre el motor de estados, el hilo y las notificaciones del Hito 3.
+- **Regla que ya aplica:** quien pide no debe ver datos del registro ajeno; quien resuelve, sí.
+- **Puntos anotados hasta hoy:**
+  - 2.3b: NIT o CUI de un proveedor **activo** repetido: el mensaje manda a consultar con el jefe directo o con administración (ADR-0022)
+  - 2.3b: NIT o CUI de un proveedor **desactivado**: quien no puede reactivar debe pedir la reactivación a administración (ADR-0022, enmienda)
+  - 2.5 (por construir): lo mismo para clientes, sin nombrar el registro; y el acceso a un cliente que ya tiene otro asesor
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
 - [ ] Motor de estados
@@ -171,6 +180,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [ ] RRHH y comisiones
 - [ ] Reportes e indicadores
 - [ ] Helpdesk extendido y mantenimiento
+- [ ] Solicitudes internas y avisos entre áreas (candidata; ver la nota bajo el Hito 2, se decide al planear este hito)
 - [ ] Sala de reuniones
 - **Fuera:** móvil y portal.
 
