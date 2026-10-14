@@ -92,7 +92,8 @@ export class ProductsPage {
 
   async fillForm(fields: { name?: string; cost?: string }): Promise<void> {
     if (fields.name !== undefined) {
-      await this.page.getByLabel(/^Nombre/).fill(fields.name);
+      // A textbox, because the «Ordenar por» select of the list also reads «Nombre» until the page changes.
+      await this.page.getByRole('textbox', { name: /^Nombre/ }).fill(fields.name);
     }
     if (fields.cost !== undefined) {
       await this.page.getByLabel(/^Costo con IVA/).fill(fields.cost);
