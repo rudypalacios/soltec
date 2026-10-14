@@ -305,7 +305,7 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
       {bundle ? (
         <Stack spacing={0.5}>
           <Typography variant="body2" color="text.secondary">
-            Costo más antiguo revisado el {formatMoment(bundle.cost_updated_at)}.
+            Costo más antiguo revisado el {formatMoment(bundle.cost_updated_at)}
           </Typography>
           {bundle.cost_is_stale ? (
             <StatusBadge tone="warning" label="Costo desactualizado" />

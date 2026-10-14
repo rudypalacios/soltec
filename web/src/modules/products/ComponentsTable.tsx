@@ -108,7 +108,7 @@ function QuantityField({
           ),
         },
       }}
-      sx={{ width: { xs: 150, md: 160 } }}
+      sx={{ width: { xs: 128, md: 160 }, flexShrink: 0 }}
     />
   );
 }
@@ -283,7 +283,13 @@ function CompactList({
                 × {money(line.cost)}
               </Typography>
               <Typography
-                sx={{ pt: 0.75, ml: 'auto', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+                sx={{
+                  pt: 0.75,
+                  flexGrow: 1,
+                  textAlign: 'right',
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
               >
                 {money(lineCostPreview({ quantity: line.quantity, cost: line.cost }))}
               </Typography>
