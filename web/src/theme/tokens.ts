@@ -27,6 +27,8 @@ export const color = {
   success: { main: '#1E7A4C', tint: '#E3F4EA' },
   warning: { main: '#9A5800', tint: '#FFF1D6' },
   error: { main: '#B3261E', tint: '#FCE8E6' },
+  /** Marks what a search matched; dark text on it reaches 4.5:1. */
+  highlight: '#FFE9A8',
 } as const;
 
 /**

@@ -1,4 +1,5 @@
 import { Box } from '@mui/material';
+import { color } from '../theme/tokens';
 
 /** Text with the part that matches what was searched marked, so the eye finds why a row came up. */
 export function Highlight({ text, match }: { text: string; match: string | undefined }) {
@@ -12,7 +13,7 @@ export function Highlight({ text, match }: { text: string; match: string | undef
       {text.slice(0, index)}
       <Box
         component="mark"
-        sx={{ bgcolor: 'warning.light', color: 'inherit', borderRadius: 0.5, px: 0.25 }}
+        sx={{ bgcolor: color.highlight, color: color.ink, borderRadius: 0.5, px: 0.25 }}
       >
         {text.slice(index, index + needle.length)}
       </Box>
