@@ -19,6 +19,9 @@ export function formatMoney(value: string | null | undefined, currencyCode: stri
   return new Intl.NumberFormat('es-GT', {
     style: 'currency',
     currency: currencyCode,
+    // The symbol («Q»), not the code («GTQ»): the code is what phones without the es-GT data fall back to, and it is
+    // wider than the columns of the lists were drawn for.
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
   }).format(Number(value));
