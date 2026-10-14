@@ -80,6 +80,68 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/bundles/deactivate:
+    post:
+      operationId: deactivateBundles
+      summary: Deactivate several bundles.
+      description: >-
+        Up to 500 `ids`, in one transaction and with an entry in the history per bundle. A bundle already inactive counts as
+        `unchanged`. An id that does not exist fails the whole call (422 `ids: not_found`).
+      tags:
+        - Bundles
+      x-permission: bundles.deactivate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BundleIds'
+      responses:
+        '200':
+          description: What happened to the bundles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BundleBulkResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/bundles/reactivate:
+    post:
+      operationId: reactivateBundles
+      summary: Reactivate several bundles.
+      description: >-
+        Up to 500 `ids`. A bundle whose group is still deactivated stays as it is and counts as `blocked`. An id that does
+        not exist fails the whole call (422 `ids: not_found`).
+      tags:
+        - Bundles
+      x-permission: bundles.deactivate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BundleIds'
+      responses:
+        '200':
+          description: What happened to the bundles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BundleBulkResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/bundles/candidates:
     get:
       operationId: listBundleCandidates
@@ -258,6 +320,34 @@ components:
       schema:
         $ref: '#/components/schemas/Uuid'
   schemas:
+    BundleIds:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+    BundleBulkResult:
+      type: object
+      required:
+        - affected
+        - unchanged
+        - blocked
+      properties:
+        affected:
+          type: integer
+          description: How many changed.
+        unchanged:
+          type: integer
+          description: How many were already as asked.
+        blocked:
+          type: integer
+          description: How many could not be reactivated because their group is deactivated.
     BundleItemInput:
       type: object
       required:

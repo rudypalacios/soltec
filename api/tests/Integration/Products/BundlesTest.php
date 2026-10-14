@@ -320,6 +320,81 @@ final class BundlesTest extends ProductsTestCase
         self::assertSame(404, $this->statusOf('POST', '/bundles/' . self::GONE . '/deactivate'));
     }
 
+    public function testDeactivatesAndReactivatesSeveralWithOneEntryEachAndCountsWhatWasAlreadyAsked(): void
+    {
+        $cable = $this->text($this->makeProduct('Cable'), 'id');
+        [$a, $b, $c] = array_map(
+            fn (string $name): string => $this->text($this->makeBundle($name, [$this->line($cable, '1')]), 'id'),
+            ['Uno', 'Dos', 'Tres'],
+        );
+        $this->api('POST', '/bundles/' . $c . '/deactivate', $this->adminToken);
+
+        $off = $this->api('POST', '/bundles/deactivate', $this->adminToken, ['ids' => [$a, $b, $c]]);
+
+        self::assertSame(200, $off->getStatusCode());
+        self::assertSame(['affected' => 2, 'unchanged' => 1, 'blocked' => 0], $this->json($off));
+        foreach ([$a, $b] as $id) {
+            self::assertFalse($this->bundle($id)['is_active']);
+            self::assertSame(['create', 'deactivate'], array_column($this->auditEntries('bundles', $id), 'action'));
+            self::assertSame(2, $this->bundle($id)['version']);
+        }
+        // The one already off was not touched again.
+        self::assertSame(['create', 'deactivate'], array_column($this->auditEntries('bundles', $c), 'action'));
+
+        $on = $this->api('POST', '/bundles/reactivate', $this->adminToken, ['ids' => [$a, $b, $c]]);
+
+        self::assertSame(['affected' => 3, 'unchanged' => 0, 'blocked' => 0], $this->json($on));
+        self::assertTrue($this->bundle($a)['is_active']);
+        $again = $this->api('POST', '/bundles/reactivate', $this->adminToken, ['ids' => [$a]]);
+        self::assertSame(['affected' => 0, 'unchanged' => 1, 'blocked' => 0], $this->json($again));
+    }
+
+    public function testReactivatingLeavesBlockedTheBundlesWhoseGroupIsOff(): void
+    {
+        $cable = $this->text($this->makeProduct('Cable'), 'id');
+        $areaId = $this->text($this->firstOf('/areas'), 'id');
+        $otherGroup = $this->makeParameter('/product-groups', ['name' => 'Otro', 'area_id' => $areaId]);
+        $kept = $this->text($this->makeBundle('Uno', [$this->line($cable, '1')]), 'id');
+        $blocked = $this->text(
+            $this->makeBundle('Dos', [$this->line($cable, '1')], ['group_id' => $otherGroup]),
+            'id',
+        );
+        $this->api('POST', '/bundles/deactivate', $this->adminToken, ['ids' => [$kept, $blocked]]);
+        $this->api('POST', '/product-groups/' . $otherGroup . '/deactivate', $this->adminToken);
+
+        $response = $this->api('POST', '/bundles/reactivate', $this->adminToken, ['ids' => [$kept, $blocked]]);
+
+        self::assertSame(['affected' => 1, 'unchanged' => 0, 'blocked' => 1], $this->json($response));
+        self::assertTrue($this->bundle($kept)['is_active']);
+        self::assertFalse($this->bundle($blocked)['is_active']);
+    }
+
+    public function testAnUnknownIdFailsTheWholeBulkCallAndTheListIsValidated(): void
+    {
+        $cable = $this->text($this->makeProduct('Cable'), 'id');
+        $id = $this->text($this->makeBundle('Uno', [$this->line($cable, '1')]), 'id');
+        $tooMany = array_map(fn (int $n): string => sprintf('0192a1b2-0000-7000-8000-%012d', $n), range(1, 501));
+
+        $unknown = $this->api('POST', '/bundles/deactivate', $this->adminToken, ['ids' => [$id, self::GONE]]);
+        self::assertSame(422, $unknown->getStatusCode());
+        self::assertSame(['ids' => 'not_found'], $this->errorCodes($unknown));
+        self::assertTrue($this->bundle($id)['is_active']);
+
+        $cases = [
+            'missing' => [[], ['ids' => 'required']],
+            'empty' => [['ids' => []], ['ids' => 'required']],
+            'duplicated' => [['ids' => [$id, $id]], ['ids' => 'invalid']],
+            'not a uuid' => [['ids' => ['x']], ['ids' => 'invalid']],
+            'too many' => [['ids' => $tooMany], ['ids' => 'too_many']],
+        ];
+        foreach (['/bundles/deactivate', '/bundles/reactivate'] as $path) {
+            foreach ($cases as $label => [$body, $errors]) {
+                $response = $this->api('POST', $path, $this->adminToken, $body);
+                self::assertSame($errors, $this->errorCodes($response), $path . ' ' . $label);
+            }
+        }
+    }
+
     public function testCandidatesAreActiveProductsWithTheirCostWithoutTheOnesAlreadyIn(): void
     {
         $cable = $this->text($this->makeProduct('Cable UTP', '22.96'), 'id');
@@ -357,6 +432,8 @@ final class BundlesTest extends ProductsTestCase
             ['PATCH', '/bundles/' . $id, $create + ['version' => 1]],
             ['POST', '/bundles/' . $id . '/deactivate', null],
             ['POST', '/bundles/' . $id . '/reactivate', null],
+            ['POST', '/bundles/deactivate', ['ids' => [$id]]],
+            ['POST', '/bundles/reactivate', ['ids' => [$id]]],
         ];
         foreach ($denied as [$method, $path, $payload]) {
             self::assertSame(403, $this->statusOf($method, $path, $viewer, $payload), $method . ' ' . $path);

@@ -173,6 +173,86 @@ final class BundleService
         return $this->setActive($actor, $id, true);
     }
 
+    /**
+     * Deactivates these bundles, in one transaction and with an entry per bundle in the history.
+     *
+     * @param list<string> $ids
+     * @return array{affected: int, unchanged: int, blocked: int}
+     * @throws ValidationException 422 `ids: not_found` when one does not exist
+     */
+    public function deactivateMany(ActorContext $actor, array $ids): array
+    {
+        return $this->connection->transactional(function () use ($actor, $ids): array {
+            $states = $this->statesOf($ids);
+            $affected = array_values(array_filter($ids, static fn (string $id): bool => $states[$id]['active']));
+            $this->changeMany($actor, 'deactivate', $affected, false);
+
+            return ['affected' => count($affected), 'unchanged' => count($ids) - count($affected), 'blocked' => 0];
+        });
+    }
+
+    /**
+     * Reactivates these bundles. One whose group is deactivated stays as it is and counts as blocked.
+     *
+     * @param list<string> $ids
+     * @return array{affected: int, unchanged: int, blocked: int}
+     * @throws ValidationException 422 `ids: not_found` when one does not exist
+     */
+    public function reactivateMany(ActorContext $actor, array $ids): array
+    {
+        return $this->connection->transactional(function () use ($actor, $ids): array {
+            $states = $this->statesOf($ids);
+            $inactive = array_values(array_filter($ids, static fn (string $id): bool => !$states[$id]['active']));
+            $affected = array_values(array_filter(
+                $inactive,
+                static fn (string $id): bool => $states[$id]['group_active'],
+            ));
+            $this->changeMany($actor, 'reactivate', $affected, true);
+
+            return [
+                'affected' => count($affected),
+                'unchanged' => count($ids) - count($inactive),
+                'blocked' => count($inactive) - count($affected),
+            ];
+        });
+    }
+
+    /**
+     * @param list<string> $affected
+     */
+    private function changeMany(ActorContext $actor, string $action, array $affected, bool $active): void
+    {
+        if ($affected === []) {
+            return;
+        }
+        $now = $this->clock->now();
+        $this->bundles->setDeletedAtMany($affected, $active ? null : $now, $now);
+        $this->audit->recordMany($actor, $action, self::ENTITY, array_map(
+            static fn (string $id): array => [
+                'id' => $id,
+                'before' => ['is_active' => !$active],
+                'after' => ['is_active' => $active],
+            ],
+            $affected,
+        ));
+    }
+
+    /**
+     * The state of each bundle, locked.
+     *
+     * @param list<string> $ids
+     * @return array<string, array{active: bool, group_active: bool}>
+     */
+    private function statesOf(array $ids): array
+    {
+        $states = $this->bundles->lockedStates($ids);
+        if (count($states) !== count($ids)) {
+            throw ValidationException::field('ids', 'not_found');
+        }
+
+        return $states;
+    }
+
     private function setActive(ActorContext $actor, string $id, bool $active): BundleView
     {
         $this->connection->transactional(function () use ($actor, $id, $active): void {
