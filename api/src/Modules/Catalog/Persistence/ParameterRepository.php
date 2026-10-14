@@ -113,15 +113,21 @@ final class ParameterRepository
     }
 
     /**
-     * The active values with only what a form needs to choose one: id and name, by name. A form never needs more than
-     * a few hundred, so there is no paging.
+     * The active values with only what a form needs to choose one: id and name, by name, and the id of the parent for a
+     * value that belongs to one (the area of a group, the category of a unit), so the form can narrow its choices. A
+     * form never needs more than a few hundred, so there is no paging.
      *
-     * @return list<array{id: string, name: string}>
+     * @return list<array<string, string>>
      */
     public function options(ParameterDefinition $parameter, int $limit): array
     {
+        $parentColumn = $parameter->parent?->column;
+        $select = 'LOWER(HEX(p.id)) AS id, p.name';
+        if ($parentColumn !== null) {
+            $select .= ', LOWER(HEX(p.' . $parentColumn . ')) AS parent_id';
+        }
         $rows = $this->connection->createQueryBuilder()
-            ->select('LOWER(HEX(p.id)) AS id, p.name')
+            ->select($select)
             ->from($parameter->table, 'p')
             ->where('p.deleted_at IS NULL')
             ->orderBy('p.name')
@@ -132,7 +138,11 @@ final class ParameterRepository
 
         $options = [];
         foreach ($rows as $row) {
-            $options[] = ['id' => Uuid::fromHex(Row::string($row, 'id')), 'name' => Row::string($row, 'name')];
+            $option = ['id' => Uuid::fromHex(Row::string($row, 'id')), 'name' => Row::string($row, 'name')];
+            if ($parentColumn !== null) {
+                $option[$parentColumn] = Uuid::fromHex(Row::string($row, 'parent_id'));
+            }
+            $options[] = $option;
         }
 
         return $options;

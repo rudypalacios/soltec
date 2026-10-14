@@ -354,7 +354,8 @@ final class RolesTest extends AccessTestCase
         self::assertSame(
             [
                 'areas', 'audit_logs', 'brands', 'client_statuses', 'company', 'contact_types', 'contacts',
-                'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'roles',
+                'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'products',
+                'roles',
                 'security_settings', 'segments', 'sequences', 'suppliers', 'tax_regimes', 'unit_categories',
                 'units_of_measure', 'users',
             ],

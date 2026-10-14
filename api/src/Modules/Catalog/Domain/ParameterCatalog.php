@@ -18,7 +18,7 @@ final class ParameterCatalog
             new ParameterDefinition('segments', 'segments', 'segmentId'),
             new ParameterDefinition('tax-regimes', 'tax_regimes', 'taxRegimeId'),
             new ParameterDefinition('payment-methods', 'payment_methods', 'paymentMethodId'),
-            new ParameterDefinition('brands', 'brands', 'brandId'),
+            new ParameterDefinition('brands', 'brands', 'brandId', offersOptions: true),
             new ParameterDefinition(
                 'areas',
                 'areas',
@@ -31,6 +31,7 @@ final class ParameterCatalog
                 'product_groups',
                 'productGroupId',
                 parent: new ParentLink('area_id', 'areas', 'area'),
+                offersOptions: true,
             ),
             new ParameterDefinition(
                 'unit-categories',
@@ -46,6 +47,7 @@ final class ParameterCatalog
                 'unitOfMeasureId',
                 nameMax: 60,
                 parent: new ParentLink('category_id', 'unit_categories', 'category'),
+                offersOptions: true,
             ),
         ];
     }

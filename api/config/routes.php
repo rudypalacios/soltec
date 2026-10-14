@@ -25,6 +25,7 @@ use Soltec\Modules\Catalog\Domain\ParameterCatalog;
 use Soltec\Modules\Catalog\Http\ParameterController;
 use Soltec\Modules\Contacts\Http\ContactController;
 use Soltec\Modules\Organization\Http\DepartmentController;
+use Soltec\Modules\Products\Http\ProductController;
 use Soltec\Modules\Settings\Http\BrandingController;
 use Soltec\Modules\Suppliers\Http\SupplierController;
 use Soltec\Modules\Settings\Http\CompanyController;
@@ -151,6 +152,26 @@ return static function (App $app): void {
         $group->post('/suppliers/{supplierId}/reactivate', [SupplierController::class, 'reactivate'])
             ->setArgument('permission', 'suppliers.deactivate');
 
+        // Products have no data scope. The fixed paths come before `{productId}`.
+        $group->get('/products', [ProductController::class, 'list'])->setArgument('permission', 'products.view');
+        $group->post('/products', [ProductController::class, 'create'])->setArgument('permission', 'products.create');
+        $group->post('/products/deactivate', [ProductController::class, 'deactivateMany'])
+            ->setArgument('permission', 'products.deactivate');
+        $group->post('/products/reactivate', [ProductController::class, 'reactivateMany'])
+            ->setArgument('permission', 'products.deactivate');
+        $group->post('/products/confirm-cost', [ProductController::class, 'confirmCostMany'])
+            ->setArgument('permission', 'products.edit');
+        $group->get('/products/{productId}', [ProductController::class, 'show'])
+            ->setArgument('permission', 'products.view');
+        $group->patch('/products/{productId}', [ProductController::class, 'update'])
+            ->setArgument('permission', 'products.edit');
+        $group->post('/products/{productId}/deactivate', [ProductController::class, 'deactivate'])
+            ->setArgument('permission', 'products.deactivate');
+        $group->post('/products/{productId}/reactivate', [ProductController::class, 'reactivate'])
+            ->setArgument('permission', 'products.deactivate');
+        $group->post('/products/{productId}/confirm-cost', [ProductController::class, 'confirmCost'])
+            ->setArgument('permission', 'products.edit');
+
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');
         $group->get('/settings/company', [CompanyController::class, 'show'])
@@ -173,6 +194,8 @@ return static function (App $app): void {
         $group->patch('/sequences/{code}', [SequenceController::class, 'update'])
             ->setArgument('permission', 'sequences.edit');
 
+        $group->get('/margin-levels/options', [MarginLevelController::class, 'options'])
+            ->setArgument('permission', 'internal');
         $group->get('/margin-levels', [MarginLevelController::class, 'list'])
             ->setArgument('permission', 'margin_levels.view');
         $group->post('/margin-levels', [MarginLevelController::class, 'create'])

@@ -23,8 +23,8 @@ use Soltec\Modules\Suppliers\Persistence\SupplierRepository;
  * Administration of suppliers. They have no owner or data scope; the permissions of the resource are the only gate.
  * The identification is unique and a deactivated supplier keeps it reserved (ADR-0022): to register it again the
  * existing supplier is reactivated. The error never says whose an active one is; for a deactivated one it names it
- * only to whoever may reactivate it. Deactivating never blocks (ADR-0023); the cascade to products arrives with them
- * (slice 2.4a).
+ * only to whoever may reactivate it. Deactivating never blocks, but takes its active products down with it
+ * (ADR-0023).
  */
 final class SupplierService
 {
@@ -36,6 +36,7 @@ final class SupplierService
         private readonly SupplierRepository $suppliers,
         private readonly SequenceGenerator $sequences,
         private readonly AuditLogger $audit,
+        private readonly DeactivationCascade $cascade,
     ) {
     }
 
@@ -53,7 +54,9 @@ final class SupplierService
 
     public function get(string $id): SupplierRecord
     {
-        return $this->suppliers->find($id) ?? throw ApiException::notFound();
+        $supplier = $this->suppliers->find($id) ?? throw ApiException::notFound();
+
+        return $supplier->withDeactivatedProductCount($this->cascade->inactiveCountFor($id));
     }
 
     /**
@@ -163,13 +166,15 @@ final class SupplierService
 
                 $now = $this->clock->now();
                 $this->suppliers->setDeletedAt($id, $active ? null : $now, $now);
+                // Deactivating takes its products down with it; reactivating does not bring them back (ADR-0023).
+                $cascaded = $active ? 0 : $this->cascade->deactivateFor($actor, $id);
                 $this->audit->record(
                     $actor,
                     $active ? 'reactivate' : 'deactivate',
                     self::ENTITY,
                     $id,
                     ['is_active' => !$active],
-                    ['is_active' => $active],
+                    ['is_active' => $active] + ($active ? [] : ['deactivated_product_count' => $cascaded]),
                 );
             });
         });

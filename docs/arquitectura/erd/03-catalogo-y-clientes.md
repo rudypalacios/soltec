@@ -148,7 +148,7 @@ Las personas del proveedor. Pertenecen al proveedor, no a un asesor: sin dueño,
 | `brand_id` | `BINARY(16)` | sí | FK `brands` |
 | `unit_id` | `BINARY(16)` | no | FK `units_of_measure` |
 | `cost` | `DECIMAL(13,4)` | no | Con IVA, como la factura del proveedor. Mismo máximo que `PriceCalculator` (nueve enteros, cuatro decimales) |
-| `cost_updated_at` | `DATETIME(3)` | no | Cambia solo cuando cambia el costo, no con otras ediciones |
+| `cost_updated_at` | `DATETIME(3)` | no | Cuándo el costo cambió o alguien confirmó que sigue igual (`cost_reviewed`, `confirm-cost`). No cambia con otras ediciones |
 | `check_availability` | `TINYINT(1)` | no | Bandera «validar disponibilidad» que lee el Cotizador (Hito 4) hasta que exista Inventarios |
 | `deactivation_reason` | `ENUM('manual','supplier')` | sí | Solo con `deleted_at` lleno. `supplier` = cascada del proveedor (ADR-0023) |
 
