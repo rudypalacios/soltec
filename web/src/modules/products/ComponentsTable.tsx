@@ -15,6 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import { lineCostPreview } from '@soltec/shared';
+import type { ReactNode } from 'react';
 import { StatusBadge } from '../../components/StatusBadge';
 import { useIsMobile } from '../../components/useIsMobile';
 import { INACTIVE_ROW, InactiveTag } from './catalogParts';
@@ -54,6 +55,8 @@ interface Props {
   readOnly: boolean;
   /** The total shown under the lines: a preview while editing, the server's figure when only reading. */
   total: string | null;
+  /** What the total is called; the form adds the mark of its footnote. */
+  totalLabel?: ReactNode;
   /** The message under the quantity of the line at this position, if any. */
   errorAt: (position: number) => string | undefined;
   onQuantity: (productId: string, quantity: string) => void;
@@ -147,6 +150,7 @@ function DesktopTable({
   currencyCode,
   readOnly,
   total,
+  totalLabel = 'Costo del paquete',
   errorAt,
   onQuantity,
   onRemove,
@@ -214,7 +218,7 @@ function DesktopTable({
         <TableFooter>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell colSpan={4} sx={{ fontWeight: 600 }}>
-              Costo del paquete
+              {totalLabel}
             </TableCell>
             <TableCell
               align="right"
@@ -235,6 +239,7 @@ function CompactList({
   currencyCode,
   readOnly,
   total,
+  totalLabel = 'Costo del paquete',
   errorAt,
   onQuantity,
   onRemove,
@@ -336,7 +341,7 @@ function CompactList({
         direction="row"
         sx={{ justifyContent: 'space-between', alignItems: 'baseline', pt: 1.5 }}
       >
-        <Typography sx={{ fontWeight: 600 }}>Costo del paquete</Typography>
+        <Typography sx={{ fontWeight: 600 }}>{totalLabel}</Typography>
         <Typography sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
           {money(total)}
         </Typography>

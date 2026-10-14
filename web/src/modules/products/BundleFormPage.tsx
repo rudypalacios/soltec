@@ -5,13 +5,11 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { SearchableSelect } from '../../components/SearchableSelect';
-import { StatusBadge } from '../../components/StatusBadge';
-import { formatMoment } from '../access/formatting';
 import { fieldMessage, fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ComponentsTable, type Line } from './ComponentsTable';
+import { CostSummary, FootnoteMark } from './CostSummary';
 import { ComponentSearch, type Candidate } from './ComponentSearch';
-import { formatMoney } from './productFormat';
 import { useBundle, useBundleCurrency, useCreateBundle, useUpdateBundle } from './useBundles';
 import { useAreaOptions, useBrandOptions, useGroupOptions } from './useProducts';
 
@@ -289,6 +287,12 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
             currencyCode={currencyCode}
             readOnly={readOnly}
             total={readOnly && bundle ? bundle.cost : preview}
+            totalLabel={
+              <>
+                Costo del paquete
+                <FootnoteMark n={1} />
+              </>
+            }
             errorAt={(position) =>
               fieldErrors[`items.${position}.quantity`] ??
               fieldErrors[`items.${position}.product_id`] ??
@@ -302,25 +306,7 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
         )}
       </Stack>
 
-      {bundle ? (
-        <Stack spacing={0.5}>
-          <Typography variant="body2" color="text.secondary">
-            Costo más antiguo revisado el {formatMoment(bundle.cost_updated_at)}
-          </Typography>
-          {bundle.cost_is_stale ? (
-            <StatusBadge tone="warning" label="Costo desactualizado" />
-          ) : null}
-          <Typography variant="body2" color="text.secondary">
-            Precio con IVA: {formatMoney(bundle.price_with_vat, currencyCode)} con «
-            {bundle.margin_level.name}».
-          </Typography>
-        </Stack>
-      ) : null}
-      <Typography variant="caption" color="text.secondary">
-        {readOnly
-          ? 'Se calcula con los costos actuales de los componentes; no se guarda.'
-          : 'El costo es una vista previa con los costos actuales. El servidor calcula el costo y el precio al guardar; nada de esto se guarda.'}
-      </Typography>
+      <CostSummary bundle={bundle} currencyCode={currencyCode} readOnly={readOnly} />
 
       <FormActions>
         <Button component={RouterLink} to="/paquetes" variant="outlined" color="inherit">

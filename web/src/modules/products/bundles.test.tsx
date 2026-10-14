@@ -738,6 +738,54 @@ describe('bundle form', () => {
     });
   });
 
+  it('summarises the cost as a payment form does: rows of label and value, and numbered notes at the bottom', async () => {
+    const { session } = createTestSession(editHandlers(), meWith({ bundles: ALL }));
+    renderApp(session, `/paquetes/${POINT.id}/editar`);
+
+    const notes = await screen.findByRole('list', { name: 'Notas' });
+    const items = within(notes).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent(/^1Vista previa con los costos actuales/);
+    expect(items[1]).toHaveTextContent(/^2Con «Margen 33 %»\. Se calcula desde el costo cada vez/);
+    expect(items[2]).toHaveTextContent(
+      /^3Es la fecha del componente cuyo costo se revisó hace más tiempo/,
+    );
+    // Each row carries the mark of its note, and the value is beside the label.
+    const price = screen.getByText('Precio con IVA');
+    expect(price.querySelector('sup')).toHaveTextContent('2');
+    expect(price.nextElementSibling).toHaveTextContent(/^Q\s?636\.27$/);
+    const oldest = screen.getByText('Costo más antiguo revisado');
+    expect(oldest.querySelector('sup')).toHaveTextContent('3');
+    expect(screen.getByText('Costo del paquete').querySelector('sup')).toHaveTextContent('1');
+    expect(screen.getByText('Costo desactualizado')).toBeVisible();
+  });
+
+  it('has only the note of the preview while the bundle is not saved, and no rows', async () => {
+    const { session } = createTestSession(
+      formHandlers({ 'GET /v1/bundles/candidates': candidatesHandler() }),
+      meWith({ bundles: ALL }),
+    );
+    renderApp(session, '/paquetes/nuevo');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('combobox', { name: /Agregar componente/ }));
+    await user.click(await screen.findByRole('option', { name: /Cable UTP/ }));
+
+    const notes = await screen.findByRole('list', { name: 'Notas' });
+    expect(within(notes).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.queryByText('Precio con IVA')).not.toBeInTheDocument();
+  });
+
+  it('says the cost is computed, not previewed, to whoever only reads the bundle', async () => {
+    const { session } = createTestSession(editHandlers(), meWith({ bundles: ['view'] }));
+    renderApp(session, `/paquetes/${POINT.id}`);
+
+    const notes = await screen.findByRole('list', { name: 'Notas' });
+    expect(within(notes).getAllByRole('listitem')[0]).toHaveTextContent(
+      /^1Se calcula con los costos actuales de los componentes; no se guarda\./,
+    );
+  });
+
   it('says another person changed the bundle when the version is stale', async () => {
     const { session } = createTestSession(
       editHandlers({ [`PATCH /v1/bundles/${POINT.id}`]: () => problem(409, 'conflict') }),
