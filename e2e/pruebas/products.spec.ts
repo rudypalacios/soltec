@@ -195,8 +195,10 @@ test(
     await readerPage.keyboard.press('Escape');
 
     await products.act('Ver', name);
-    await expect(readerPage.getByLabel(/^Nombre/)).toHaveValue(name);
-    await expect(readerPage.getByLabel(/^Nombre/)).toHaveAttribute('readonly', '');
+    // A textbox, because the «Ordenar por» select of the list also shows «Nombre» until the page changes.
+    const nameField = readerPage.getByRole('textbox', { name: /^Nombre/ });
+    await expect(nameField).toHaveValue(name);
+    await expect(nameField).toHaveAttribute('readonly', '');
     await expect(readerPage.getByRole('button', { name: 'Guardar' })).toHaveCount(0);
 
     await readerPage.goto('/productos/nuevo');
