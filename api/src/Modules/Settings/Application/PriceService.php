@@ -42,7 +42,13 @@ final class PriceService
         }
         $settings = $this->settings->get();
 
-        return new PriceBasis($level, $settings->vatRate, $settings->incomeTaxRate, $settings->staleCostDays);
+        return new PriceBasis(
+            $level,
+            $settings->vatRate,
+            $settings->incomeTaxRate,
+            $settings->staleCostDays,
+            $settings->currencyCode,
+        );
     }
 
     /** The price of a stored cost, or null when it would not fit (an extreme rate), which a list shows as no price. */

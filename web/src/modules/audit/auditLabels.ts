@@ -21,6 +21,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   units_of_measure: 'Unidades de medida',
   contacts: 'Contactos',
   suppliers: 'Proveedores',
+  products: 'Productos',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ export const ACTION_LABELS: Record<string, string> = {
   update: 'Cambio',
   deactivate: 'Desactivación',
   reactivate: 'Reactivación',
+  cost_review: 'Costo revisado',
   login: 'Inicio de sesión',
   logout: 'Cierre de sesión',
   lockout: 'Bloqueo de cuenta',
@@ -62,6 +64,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   units_of_measure: 'Unidad de medida',
   contacts: 'Contacto',
   suppliers: 'Proveedor',
+  products: 'Producto',
 };
 
 /**
@@ -87,6 +90,9 @@ export function recordPath(
   }
   if (entityType === 'suppliers' && can('suppliers', 'edit')) {
     return `/proveedores/${entityId}/editar`;
+  }
+  if (entityType === 'products' && can('products', 'edit')) {
+    return `/productos/${entityId}/editar`;
   }
   return null;
 }

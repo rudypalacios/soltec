@@ -95,6 +95,54 @@ export class AdminApi {
     });
   }
 
+  /** A product group under the first area, named uniquely; the area name is what the form shows before it. */
+  async createProductGroup(
+    prefix = 'e2e-grupo',
+  ): Promise<{ id: string; name: string; label: string }> {
+    const areas = await call<{ data: { id: string; name: string }[] }>('/areas/options', {
+      token: this.token,
+    });
+    const area = areas.data[0];
+    if (!area) {
+      throw new Error('There is no area to put the group in.');
+    }
+    const group = await call<{ id: string; name: string }>('/product-groups', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify({ name: `${prefix} ${uniqueSuffix()}`, area_id: area.id }),
+    });
+    return { ...group, label: `${area.name} · ${group.name}` };
+  }
+
+  /** The first unit of measure there is. */
+  async firstUnitId(): Promise<string> {
+    const units = await call<{ data: { id: string }[] }>('/units-of-measure/options', {
+      token: this.token,
+    });
+    const unit = units.data[0];
+    if (!unit) {
+      throw new Error('There is no unit of measure.');
+    }
+    return unit.id;
+  }
+
+  /** A product, created through the API; `fields` are the ones of the creation body. */
+  async createProduct(fields: Record<string, unknown>): Promise<{ id: string; name: string }> {
+    return call<{ id: string; name: string }>('/products', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify(fields),
+    });
+  }
+
+  /** Deactivates or reactivates a supplier, which takes its products along (or not). */
+  async setSupplierActive(id: string, active: boolean): Promise<void> {
+    await call(`/suppliers/${id}/${active ? 'reactivate' : 'deactivate'}`, {
+      method: 'POST',
+      token: this.token,
+    });
+  }
+
   /**
    * A user who already accepted the invitation, so it can sign in. Without `roleId` it gets the first custom profile
    * (the `admin`-free default); a scenario that depends on what the user may do passes its own. `managerId` places

@@ -15,6 +15,7 @@ use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Products\Domain\ProductData;
 use Soltec\Modules\Products\Domain\ProductFilters;
+use Soltec\Modules\Products\Domain\ProductOrder;
 use Soltec\Modules\Products\Domain\ProductRecord;
 use Soltec\Modules\Products\Domain\ProductView;
 use Soltec\Modules\Products\Persistence\ProductRepository;
@@ -52,11 +53,11 @@ final class ProductService
      * @return array{items: list<ProductView>, total: int, basis: PriceBasis}
      * @throws ValidationException 422 `margin_level_id`
      */
-    public function list(ProductFilters $filters, ?string $marginLevelId, Pagination $page): array
+    public function list(ProductFilters $filters, ProductOrder $order, ?string $marginLevelId, Pagination $page): array
     {
         $basis = $this->prices->basis($marginLevelId);
         $staleBefore = $this->staleBefore($basis);
-        $result = $this->products->search($filters, $staleBefore, $page);
+        $result = $this->products->search($filters, $order, $staleBefore, $page);
 
         return [
             'items' => array_map(

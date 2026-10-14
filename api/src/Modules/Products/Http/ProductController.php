@@ -13,6 +13,7 @@ use Soltec\Modules\Access\Http\CurrentUserAware;
 use Soltec\Modules\Products\Application\ProductService;
 use Soltec\Modules\Products\Domain\ProductData;
 use Soltec\Modules\Products\Domain\ProductFilters;
+use Soltec\Modules\Products\Domain\ProductOrder;
 use Soltec\Modules\Products\Domain\ProductView;
 
 /** /v1/products */
@@ -39,15 +40,19 @@ final class ProductController
             $query->nullableUuid('brand_id'),
             $query->choice('stale', ['true', 'false'], 'false') === 'true',
         );
+        $order = new ProductOrder(
+            (string) $query->choice('sort', ProductOrder::SORTS, ProductOrder::NAME),
+            $query->choice('grouped', ['true', 'false'], 'false') === 'true',
+        );
         $levelId = $query->nullableUuid('margin_level_id');
         $page = $query->pagination();
         $query->done();
 
-        $result = $this->products->list($filters, $levelId, $page);
+        $result = $this->products->list($filters, $order, $levelId, $page);
 
         return Json::write($response, [
             'data' => array_map(static fn (ProductView $view): array => $view->toApi(), $result['items']),
-            'meta' => $page->meta($result['total']),
+            'meta' => $page->meta($result['total']) + ['currency_code' => $result['basis']->currencyCode],
         ]);
     }
 

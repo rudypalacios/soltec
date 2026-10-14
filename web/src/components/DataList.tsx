@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   CardContent,
+  Checkbox,
   CircularProgress,
   Paper,
   Stack,
@@ -14,8 +15,10 @@ import {
   TablePagination,
   TableRow,
   Typography,
+  type SxProps,
+  type Theme,
 } from '@mui/material';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { ActionButton, ActionMenu, type RowAction } from './RowActions';
 import { useIsMobile } from './useIsMobile';
 
@@ -34,6 +37,8 @@ export interface DataColumn<T> {
   mobileLabel?: boolean;
   /** Table only: keep the cell on one line (dates, states) so the width goes to the columns that can wrap. */
   nowrap?: boolean;
+  /** Table only: right-align the column (amounts), header included. */
+  align?: 'right';
   /** Table only: the narrowest the column may get, in px, so a long name wraps in two lines and not five. */
   minWidth?: number;
 }
@@ -57,6 +62,27 @@ interface DataListProps<T> {
    * (title and subtitle on the left, the badges on the right, every action behind ⋮) instead of a card.
    */
   dense?: boolean;
+  /**
+   * Makes the rows selectable (a checkbox per row, and on the table one in the header for the whole page), for the
+   * actions that apply to several records. The screen keeps the set and clears it when the rows change. Not offered in
+   * the dense list.
+   */
+  selection?: {
+    selected: ReadonlySet<string>;
+    onChange: (selected: ReadonlySet<string>) => void;
+  };
+  /**
+   * Puts a header before the first row of each block of consecutive rows that share a key (the list must already
+   * come in that order). The first row of a page always gets one, so a block cut by the page break shows it again.
+   */
+  /** Extra styles for the table row of a record, for one that has to stand out (an inactive one). */
+  rowSx?: (row: T) => SxProps<Theme> | undefined;
+  groupBy?: (row: T) => { key: string; title: string; subtitle?: string };
+  /**
+   * Replaces the card of a phone with the screen's own. It receives the selection checkbox (null when the rows are
+   * not selectable) and the ⋮ menu with every action of the row.
+   */
+  renderCard?: (row: T, slots: { select: ReactNode; menu: ReactNode }) => ReactNode;
   /** Omit it for a list that is never long (a handful of fixed rows). */
   pagination?: {
     /** Zero-based. */
@@ -64,6 +90,9 @@ interface DataListProps<T> {
     perPage: number;
     total: number;
     onPageChange: (page: number) => void;
+    /** With `onPerPageChange`, lets the person pick how many rows a page has. */
+    perPageOptions?: number[];
+    onPerPageChange?: (perPage: number) => void;
   };
 }
 
@@ -94,6 +123,10 @@ export function DataList<T>({
   getRowName,
   getActions,
   dense = false,
+  selection,
+  groupBy,
+  rowSx,
+  renderCard,
   pagination,
 }: DataListProps<T>) {
   const isMobile = useIsMobile();
@@ -107,6 +140,50 @@ export function DataList<T>({
   if (rows.length === 0) {
     return <Alert severity="info">No hay {noun} con esos filtros.</Alert>;
   }
+
+  const pageIds = rows.map(getRowId);
+  const selectedHere = pageIds.filter((id) => selection?.selected.has(id)).length;
+  const toggle = (id: string, on: boolean) => {
+    if (!selection) {
+      return;
+    }
+    const next = new Set(selection.selected);
+    if (on) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    selection.onChange(next);
+  };
+  const toggleAll = (on: boolean) => {
+    if (!selection) {
+      return;
+    }
+    const next = new Set(selection.selected);
+    pageIds.forEach((id) => (on ? next.add(id) : next.delete(id)));
+    selection.onChange(next);
+  };
+  const checkbox = (row: T) =>
+    selection ? (
+      <Checkbox
+        checked={selection.selected.has(getRowId(row))}
+        onChange={(event) => toggle(getRowId(row), event.target.checked)}
+        slotProps={{ input: { 'aria-label': `Seleccionar ${getRowName(row)}` } }}
+        // 44 px: the touch target of a phone.
+        sx={{ p: 1.25 }}
+      />
+    ) : null;
+
+  const headerBefore = (index: number) => {
+    const row = rows[index];
+    if (!groupBy || row === undefined) {
+      return null;
+    }
+    const group = groupBy(row);
+    const previous = rows[index - 1];
+    return previous !== undefined && groupBy(previous).key === group.key ? null : group;
+  };
+  const columnCount = columns.length + (selection ? 1 : 0) + (getActions ? 1 : 0);
 
   return (
     <>
@@ -134,24 +211,62 @@ export function DataList<T>({
           aria-label={label}
           sx={{ listStyle: 'none', m: 0, p: 0 }}
         >
-          {rows.map((row) => (
-            <li key={getRowId(row)}>
-              <RowCard
-                row={row}
-                columns={columns}
-                rowName={getRowName(row)}
-                actions={getActions?.(row) ?? []}
-              />
-            </li>
-          ))}
+          {rows.map((row, index) => {
+            const header = headerBefore(index);
+            const actions = getActions?.(row) ?? [];
+            return (
+              <Fragment key={getRowId(row)}>
+                {header ? (
+                  <Box component="li" sx={{ pt: index === 0 ? 0 : 1 }}>
+                    <GroupHeader title={header.title} subtitle={header.subtitle} />
+                  </Box>
+                ) : null}
+                <li>
+                  {renderCard ? (
+                    renderCard(row, {
+                      select: checkbox(row),
+                      menu:
+                        actions.length > 0 ? (
+                          <ActionMenu actions={actions} rowName={getRowName(row)} />
+                        ) : null,
+                    })
+                  ) : (
+                    <RowCard
+                      row={row}
+                      columns={columns}
+                      rowName={getRowName(row)}
+                      actions={actions}
+                      leading={checkbox(row)}
+                    />
+                  )}
+                </li>
+              </Fragment>
+            );
+          })}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small" aria-label={label}>
             <TableHead>
               <TableRow>
+                {selection ? (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selectedHere === pageIds.length}
+                      indeterminate={selectedHere > 0 && selectedHere < pageIds.length}
+                      onChange={(event) => toggleAll(event.target.checked)}
+                      slotProps={{
+                        input: { 'aria-label': `Seleccionar todos los ${noun} de la página` },
+                      }}
+                    />
+                  </TableCell>
+                ) : null}
                 {columns.map((column) => (
-                  <TableCell key={column.id} sx={{ minWidth: column.minWidth }}>
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    sx={{ minWidth: column.minWidth }}
+                  >
                     {column.header}
                   </TableCell>
                 ))}
@@ -165,27 +280,42 @@ export function DataList<T>({
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.map((row) => {
+              {rows.map((row, index) => {
                 const actions = getActions?.(row) ?? [];
                 const rowName = getRowName(row);
+                const header = headerBefore(index);
                 return (
-                  <TableRow key={getRowId(row)} hover>
-                    {columns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        sx={column.nowrap ? { whiteSpace: 'nowrap' } : undefined}
-                      >
-                        {column.render(row)}
-                      </TableCell>
-                    ))}
-                    {getActions ? (
-                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', py: 0.5 }}>
-                        {actions.length > 0 ? (
-                          <ActionMenu actions={actions} rowName={rowName} />
-                        ) : null}
-                      </TableCell>
+                  <Fragment key={getRowId(row)}>
+                    {header ? (
+                      <TableRow>
+                        <TableCell colSpan={columnCount} sx={{ bgcolor: 'action.hover' }}>
+                          <GroupHeader title={header.title} subtitle={header.subtitle} inline />
+                        </TableCell>
+                      </TableRow>
                     ) : null}
-                  </TableRow>
+                    <TableRow
+                      hover
+                      selected={selection?.selected.has(getRowId(row))}
+                      sx={rowSx?.(row)}
+                    >
+                      {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          sx={column.nowrap ? { whiteSpace: 'nowrap' } : undefined}
+                        >
+                          {column.render(row)}
+                        </TableCell>
+                      ))}
+                      {getActions ? (
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap', py: 0.5 }}>
+                          {actions.length > 0 ? (
+                            <ActionMenu actions={actions} rowName={rowName} />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  </Fragment>
                 );
               })}
             </TableBody>
@@ -199,7 +329,9 @@ export function DataList<T>({
           page={pagination.page}
           onPageChange={(_, next) => pagination.onPageChange(next)}
           rowsPerPage={pagination.perPage}
-          rowsPerPageOptions={[]}
+          rowsPerPageOptions={pagination.onPerPageChange ? (pagination.perPageOptions ?? []) : []}
+          onRowsPerPageChange={(event) => pagination.onPerPageChange?.(Number(event.target.value))}
+          labelRowsPerPage="Por página"
           labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
           sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
         />
@@ -208,16 +340,44 @@ export function DataList<T>({
   );
 }
 
+/** The title of a block of rows: an area and a group, say. */
+function GroupHeader({
+  title,
+  subtitle,
+  inline = false,
+}: {
+  title: string;
+  subtitle?: string;
+  inline?: boolean;
+}) {
+  return (
+    <Box sx={inline ? undefined : { bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1 }}>
+      <Typography component="span" sx={{ fontWeight: 600 }}>
+        {title}
+      </Typography>
+      {subtitle ? (
+        <Typography component="span" color="text.secondary">
+          {' › '}
+          {subtitle}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
 function RowCard<T>({
   row,
   columns,
   rowName,
   actions,
+  leading,
 }: {
   row: T;
   columns: DataColumn<T>[];
   rowName: string;
   actions: RowAction[];
+  /** The selection checkbox, before the title. */
+  leading?: ReactNode;
 }) {
   const withRole = (role: MobileRole) => columns.filter((column) => column.mobile === role);
   const [title] = withRole('title');
@@ -235,7 +395,8 @@ function RowCard<T>({
           spacing={1}
           sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
         >
-          <Box sx={{ minWidth: 0 }}>
+          {leading ? <Box sx={{ mt: -1, ml: -1, flexShrink: 0 }}>{leading}</Box> : null}
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             {title ? (
               <Typography component="div" sx={{ fontWeight: 600 }}>
                 {title.render(row)}
