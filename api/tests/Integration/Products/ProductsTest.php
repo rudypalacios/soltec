@@ -311,6 +311,51 @@ final class ProductsTest extends ProductsTestCase
         }
     }
 
+    public function testOrdersByTheChosenKeyAndGroupsByAreaAndGroupBeforeIt(): void
+    {
+        $areas = $this->rowsAt($this->json($this->api('GET', '/areas', $this->adminToken)), 'data');
+        $otherArea = $this->text($areas[1], 'id');
+        $otherGroup = $this->makeParameter('/product-groups', ['name' => 'Cables', 'area_id' => $otherArea]);
+        $this->makeProduct('Zeta', '1');
+        $this->advance('+1 hour');
+        $this->makeProduct('Alfa', '30', ['group_id' => $otherGroup]);
+        $this->advance('+1 hour');
+        $this->makeProduct('Beta', '5');
+
+        $orders = [
+            '?sort=name' => ['Alfa', 'Beta', 'Zeta'],
+            '?sort=code' => ['Zeta', 'Alfa', 'Beta'],
+            '?sort=cost' => ['Zeta', 'Beta', 'Alfa'],
+            '?sort=cost_review' => ['Zeta', 'Alfa', 'Beta'],
+        ];
+        foreach ($orders as $query => $expected) {
+            $found = $this->json($this->api('GET', '/products' . $query, $this->adminToken));
+            self::assertSame($expected, $this->columnAt($found, 'name', 'data'), $query);
+        }
+
+        $grouped = $this->json($this->api('GET', '/products?grouped=true&sort=cost', $this->adminToken));
+        $areaNames = [];
+        foreach ($this->rowsAt($grouped, 'data') as $row) {
+            $name = $this->valueAt($row, 'area', 'name');
+            self::assertIsString($name);
+            $areaNames[] = $name;
+        }
+        $sorted = $areaNames;
+        sort($sorted);
+        self::assertSame($sorted, $areaNames, 'area is the first key');
+
+        foreach (['?sort=price', '?grouped=yes'] as $query) {
+            self::assertSame(422, $this->api('GET', '/products' . $query, $this->adminToken)->getStatusCode(), $query);
+        }
+    }
+
+    public function testTheListSaysWhichCurrencyThePricesAreIn(): void
+    {
+        $list = $this->json($this->api('GET', '/products', $this->adminToken));
+
+        self::assertSame('GTQ', $this->valueAt($list, 'meta', 'currency_code'));
+    }
+
     public function testShowsAnInactiveProductAndAnUnknownOneIs404(): void
     {
         $id = $this->text($this->makeProduct('Uno'), 'id');

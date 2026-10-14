@@ -15,8 +15,8 @@ import {
 import { useState } from 'react';
 import { useCan } from '../access/SessionContext';
 import { viewOf } from '../parameters/parameterViews';
+import { QuickParameterDialog } from '../parameters/QuickParameterDialog';
 import { useParameterOptions } from '../parameters/useParameters';
-import { QuickContactType } from './QuickContactType';
 import { emptyAddress, emptyContact, type AddressDraft, type ContactDraft } from './supplierDrafts';
 
 type Errors = Record<string, string>;
@@ -341,7 +341,8 @@ export function ContactsEditor({
           </Button>
         </Box>
       )}
-      <QuickContactType
+      <QuickParameterDialog
+        view={CONTACT_TYPES}
         open={creatingFor !== null}
         onClose={() => setCreatingFor(null)}
         onCreated={(type) => {
