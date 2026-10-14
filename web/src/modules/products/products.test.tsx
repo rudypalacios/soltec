@@ -161,7 +161,7 @@ describe('products list', () => {
     await waitFor(() => expect(calls.at(-1)?.query.get('stale')).toBe('true'));
 
     expect(calls.at(-1)?.query.has('margin_level_id')).toBe(false);
-    await user.click(screen.getByRole('combobox', { name: 'Precios con margen' }));
+    await user.click(screen.getByRole('combobox', { name: 'Margen' }));
     await user.click(await screen.findByRole('option', { name: 'Margen 35 %' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('margin_level_id')).toBe(OTHER_LEVEL.id));
     expect(await screen.findByText(/con «Margen 35 %»/)).toBeVisible();

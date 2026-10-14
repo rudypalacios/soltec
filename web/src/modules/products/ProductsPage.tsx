@@ -303,7 +303,7 @@ export function ProductsPage() {
         </TextField>
         <TextField
           select
-          label="Precios con margen"
+          label="Margen"
           value={levelId}
           onChange={(event) => setLevelId(event.target.value)}
         >
