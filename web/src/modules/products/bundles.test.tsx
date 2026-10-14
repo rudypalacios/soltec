@@ -177,7 +177,11 @@ describe('bundles list', () => {
     const cards = await screen.findByLabelText('Lista de paquetes');
     expect(within(cards).getByText('Punto de red completo')).toBeVisible();
     expect(within(cards).getByText('PAQ-0001')).toBeVisible();
-    expect(within(cards).getByText('Cables del Sur · Puntos de red')).toBeVisible();
+    // The count of components stays on top; brand, suppliers and group under the name, each one on its own.
+    expect(within(cards).getByText('2 componentes')).toBeVisible();
+    for (const part of ['Panduit', 'Cables del Sur', 'Puntos de red']) {
+      expect(within(cards).getByText(part)).toHaveAttribute('title', part);
+    }
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: 'Área' })).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).not.toBeInTheDocument();

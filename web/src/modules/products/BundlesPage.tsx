@@ -16,7 +16,14 @@ import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { PER_PAGE_OPTIONS, useCatalogFilters } from './catalogFilters';
-import { bulkSummary, INACTIVE_CARD, INACTIVE_ROW, InactiveTag, PriceBlock } from './catalogParts';
+import {
+  bulkSummary,
+  MetaLine,
+  INACTIVE_CARD,
+  INACTIVE_ROW,
+  InactiveTag,
+  PriceBlock,
+} from './catalogParts';
 import { CatalogTabs } from './CatalogTabs';
 import { CodeChip } from './CodeChip';
 import { MarginPreviewDialog } from './MarginPreviewDialog';
@@ -337,11 +344,13 @@ function reactivationFailure(error: unknown, pending: PendingAction): string {
   return problemMessage(error);
 }
 
-/** The line under a bundle name: brand and how many components it has. */
+function componentCount(bundle: Bundle): string {
+  return bundle.component_count === 1 ? '1 componente' : `${bundle.component_count} componentes`;
+}
+
+/** The line under a bundle name in the table: brand and how many components it has. */
 function bundleSubline(bundle: Bundle): string {
-  const count =
-    bundle.component_count === 1 ? '1 componente' : `${bundle.component_count} componentes`;
-  return [bundle.brand?.name, count].filter(Boolean).join(' · ');
+  return [bundle.brand?.name, componentCount(bundle)].filter(Boolean).join(' · ');
 }
 
 /** «Contiene: …» when the search matched a component and not the bundle itself. */
@@ -403,8 +412,14 @@ function BundleCard({
         {slots.select}
         <CodeChip code={bundle.code} match={match} />
         {bundle.is_active ? null : <InactiveTag />}
-        <Typography variant="body2" color="text.secondary" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
-          {bundleSubline(bundle)}
+        {/* The count stays whole whatever the length of the rest: it is the one fact the card cannot lose. */}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          noWrap
+          sx={{ flexGrow: 1, minWidth: 0, flexShrink: 0 }}
+        >
+          {componentCount(bundle)}
         </Typography>
         {slots.menu}
       </Stack>
@@ -412,25 +427,20 @@ function BundleCard({
         <Highlight text={bundle.name} match={match} />
       </Typography>
       <ContainsLine bundle={bundle} match={match} />
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ justifyContent: 'space-between', alignItems: 'flex-end', mt: 0.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary">
-            {[suppliersOf(bundle), bundle.group.name].filter(Boolean).join(' · ')}
-          </Typography>
-          <Stack spacing={0.25}>
-            <CostAlerts bundle={bundle} compact />
-          </Stack>
-        </Box>
+      <Box sx={{ mt: 0.25 }}>
+        <MetaLine parts={[bundle.brand?.name, suppliersOf(bundle), bundle.group.name]} />
+      </Box>
+      <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+        <CostAlerts bundle={bundle} compact />
+      </Stack>
+      {/* The price has its own row, against the right edge, so it never competes with the text above for width. */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
         <PriceBlock
           priceWithVat={bundle.price_with_vat}
           priceWithoutVat={bundle.price_without_vat}
           currencyCode={currencyCode}
         />
-      </Stack>
+      </Box>
     </Paper>
   );
 }

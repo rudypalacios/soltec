@@ -15,7 +15,14 @@ import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { Highlight } from '../../components/Highlight';
 import { useIsMobile } from '../../components/useIsMobile';
-import { bulkSummary, INACTIVE_CARD, INACTIVE_ROW, InactiveTag, PriceBlock } from './catalogParts';
+import {
+  bulkSummary,
+  MetaLine,
+  INACTIVE_CARD,
+  INACTIVE_ROW,
+  InactiveTag,
+  PriceBlock,
+} from './catalogParts';
 import { PER_PAGE_OPTIONS, useCatalogFilters } from './catalogFilters';
 import { CatalogTabs } from './CatalogTabs';
 import { CodeChip } from './CodeChip';
@@ -457,33 +464,31 @@ function ProductCard({
         {slots.select}
         <CodeChip code={product.code} match={match} />
         {product.is_active ? null : <InactiveTag />}
+        {/* The unit is short and stays on top; brand, supplier and group (which can be long) go below the name. */}
         <Typography variant="body2" color="text.secondary" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
-          {productSubline(product)}
+          {product.unit.name}
         </Typography>
         {slots.menu}
       </Stack>
       <Typography sx={{ fontWeight: 600, mt: 0.25 }}>
         <Highlight text={product.name} match={match} />
       </Typography>
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ justifyContent: 'space-between', alignItems: 'flex-end', mt: 0.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary">
-            {product.supplier.name} · {product.group.name}
-          </Typography>
-          {product.cost_is_stale ? (
-            <StatusBadge tone="warning" label="Costo desactualizado" />
-          ) : null}
+      <Box sx={{ mt: 0.25 }}>
+        <MetaLine parts={[product.brand?.name, product.supplier.name, product.group.name]} />
+      </Box>
+      {product.cost_is_stale ? (
+        <Box sx={{ mt: 0.5 }}>
+          <StatusBadge tone="warning" label="Costo desactualizado" />
         </Box>
+      ) : null}
+      {/* The price has its own row, against the right edge, so it never competes with the text above for width. */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
         <PriceBlock
           priceWithVat={product.price_with_vat}
           priceWithoutVat={product.price_without_vat}
           currencyCode={currencyCode}
         />
-      </Stack>
+      </Box>
     </Paper>
   );
 }
