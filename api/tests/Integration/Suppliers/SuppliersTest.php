@@ -204,21 +204,94 @@ final class SuppliersTest extends AccessTestCase
         self::assertSame(2, $this->countRows('SELECT COUNT(*) FROM suppliers'));
     }
 
-    public function testDeactivatingFreesTheIdentificationAndReactivatingWhenTakenIsRefused(): void
+    public function testADeactivatedSupplierKeepsItsIdentificationReserved(): void
     {
         $old = $this->createSupplier('Viejo', ['identification_type' => 'nit', 'identification' => '6647912-6']);
         $oldId = $this->text($old, 'id');
         $this->api('POST', '/suppliers/' . $oldId . '/deactivate', $this->adminToken);
 
-        $new = $this->createSupplier('Nuevo', ['identification_type' => 'nit', 'identification' => '6647912-6']);
+        $response = $this->api('POST', '/suppliers', $this->adminToken, [
+            'name' => 'Nuevo', 'identification_type' => 'nit', 'identification' => '66479126',
+        ]);
+
+        self::assertSame(409, $response->getStatusCode());
+        $problem = $this->json($response);
+        self::assertSame('identification_inactive', $problem['code']);
+        // Whoever may reactivate is told which supplier it is, to do exactly that.
+        self::assertSame($oldId, $problem['inactive_supplier_id']);
+        self::assertSame('Viejo', $problem['inactive_supplier_name']);
+        self::assertSame(1, $this->countRows('SELECT COUNT(*) FROM suppliers'));
+
+        // Reactivating it is the way back; after that the identification is plainly taken.
+        self::assertSame(200, $this->statusOf('POST', '/suppliers/' . $oldId . '/reactivate'));
+        $again = $this->api('POST', '/suppliers', $this->adminToken, [
+            'name' => 'Nuevo', 'identification_type' => 'nit', 'identification' => '66479126',
+        ]);
+        self::assertSame('identification_taken', $this->json($again)['code']);
+    }
+
+    public function testWhoCannotReactivateIsNotToldWhichSupplierHoldsTheIdentification(): void
+    {
+        $old = $this->createSupplier('Reservado', ['identification_type' => 'nit', 'identification' => '6647912-6']);
+        $this->api('POST', '/suppliers/' . $this->text($old, 'id') . '/deactivate', $this->adminToken);
+        $creator = $this->tokenWith('suppliers', 'view', 'create', 'edit');
+
+        $response = $this->api('POST', '/suppliers', $creator, [
+            'name' => 'Otro', 'identification_type' => 'nit', 'identification' => '6647912-6',
+        ]);
+
+        self::assertSame(409, $response->getStatusCode());
+        $problem = $this->json($response);
+        self::assertSame('identification_inactive', $problem['code']);
+        self::assertStringNotContainsString('Reservado', json_encode($problem, JSON_THROW_ON_ERROR));
+        self::assertArrayNotHasKey('inactive_supplier_id', $problem);
+    }
+
+    public function testEditingToAnIdentificationADeactivatedSupplierHoldsIsRefusedButKeepingOwnIsFine(): void
+    {
+        $old = $this->createSupplier('Viejo', ['identification_type' => 'nit', 'identification' => '6647912-6']);
+        $this->api('POST', '/suppliers/' . $this->text($old, 'id') . '/deactivate', $this->adminToken);
+        $mine = $this->createSupplier('Mio', ['identification_type' => 'nit', 'identification' => '1234567-9']);
+        $path = '/suppliers/' . $this->text($mine, 'id');
+
+        $taken = $this->api('PATCH', $path, $this->adminToken, [
+            'version' => 1, 'name' => 'Mio', 'identification_type' => 'nit', 'identification' => '6647912-6',
+        ]);
+        self::assertSame('identification_inactive', $this->json($taken)['code']);
+
+        $own = $this->api('PATCH', $path, $this->adminToken, [
+            'version' => 1, 'name' => 'Mio renombrado', 'identification_type' => 'nit', 'identification' => '1234567-9',
+        ]);
+        self::assertSame(200, $own->getStatusCode());
+    }
+
+    public function testASupplierWithoutIdentificationNeverReservesAnything(): void
+    {
+        $none = $this->createSupplier('Sin NIT');
+        $this->api('POST', '/suppliers/' . $this->text($none, 'id') . '/deactivate', $this->adminToken);
+
+        $this->createSupplier('Otro sin NIT');
+        $this->createSupplier('Con NIT', ['identification_type' => 'nit', 'identification' => '6647912-6']);
+
+        self::assertSame(3, $this->countRows('SELECT COUNT(*) FROM suppliers'));
+    }
+
+    public function testReactivatingIsRefusedWhenDataFromBeforeTheRuleLetAnotherActiveOneHoldTheIdentification(): void
+    {
+        $old = $this->createSupplier('Viejo', ['identification_type' => 'nit', 'identification' => '6647912-6']);
+        $oldId = $this->text($old, 'id');
+        $this->api('POST', '/suppliers/' . $oldId . '/deactivate', $this->adminToken);
+        // The state staging could already have: an active supplier with the identification of a deactivated one.
+        $other = $this->createSupplier('Previo');
+        $this->connection->executeStatement(
+            "UPDATE suppliers SET identification_type = 'nit', identification = '66479126' WHERE id = UNHEX(:id)",
+            ['id' => str_replace('-', '', $this->text($other, 'id'))],
+        );
 
         $reactivate = $this->api('POST', '/suppliers/' . $oldId . '/reactivate', $this->adminToken);
+
         self::assertSame(409, $reactivate->getStatusCode());
         self::assertSame('identification_taken', $this->json($reactivate)['code']);
-        self::assertFalse($this->json($this->api('GET', '/suppliers/' . $oldId, $this->adminToken))['is_active']);
-
-        $this->api('POST', '/suppliers/' . $this->text($new, 'id') . '/deactivate', $this->adminToken);
-        self::assertSame(200, $this->statusOf('POST', '/suppliers/' . $oldId . '/reactivate'));
     }
 
     public function testDeactivateAndReactivateAreIdempotentAndAudited(): void

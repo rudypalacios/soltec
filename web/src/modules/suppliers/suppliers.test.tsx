@@ -284,6 +284,60 @@ describe('supplier form', () => {
     ).toBeVisible();
   });
 
+  it('offers to reactivate the deactivated supplier that holds the identification', async () => {
+    const calls: Call[] = [];
+    const { session } = createTestSession(
+      {
+        'GET /v1/suppliers': () => Response.json(page([])),
+        'POST /v1/suppliers': () =>
+          problem(409, 'identification_inactive', undefined, {
+            inactive_supplier_id: CABLES.id,
+            inactive_supplier_name: 'Cables del Sur',
+          }),
+        [`POST /v1/suppliers/${CABLES.id}/reactivate`]: (call) => {
+          calls.push(call);
+          return Response.json(CABLES);
+        },
+        [`GET /v1/suppliers/${CABLES.id}`]: () => Response.json(CABLES_DETAIL),
+        'GET /v1/contact-types/options': () => Response.json({ data: [COMPRAS] }),
+      },
+      meWith({ suppliers: ALL }),
+    );
+    renderApp(session, '/proveedores/nuevo');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/Nombre comercial/), 'Otro');
+    await user.type(screen.getByLabelText(/Número de NIT/), '6647912-6');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(
+      await screen.findByText(/Ya existe un registro inactivo con esta identificación/),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Reactivar «Cables del Sur»' }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    // The existing supplier is the one to correct.
+    await waitFor(() =>
+      expect(screen.getByTestId('where')).toHaveTextContent(`/proveedores/${CABLES.id}/editar`),
+    );
+  });
+
+  it('only explains it when the API does not say which supplier holds the identification', async () => {
+    const { session } = createTestSession(
+      { 'POST /v1/suppliers': () => problem(409, 'identification_inactive') },
+      meWith({ suppliers: ['view', 'create'] }),
+    );
+    renderApp(session, '/proveedores/nuevo');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(/Nombre comercial/), 'Otro');
+    await user.type(screen.getByLabelText(/Número de NIT/), '6647912-6');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(await screen.findByText(/Pide a administración que lo reactive/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^Reactivar/ })).not.toBeInTheDocument();
+  });
+
   it('shows what the API refused next to the row and field it belongs to', async () => {
     const { session } = createTestSession(
       {

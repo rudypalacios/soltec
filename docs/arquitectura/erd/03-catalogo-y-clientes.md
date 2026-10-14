@@ -102,7 +102,7 @@ Los contactos de un **proveedor** no son filas de `contacts`: son personas propi
 | `legal_name` | `VARCHAR(190)` | sí | Razón social |
 | `identification_type` | `ENUM('nit','cui','none')` | no | ADR-0022 |
 | `identification` | `VARCHAR(20)` | sí | Forma canónica, sin guion ni espacios, en mayúsculas. Nula si el tipo es `none` |
-| `active_identification` | `VARCHAR(20)` | sí | Generada: `IF(deleted_at IS NULL AND identification_type <> 'none', identification, NULL)`; índice único |
+| `active_identification` | `VARCHAR(20)` | sí | Generada: `IF(deleted_at IS NULL AND identification_type <> 'none', identification, NULL)`; índice único. Respaldo entre activos: el servidor además impide registrar la identificación de uno desactivado (ADR-0022, enmienda) |
 | `credit_days` | `SMALLINT UNSIGNED` | sí | |
 | `credit_limit` | `DECIMAL(14,2)` | sí | |
 

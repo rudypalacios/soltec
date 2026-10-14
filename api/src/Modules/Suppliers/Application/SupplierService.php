@@ -21,8 +21,10 @@ use Soltec\Modules\Suppliers\Persistence\SupplierRepository;
 
 /**
  * Administration of suppliers. They have no owner or data scope; the permissions of the resource are the only gate.
- * The identification is unique among active suppliers (ADR-0022) and the error never says whose it is. Deactivating
- * never blocks (ADR-0023); the cascade to products arrives with them (slice 2.4a).
+ * The identification is unique and a deactivated supplier keeps it reserved (ADR-0022): to register it again the
+ * existing supplier is reactivated. The error never says whose an active one is; for a deactivated one it names it
+ * only to whoever may reactivate it. Deactivating never blocks (ADR-0023); the cascade to products arrives with them
+ * (slice 2.4a).
  */
 final class SupplierService
 {
@@ -56,13 +58,16 @@ final class SupplierService
 
     /**
      * @throws ValidationException 422 `not_found` (a contact type that does not exist or is inactive)
-     * @throws ApiException 409 `identification_taken`
+     * @param bool $mayReactivate whether the caller may reactivate suppliers, so the error can point to the one
+     *        that holds the identification
+     * @throws ApiException 409 `identification_taken` or `identification_inactive`
      */
-    public function create(ActorContext $actor, SupplierData $data): SupplierRecord
+    public function create(ActorContext $actor, SupplierData $data, bool $mayReactivate): SupplierRecord
     {
         $id = Uuid::v7();
-        $this->takingTheIdentification(function () use ($actor, $data, $id): void {
-            $this->connection->transactional(function () use ($actor, $data, $id): void {
+        $this->takingTheIdentification(function () use ($actor, $data, $id, $mayReactivate): void {
+            $this->connection->transactional(function () use ($actor, $data, $id, $mayReactivate): void {
+                $this->requireFreeIdentification($data, null, $mayReactivate);
                 $this->requireUsableContactTypes($data, []);
                 $code = $this->sequences->next('supplier');
                 $this->suppliers->insert($id, $code, $data, $this->clock->now());
@@ -83,17 +88,23 @@ final class SupplierService
     /**
      * Replaces the data of the supplier, with its addresses and people as a whole.
      *
-     * @throws ApiException 404, 409 `conflict` (stale version) or 409 `identification_taken`
+     * @throws ApiException 404, 409 `conflict` (stale version), `identification_taken` or `identification_inactive`
      * @throws ValidationException 422 `not_found` (a contact type that does not exist or is inactive)
      */
-    public function update(ActorContext $actor, string $id, int $version, SupplierData $data): SupplierRecord
-    {
-        $this->takingTheIdentification(function () use ($actor, $id, $version, $data): void {
-            $this->connection->transactional(function () use ($actor, $id, $version, $data): void {
+    public function update(
+        ActorContext $actor,
+        string $id,
+        int $version,
+        SupplierData $data,
+        bool $mayReactivate,
+    ): SupplierRecord {
+        $this->takingTheIdentification(function () use ($actor, $id, $version, $data, $mayReactivate): void {
+            $this->connection->transactional(function () use ($actor, $id, $version, $data, $mayReactivate): void {
                 if (!$this->suppliers->lock($id)) {
                     throw ApiException::notFound();
                 }
                 $current = $this->get($id);
+                $this->requireFreeIdentification($data, $id, $mayReactivate);
                 $this->requireUsableContactTypes($data, $this->contactTypeIds($current->data));
 
                 if (!$this->suppliers->update($id, $version, $data, $this->clock->now())) {
@@ -166,17 +177,47 @@ final class SupplierService
         return $this->get($id);
     }
 
-    /** Turns the unique index on the identification into the fixed message of ADR-0022. */
+    /** Turns the unique index on the identification (a race past the check) into the fixed message of ADR-0022. */
     private function takingTheIdentification(callable $work): void
     {
         try {
             $work();
         } catch (UniqueConstraintViolationException) {
-            throw ApiException::conflict(
-                'identification_taken',
-                'A supplier with this identification already exists.',
-            );
+            throw self::taken();
         }
+    }
+
+    /**
+     * Refuses an identification another supplier holds. A deactivated one counts: it is reactivated, not registered
+     * again. Naming it is for whoever may reactivate it; for an active one the message never says whose it is.
+     *
+     * @throws ApiException 409 `identification_taken` or `identification_inactive`
+     */
+    private function requireFreeIdentification(SupplierData $data, ?string $exceptId, bool $mayReactivate): void
+    {
+        if ($data->identification === null) {
+            return;
+        }
+        $holder = $this->suppliers->holderOf($data->identification, $exceptId);
+        if ($holder === null) {
+            return;
+        }
+        if ($holder['active']) {
+            throw self::taken();
+        }
+
+        $pointer = ['inactive_supplier_id' => $holder['id'], 'inactive_supplier_name' => $holder['name']];
+
+        throw ApiException::conflict(
+            'identification_inactive',
+            'A deactivated supplier already has this identification; reactivate it instead of registering it again.',
+            $mayReactivate ? $pointer : [],
+        );
+    }
+
+    private static function taken(): ApiException
+    {
+        return ApiException::conflict('identification_taken', 'A supplier with this identification already exists.');
     }
 
     /**

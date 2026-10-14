@@ -16,7 +16,7 @@ function validNit(): string {
 }
 
 test(
-  'a supplier goes through its whole life: create with a person, refuse a repeated NIT, edit, deactivate, reactivate',
+  'a supplier goes through its whole life: create with a person, refuse a repeated NIT, edit, deactivate, reactivate it instead of registering it again',
   { tag: '@mobile' },
   async ({ page, isMobile }) => {
     const suffix = uniqueSuffix();
@@ -68,12 +68,21 @@ test(
 
     await suppliers.filterByStatus('Inactivos');
     await expect(suppliers.list.getByText(name, { exact: true })).toBeVisible();
-    await suppliers.act('Reactivar', name);
-    await page
-      .getByRole('dialog', { name: 'Reactivar proveedor' })
-      .getByRole('button', { name: 'Reactivar' })
-      .click();
-    await expect(page.getByText('No hay proveedores con esos filtros.')).toBeVisible();
+
+    // A deactivated supplier keeps its NIT: to register it again the existing one is reactivated, with the data to fix.
+    await page.goto('/proveedores/nuevo');
+    await suppliers.fillBasics({ name: `Otro ${suffix}`, nit });
+    await suppliers.save();
+    await expect(
+      page.getByText(/Ya existe un registro inactivo con esta identificación/),
+    ).toBeVisible();
+    await page.getByRole('button', { name: `Reactivar «${name}»` }).click();
+    await page.waitForURL((url) => /\/proveedores\/[^/]+\/editar$/.test(url.pathname));
+    await expect(page.getByLabel(/^Nombre comercial/)).toHaveValue(name);
+
+    await page.getByRole('link', { name: 'Cancelar' }).click();
+    await suppliers.search(name);
+    await expect(suppliers.list.getByText(name, { exact: true })).toBeVisible();
   },
 );
 

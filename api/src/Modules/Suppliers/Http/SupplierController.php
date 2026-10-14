@@ -61,7 +61,11 @@ final class SupplierController
         $data = $this->data($input);
         $input->done();
 
-        $supplier = $this->suppliers->create(ActorContext::fromRequest($request), $data);
+        $supplier = $this->suppliers->create(
+            ActorContext::fromRequest($request),
+            $data,
+            $this->caller($request)->can('suppliers', 'deactivate'),
+        );
 
         return Json::write($response, $supplier->toApi(), 201);
     }
@@ -81,7 +85,13 @@ final class SupplierController
         $data = $this->data($input);
         $input->done();
 
-        $supplier = $this->suppliers->update(ActorContext::fromRequest($request), $id, (int) $version, $data);
+        $supplier = $this->suppliers->update(
+            ActorContext::fromRequest($request),
+            $id,
+            (int) $version,
+            $data,
+            $this->caller($request)->can('suppliers', 'deactivate'),
+        );
 
         return Json::write($response, $supplier->toApi());
     }

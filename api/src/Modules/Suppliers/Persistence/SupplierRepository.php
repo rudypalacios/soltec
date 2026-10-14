@@ -174,6 +174,32 @@ final class SupplierRepository
     }
 
     /**
+     * The other supplier that holds an identification, an active one first. A deactivated supplier keeps its
+     * identification reserved, so it is found here too (the unique index alone only covers the active ones).
+     *
+     * @param string|null $exceptId the supplier being edited, who never conflicts with itself
+     * @return array{id: string, name: string, active: bool}|null
+     */
+    public function holderOf(string $identification, ?string $exceptId): ?array
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT LOWER(HEX(id)) AS id, name, deleted_at FROM suppliers WHERE identification = :identification '
+            . "AND identification_type <> 'none' AND (:except IS NULL OR id <> UNHEX(:except)) "
+            . 'ORDER BY deleted_at IS NULL DESC, created_at LIMIT 1',
+            ['identification' => $identification, 'except' => $exceptId === null ? null : Uuid::toHex($exceptId)],
+        );
+        if ($row === false) {
+            return null;
+        }
+
+        return [
+            'id' => Uuid::fromHex(Row::string($row, 'id')),
+            'name' => Row::string($row, 'name'),
+            'active' => Row::nullableString($row, 'deleted_at') === null,
+        ];
+    }
+
+    /**
      * Which of the contact types are active, so a person is not filed under a type that was switched off.
      *
      * @param list<string> $ids

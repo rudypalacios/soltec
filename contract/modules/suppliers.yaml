@@ -72,8 +72,10 @@ paths:
       summary: Create a supplier.
       description:
         The code is assigned from the `supplier` numbering. The identification is a NIT (with its check digit) or a
-        CUI (13 digits), required for those types and refused for `none`; it cannot repeat among active suppliers
-        (409 `identification_taken`, which never says whose it is, ADR-0022). Contact types must be active (422
+        CUI (13 digits), required for those types and refused for `none`; it cannot repeat. An active supplier that holds it
+        answers 409 `identification_taken`, which never says whose it is (ADR-0022). A deactivated one keeps it
+        reserved and answers 409 `identification_inactive`, so it is reactivated instead of registered again, and a caller
+        who may reactivate also receives `inactive_supplier_id` and `inactive_supplier_name` in the error. Contact types must be active (422
         `not_found` on `contacts.<n>.contact_type_id`). When no address is marked primary, the first one is.
       tags:
         - Suppliers
@@ -133,8 +135,9 @@ paths:
       summary: Edit a supplier.
       description:
         Replaces the supplier's data as a whole, so a field left out is cleared; the addresses and the people are
-        replaced as sets, in the order sent. A stale version answers 409 `conflict`; an identification already used by
-        another active supplier, 409 `identification_taken`. A contact type that was switched off after the supplier
+        replaced as sets, in the order sent. A stale version answers 409 `conflict`; an identification another supplier
+        holds, 409 `identification_taken` (active) or `identification_inactive` (deactivated, same extra members as
+        on creation). A contact type that was switched off after the supplier
         used it is still accepted for that supplier.
       tags:
         - Suppliers
@@ -171,8 +174,9 @@ paths:
       operationId: deactivateSupplier
       summary: Deactivate a supplier.
       description:
-        Logical deactivation. It never blocks, and frees its identification for another supplier. Its products will be
-        deactivated with it once they exist (ADR-0023). Idempotent.
+        Logical deactivation. It never blocks, and the supplier keeps its identification reserved, so it cannot be
+        registered again, so the supplier is reactivated. Its products will be deactivated with it once they exist
+        (ADR-0023). Idempotent.
       tags:
         - Suppliers
       x-permission: suppliers.deactivate
@@ -197,7 +201,9 @@ paths:
     post:
       operationId: reactivateSupplier
       summary: Reactivate a supplier.
-      description: Idempotent. When another active supplier uses its identification now, it answers 409 `identification_taken`.
+      description:
+        Idempotent. Only data from before the identification was reserved can hold it twice; then it answers 409
+        `identification_taken`.
       tags:
         - Suppliers
       x-permission: suppliers.deactivate

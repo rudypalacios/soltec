@@ -18,7 +18,12 @@ import { useCan } from '../access/SessionContext';
 import { IDENTIFICATION_LABELS, type IdentificationType } from './identification';
 import { AddressesEditor, ContactsEditor } from './SupplierRows';
 import { bodyOf, draftOf, type SupplierDraft } from './supplierDrafts';
-import { useCreateSupplier, useSupplier, useUpdateSupplier } from './useSuppliers';
+import {
+  useCreateSupplier,
+  useSetSupplierActive,
+  useSupplier,
+  useUpdateSupplier,
+} from './useSuppliers';
 
 type Supplier = components['schemas']['Supplier'];
 
@@ -106,6 +111,9 @@ function SupplierForm({ supplier, readOnly }: { supplier: Supplier | null; readO
   const [draft, setDraft] = useState<SupplierDraft>(() => draftOf(supplier));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
+  const [inactiveHolder, setInactiveHolder] = useState<{ id: string; name: string } | null>(null);
+  const setActive = useSetSupplierActive();
+  const can = useCan();
   const patch = (changes: Partial<SupplierDraft>) =>
     setDraft((current) => ({ ...current, ...changes }));
 
@@ -113,6 +121,7 @@ function SupplierForm({ supplier, readOnly }: { supplier: Supplier | null; readO
     event.preventDefault();
     setFieldErrors({});
     setFailure(null);
+    setInactiveHolder(null);
     const body = bodyOf(draft);
     try {
       if (supplier) {
@@ -122,8 +131,16 @@ function SupplierForm({ supplier, readOnly }: { supplier: Supplier | null; readO
       }
       navigate('/proveedores');
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'identification_taken') {
+      if (
+        error instanceof ApiError &&
+        (error.code === 'identification_taken' || error.code === 'identification_inactive')
+      ) {
         setFieldErrors({ identification: problemMessage(error) });
+        // Whoever may reactivate is told which supplier holds it, to do that instead of registering it again.
+        const { inactive_supplier_id: id, inactive_supplier_name: name } = error.details;
+        if (typeof id === 'string' && typeof name === 'string') {
+          setInactiveHolder({ id, name });
+        }
         return;
       }
       // Rows report their errors as «contacts.1.email»: the message depends on the last part of the name.
@@ -142,6 +159,22 @@ function SupplierForm({ supplier, readOnly }: { supplier: Supplier | null; readO
   };
 
   const busy = create.isPending || update.isPending;
+
+  const reactivateHolder = async () => {
+    if (!inactiveHolder) {
+      return;
+    }
+    try {
+      await setActive.mutateAsync({ supplierId: inactiveHolder.id, active: true });
+      // The supplier that already exists is the one to correct, not a new one.
+      navigate(
+        can('suppliers', 'edit') ? `/proveedores/${inactiveHolder.id}/editar` : '/proveedores',
+      );
+    } catch (error) {
+      setInactiveHolder(null);
+      setFailure(problemMessage(error));
+    }
+  };
   const text = (
     label: string,
     key: 'name' | 'legalName' | 'identification' | 'creditDays' | 'creditLimit',
@@ -171,6 +204,24 @@ function SupplierForm({ supplier, readOnly }: { supplier: Supplier | null; readO
   return (
     <FormPage onSubmit={(event) => void submit(event)} maxWidth={760}>
       {failure ? <Alert severity="error">{failure}</Alert> : null}
+      {inactiveHolder ? (
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={setActive.isPending}
+              onClick={() => void reactivateHolder()}
+            >
+              {`Reactivar «${inactiveHolder.name}»`}
+            </Button>
+          }
+        >
+          Ese proveedor ya está registrado y está inactivo. Reactívalo para corregir sus datos en
+          lugar de crear uno nuevo.
+        </Alert>
+      ) : null}
       {supplier && !supplier.is_active ? (
         <Alert severity="info">
           Este proveedor está inactivo. Puedes corregir sus datos; para que vuelva a las listas,
