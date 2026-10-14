@@ -19,7 +19,24 @@ final class SupplierRecord
         public readonly DateTimeImmutable $updatedAt,
         public readonly int $version,
         public readonly ?DateTimeImmutable $deletedAt,
+        /** Products that are inactive only because this supplier is; known when the supplier is read alone. */
+        public readonly ?int $deactivatedProductCount = null,
     ) {
+    }
+
+    public function withDeactivatedProductCount(int $count): self
+    {
+        return new self(
+            $this->id,
+            $this->code,
+            $this->data,
+            $this->detailed,
+            $this->createdAt,
+            $this->updatedAt,
+            $this->version,
+            $this->deletedAt,
+            $count,
+        );
     }
 
     public function isActive(): bool
@@ -51,6 +68,7 @@ final class SupplierRecord
         if ($this->detailed) {
             $api['addresses'] = array_map(static fn (SupplierAddress $a): array => $a->toArray(), $data->addresses);
             $api['contacts'] = array_map(static fn (SupplierContact $c): array => $c->toApi(), $data->contacts);
+            $api['deactivated_product_count'] = $this->deactivatedProductCount ?? 0;
         }
 
         return $api;

@@ -36,6 +36,25 @@ final class MarginLevelController
         ]);
     }
 
+    /**
+     * The active levels with what a selector needs, by margin: open to any internal session (ADR-0024), so a price
+     * list can offer them without access to this section.
+     */
+    public function options(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return Json::write($response, [
+            'data' => array_map(
+                static fn (MarginLevelRecord $level): array => [
+                    'id' => $level->id,
+                    'name' => $level->name,
+                    'rate' => $level->rate,
+                    'is_default' => $level->isDefault,
+                ],
+                $this->levels->list('active'),
+            ),
+        ]);
+    }
+
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $input = Input::body($request);

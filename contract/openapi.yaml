@@ -54,6 +54,8 @@ tags:
     description: Brands, areas, product groups, unit categories and units of measure that classify the products.
   - name: Contacts
     description: People that advisers keep, each owned by the user who entered it.
+  - name: Products
+    description: Products with their cost; the price is derived from it and never stored.
   - name: Suppliers
     description: Suppliers with their addresses and their own people, shared by everyone who may see the section.
   - name: Settings

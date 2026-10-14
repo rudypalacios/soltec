@@ -1,0 +1,564 @@
+paths:
+  /v1/products:
+    get:
+      operationId: listProducts
+      summary: List products.
+      description: >-
+        Inactive products are hidden unless status says otherwise. Products have no owner and no data scope: whoever may view
+        the section sees every one. Sorted by name. `q` searches the name and the code; `stale=true` keeps only the products
+        whose cost was last updated or confirmed longer ago than the days set in the financial settings.
+
+        Every product carries its price at one margin level: the default one, or the one `margin_level_id` names. The price is
+        never stored: the server computes it from the cost each time, so asking for another level gives the price of the same
+        cost at that level, never a margin on top of a price already shown (ADR-0011, ADR-0014).
+      tags:
+        - Products
+      x-permission: products.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/ProductSupplierFilter'
+        - $ref: '#/components/parameters/ProductAreaFilter'
+        - $ref: '#/components/parameters/ProductGroupFilter'
+        - $ref: '#/components/parameters/ProductBrandFilter'
+        - $ref: '#/components/parameters/ProductStaleFilter'
+        - $ref: '#/components/parameters/MarginLevelFilter'
+      responses:
+        '200':
+          description: A page of products.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createProduct
+      summary: Create a product.
+      description: >-
+        The code is assigned from the `product` numbering. The supplier, group, unit and brand must be active (422 `not_found`
+        on the field that is not). The cost is the invoice amount with VAT, greater than zero, with up to nine integer digits
+        and four decimals; it starts counting as updated now.
+      tags:
+        - Products
+      x-permission: products.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/deactivate:
+    post:
+      operationId: deactivateProducts
+      summary: Deactivate several products.
+      description: >-
+        Up to 500 `ids`, in one transaction and with an entry in the history per product. A product already inactive counts as
+        `unchanged`. An id that does not exist fails the whole call (422 `ids: not_found`).
+      tags:
+        - Products
+      x-permission: products.deactivate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductIds'
+      responses:
+        '200':
+          description: What happened to the products.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductBulkResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/reactivate:
+    post:
+      operationId: reactivateProducts
+      summary: Reactivate several products.
+      description: >-
+        Either up to 500 `ids`, or `supplier_id` to reactivate every product that supplier took down with it (and no other: one
+        deactivated by hand stays so). A product whose supplier is still deactivated stays as it is and counts as `blocked`;
+        with `supplier_id` of a deactivated supplier the call fails (422 `supplier_id: parent_inactive`).
+      tags:
+        - Products
+      x-permission: products.deactivate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductReactivate'
+      responses:
+        '200':
+          description: What happened to the products.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductBulkResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/confirm-cost:
+    post:
+      operationId: confirmProductCosts
+      summary: Confirm the cost of several products.
+      description: >-
+        Says that up to 500 products had their cost checked and it stays the same: they stop being stale without changing. It
+        is for what a price list review leaves untouched. The history records it as a cost review. Deactivated products are
+        left out and count as `unchanged`.
+      tags:
+        - Products
+      x-permission: products.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductIds'
+      responses:
+        '200':
+          description: What happened to the products.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductBulkResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/{productId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      operationId: getProduct
+      summary: Get a product by id.
+      description: >-
+        Returns the product, active or not, with its price at the default margin level or at `margin_level_id`.
+      tags:
+        - Products
+      x-permission: products.view
+      parameters:
+        - $ref: '#/components/parameters/MarginLevelFilter'
+      responses:
+        '200':
+          description: The product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateProduct
+      summary: Edit a product.
+      description: >-
+        Replaces the product's data as a whole. The cost counts as updated when its value changes, or when `cost_reviewed` is
+        true (somebody checked it and it stays the same); saving anything else leaves that date alone, so editing a name does
+        not clear the stale-cost alert. A reference that is inactive is refused (422 `not_found`) unless the product already
+        had it. A stale version answers 409 `conflict`.
+      tags:
+        - Products
+      x-permission: products.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: The updated product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/{productId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    post:
+      operationId: deactivateProduct
+      summary: Deactivate a product.
+      description: >-
+        Logical deactivation, marked as turned off by hand. It never blocks. Idempotent.
+      tags:
+        - Products
+      x-permission: products.deactivate
+      responses:
+        '200':
+          description: The deactivated product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/{productId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    post:
+      operationId: reactivateProduct
+      summary: Reactivate a product.
+      description: >-
+        Idempotent. While its supplier is deactivated it answers 422 `supplier_id: parent_inactive`: the supplier comes back
+        first.
+      tags:
+        - Products
+      x-permission: products.deactivate
+      responses:
+        '200':
+          description: The reactivated product.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/products/{productId}/confirm-cost:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    post:
+      operationId: confirmProductCost
+      summary: Confirm the cost of a product.
+      description: >-
+        Says that the cost was checked and stays the same: the product stops being stale without changing. The history
+        records it as a cost review. A deactivated product answers 409 `product_inactive`.
+      tags:
+        - Products
+      x-permission: products.edit
+      responses:
+        '200':
+          description: The product with its cost confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductSupplierFilter:
+      name: supplier_id
+      in: query
+      required: false
+      description: Only the products of this supplier.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductAreaFilter:
+      name: area_id
+      in: query
+      required: false
+      description: Only the products whose group belongs to this area.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductGroupFilter:
+      name: group_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductBrandFilter:
+      name: brand_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ProductStaleFilter:
+      name: stale
+      in: query
+      required: false
+      description: With `true`, only the products whose cost is stale.
+      schema:
+        type: string
+        enum:
+          - 'true'
+          - 'false'
+        default: 'false'
+    MarginLevelFilter:
+      name: margin_level_id
+      in: query
+      required: false
+      description: >-
+        The margin level the prices are computed with; the default level when omitted. A level that does not exist or
+        is inactive answers 422 `invalid`.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    ProductFields:
+      type: object
+      required:
+        - name
+        - supplier_id
+        - group_id
+        - unit_id
+        - cost
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 190
+        description:
+          type: [string, 'null']
+          maxLength: 2000
+        supplier_id:
+          $ref: '#/components/schemas/Uuid'
+        group_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The area of the product comes from its group.
+        brand_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        cost:
+          type: string
+          description: >-
+            The cost with VAT, as on the supplier's invoice, as a decimal string with up to nine integer digits and four
+            decimals, greater than zero, for example `22.9600`.
+        check_availability:
+          type: boolean
+          default: false
+          description: >-
+            Marks a product whose availability must be confirmed before promising it. The quoting screen shows the
+            alert "sin existencia, validar disponibilidad" for it until the inventory can say it by itself.
+    ProductCreate:
+      $ref: '#/components/schemas/ProductFields'
+    ProductUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/ProductFields'
+        - type: object
+          properties:
+            cost_reviewed:
+              type: boolean
+              default: false
+              description: >-
+                True when somebody checked the cost and it stays the same: the cost counts as updated now even though
+                its value did not change. Ignored when the cost changed, which already updates it.
+    ProductMarginLevel:
+      type: object
+      required:
+        - id
+        - name
+        - rate
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        rate:
+          type: string
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - code
+            - name
+            - description
+            - supplier
+            - group
+            - area
+            - brand
+            - unit
+            - cost
+            - cost_updated_at
+            - cost_is_stale
+            - margin_level
+            - price_without_vat
+            - price_with_vat
+            - check_availability
+            - is_active
+            - deactivation_reason
+          properties:
+            code:
+              type: string
+              description: Assigned from the `product` numbering, for example `PRD-0001`.
+            name:
+              type: string
+            description:
+              type: [string, 'null']
+            supplier:
+              $ref: '#/components/schemas/NamedRef'
+            group:
+              $ref: '#/components/schemas/NamedRef'
+            area:
+              $ref: '#/components/schemas/NamedRef'
+            brand:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            unit:
+              $ref: '#/components/schemas/NamedRef'
+            cost:
+              type: string
+              description: The stored cost with four decimals, VAT included.
+            cost_updated_at:
+              type: string
+              format: date-time
+              description: When the cost last changed or was confirmed as unchanged.
+            cost_is_stale:
+              type: boolean
+              description: True when `cost_updated_at` is older than the days set in the financial settings.
+            margin_level:
+              $ref: '#/components/schemas/ProductMarginLevel'
+            price_without_vat:
+              type: [string, 'null']
+              description: >-
+                Derived from the cost at `margin_level`, never stored and never a base for another calculation. Null
+                when it could not be computed.
+            price_with_vat:
+              type: [string, 'null']
+            check_availability:
+              type: boolean
+            is_active:
+              type: boolean
+            deactivation_reason:
+              oneOf:
+                - type: string
+                  enum:
+                    - manual
+                    - supplier
+                - type: 'null'
+              description: Why it is inactive, to tell one turned off by hand from one that went with its supplier.
+    ProductPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ProductIds:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+    ProductReactivate:
+      type: object
+      description: Either `ids` or `supplier_id`, not both.
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        supplier_id:
+          $ref: '#/components/schemas/Uuid'
+    ProductBulkResult:
+      type: object
+      required:
+        - affected
+        - unchanged
+        - blocked
+      properties:
+        affected:
+          type: integer
+          description: How many changed.
+        unchanged:
+          type: integer
+          description: How many were already as asked, or left out (a deactivated product has no cost to confirm).
+        blocked:
+          type: integer
+          description: How many could not be reactivated because their supplier is deactivated.

@@ -175,8 +175,9 @@ paths:
       summary: Deactivate a supplier.
       description:
         Logical deactivation. It never blocks, and the supplier keeps its identification reserved, so it cannot be
-        registered again, so the supplier is reactivated. Its products will be deactivated with it once they exist
-        (ADR-0023). Idempotent.
+        registered again, so the supplier is reactivated. Its active products are deactivated with it in the same
+        transaction, marked as turned off by the supplier, and `deactivated_product_count` says how many are
+        inactive for that reason (ADR-0023). Idempotent.
       tags:
         - Suppliers
       x-permission: suppliers.deactivate
@@ -202,7 +203,8 @@ paths:
       operationId: reactivateSupplier
       summary: Reactivate a supplier.
       description:
-        Idempotent. Only data from before the identification was reserved can hold it twice; then it answers 409
+        Idempotent. It does not reactivate its products, and `deactivated_product_count` says how many remain inactive
+        because of it. Only data from before the identification was reserved can hold it twice; then it answers 409
         `identification_taken`.
       tags:
         - Suppliers
@@ -389,7 +391,13 @@ components:
           required:
             - addresses
             - contacts
+            - deactivated_product_count
           properties:
+            deactivated_product_count:
+              type: integer
+              description:
+                Products that are inactive only because this supplier is. Reactivating the supplier does not bring them
+                back; they are reactivated together with a bulk reactivation by supplier, or one by one.
             addresses:
               type: array
               items:

@@ -34,9 +34,10 @@ final class SequencesTest extends SettingsTestCase
         $list = $this->json($this->api('GET', '/sequences', $this->adminToken));
 
         self::assertSame(
-            ['client', 'contact', 'quote', 'purchase_order', 'supplier', 'project'],
+            ['client', 'contact', 'quote', 'purchase_order', 'product', 'supplier', 'project'],
             $this->columnAt($list, 'code', 'data'),
-            'Ordered by name: Clientes, Contactos, Cotizaciones, Órdenes de compra, Proveedores, Proyectos.',
+            'Ordered by name: Clientes, Contactos, Cotizaciones, Órdenes de compra, Productos, Proveedores, '
+                . 'Proyectos.',
         );
         self::assertSame('CLI-0001', $this->sequence('client')['example']);
         self::assertSame('COT-2610-0001', $this->sequence('quote')['example'], 'October 2026 in the fixed clock.');

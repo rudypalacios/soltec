@@ -46,7 +46,7 @@ final class ParameterService
         return $this->parameters->search($parameter, $text, $status, $parentId, $page);
     }
 
-    /** @return list<array{id: string, name: string}> */
+    /** @return list<array<string, string>> */
     public function options(ParameterDefinition $parameter): array
     {
         return $this->parameters->options($parameter, self::OPTIONS_LIMIT);

@@ -7,6 +7,7 @@ namespace Soltec\Modules\Access\Persistence;
 use Doctrine\DBAL\Connection;
 use LogicException;
 use Soltec\Kernel\Clock;
+use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
@@ -22,6 +23,9 @@ use Soltec\Modules\Access\Domain\AuditEntityLabels;
  */
 final class AuditLogger
 {
+    /** Entries per statement of {@see recordMany()}: the placeholders of one INSERT stay far below any limit. */
+    private const BATCH = 100;
+
     private const FORBIDDEN_KEYS = [
         'password', 'password_hash', 'initial_password', 'current_password', 'new_password', 'token', 'refresh_token',
     ];
@@ -70,6 +74,97 @@ final class AuditLogger
                 'ip' => $actor->ip,
             ],
         );
+    }
+
+    /**
+     * One entry per record for the same action, written with a few statements instead of two queries each: a bulk
+     * change or a cascade over thousands of records is audited record by record (ADR-0023) without paying a round
+     * trip for every one. The name each record has now is stored with its entry, like {@see record()} does.
+     *
+     * @param list<array{id: string, before: array<string, mixed>|null, after: array<string, mixed>|null}> $entries
+     */
+    public function recordMany(ActorContext $actor, string $action, string $entityType, array $entries): void
+    {
+        $userLabel = $actor->userName ?? $this->labelOf('users', $actor->userId);
+        $now = Timestamps::toDb($this->clock->now());
+        foreach (array_chunk($entries, self::BATCH) as $chunk) {
+            $labels = $this->labelsOf($entityType, array_column($chunk, 'id'));
+            $values = [];
+            $params = [];
+            foreach ($chunk as $index => $entry) {
+                foreach ([$entry['before'], $entry['after']] as $data) {
+                    foreach (array_keys($data ?? []) as $key) {
+                        if (in_array($key, self::FORBIDDEN_KEYS, true)) {
+                            throw new LogicException(sprintf('The audit log must not carry "%s".', $key));
+                        }
+                    }
+                }
+                $values[] = sprintf(
+                    '(UNHEX(:id%1$d), :at, UNHEX(:user), :user_label, UNHEX(:device), :action, :type, '
+                    . 'UNHEX(:entity%1$d), :label%1$d, :before%1$d, :after%1$d, INET6_ATON(:ip))',
+                    $index,
+                );
+                $params['id' . $index] = Uuid::toHex(Uuid::v7());
+                $params['entity' . $index] = Uuid::toHex($entry['id']);
+                $params['label' . $index] = $labels[$entry['id']] ?? null;
+                $params['before' . $index] = $entry['before'] === null
+                    ? null
+                    : json_encode($entry['before'], JSON_THROW_ON_ERROR);
+                $params['after' . $index] = $entry['after'] === null
+                    ? null
+                    : json_encode($entry['after'], JSON_THROW_ON_ERROR);
+            }
+
+            $this->connection->executeStatement(
+                'INSERT INTO audit_logs (id, occurred_at, user_id, user_label, device_id, action, entity_type, '
+                . 'entity_id, entity_label, before_data, after_data, ip_address) VALUES ' . implode(', ', $values),
+                $params + [
+                    'at' => $now,
+                    'user' => $actor->userId === null ? null : Uuid::toHex($actor->userId),
+                    'user_label' => $userLabel,
+                    'device' => $actor->deviceId === null ? null : Uuid::toHex($actor->deviceId),
+                    'action' => $action,
+                    'type' => $entityType,
+                    'ip' => $actor->ip,
+                ],
+            );
+        }
+    }
+
+    /**
+     * The names records have right now, by id; empty when the type has no name.
+     *
+     * @param list<string> $ids
+     * @return array<string, string>
+     */
+    private function labelsOf(string $entityType, array $ids): array
+    {
+        $table = AuditEntityLabels::tableOf($entityType);
+        if ($table === null || $ids === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach ($ids as $index => $id) {
+            $placeholders[] = sprintf('UNHEX(:id%d)', $index);
+            $params['id' . $index] = Uuid::toHex($id);
+        }
+        $rows = $this->connection->fetchAllAssociative(
+            sprintf('SELECT LOWER(HEX(id)) AS id, name FROM %s WHERE id IN (%s)', $table, implode(', ', $placeholders)),
+            $params,
+        );
+
+        $labels = [];
+        foreach ($rows as $row) {
+            $labels[Uuid::fromHex(Row::string($row, 'id'))] = mb_substr(
+                Row::string($row, 'name'),
+                0,
+                AuditEntityLabels::MAX_LENGTH,
+            );
+        }
+
+        return $labels;
     }
 
     /** The record's name right now, or null when its type has no name or the record is not there. */
