@@ -15,6 +15,8 @@ import {
   TablePagination,
   TableRow,
   Typography,
+  type SxProps,
+  type Theme,
 } from '@mui/material';
 import { Fragment, type ReactNode } from 'react';
 import { ActionButton, ActionMenu, type RowAction } from './RowActions';
@@ -73,6 +75,8 @@ interface DataListProps<T> {
    * Puts a header before the first row of each block of consecutive rows that share a key (the list must already
    * come in that order). The first row of a page always gets one, so a block cut by the page break shows it again.
    */
+  /** Extra styles for the table row of a record, for one that has to stand out (an inactive one). */
+  rowSx?: (row: T) => SxProps<Theme> | undefined;
   groupBy?: (row: T) => { key: string; title: string; subtitle?: string };
   /**
    * Replaces the card of a phone with the screen's own. It receives the selection checkbox (null when the rows are
@@ -121,6 +125,7 @@ export function DataList<T>({
   dense = false,
   selection,
   groupBy,
+  rowSx,
   renderCard,
   pagination,
 }: DataListProps<T>) {
@@ -288,7 +293,11 @@ export function DataList<T>({
                         </TableCell>
                       </TableRow>
                     ) : null}
-                    <TableRow hover selected={selection?.selected.has(getRowId(row))}>
+                    <TableRow
+                      hover
+                      selected={selection?.selected.has(getRowId(row))}
+                      sx={rowSx?.(row)}
+                    >
                       {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
                       {columns.map((column) => (
                         <TableCell

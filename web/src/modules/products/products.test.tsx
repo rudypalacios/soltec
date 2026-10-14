@@ -298,6 +298,33 @@ describe('products list: reading', () => {
     expect(screen.getByRole('combobox', { name: /Por página/ })).toBeVisible();
   });
 
+  it('tags an inactive product so «Todos» tells it apart, and the area, group and brand filters can be typed in', async () => {
+    const inactive = { ...CABLE, is_active: false, deactivation_reason: 'manual' };
+    const calls: Call[] = [];
+    const { session } = createTestSession(
+      {
+        ...OPTIONS,
+        'GET /v1/products': (call) => {
+          calls.push(call);
+          return Response.json(page([RJ45, inactive]));
+        },
+      },
+      meWith({ products: ALL }),
+    );
+    renderApp(session, '/productos');
+    const user = userEvent.setup();
+
+    const table = await screen.findByRole('table', { name: 'Lista de productos' });
+    // One tag, on the inactive product only; the line under its name no longer carries the word.
+    expect(within(table).getAllByText('Inactivo')).toHaveLength(1);
+
+    await user.type(screen.getByRole('combobox', { name: 'Marca' }), 'pan');
+    await user.click(await screen.findByRole('option', { name: 'Panduit' }));
+    await waitFor(() => expect(calls.at(-1)?.query.get('brand_id')).toBe(BRAND.id));
+    await user.clear(screen.getByRole('combobox', { name: 'Marca' }));
+    await waitFor(() => expect(calls.at(-1)?.query.has('brand_id')).toBe(false));
+  });
+
   it('prices one product at another margin level on the server, without saving anything', async () => {
     const levels: (string | null)[] = [];
     const { session } = createTestSession(

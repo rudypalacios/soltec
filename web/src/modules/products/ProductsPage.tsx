@@ -20,6 +20,7 @@ import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import type { RowAction } from '../../components/RowActions';
+import { SearchableSelect } from '../../components/SearchableSelect';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StatusFilter } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
@@ -27,6 +28,7 @@ import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { Highlight } from '../../components/Highlight';
 import { useIsMobile } from '../../components/useIsMobile';
+import { color } from '../../theme/tokens';
 import { CodeChip } from './CodeChip';
 import { MarginPreviewDialog } from './MarginPreviewDialog';
 import { formatMoney } from './productFormat';
@@ -61,6 +63,8 @@ type PendingAction =
   | { kind: 'many'; change: Change; open: boolean }
   | { kind: 'supplier'; open: boolean };
 const ALL = '';
+/** The width of a filter that is not a plain select, as `FilterBar` gives them. */
+const FILTER_FIELD = { flex: { xs: '1 1 140px', sm: '0 0 200px' } } as const;
 
 /** What a bulk action did, in a sentence: «Se desactivaron 3 productos. 1 ya estaba así.» */
 export function bulkSummary(verb: string, result: BulkResult): string {
@@ -266,49 +270,34 @@ export function ProductsPage() {
       <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
         <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
       </Box>
-      <TextField
-        select
-        label="Área"
-        value={areaId}
-        onChange={(event) => {
-          setAreaId(event.target.value);
-          setGroupId(ALL);
-          filters.resetPage();
-        }}
-      >
-        <MenuItem value={ALL}>Todas</MenuItem>
-        {(areas.data?.data ?? []).map((area) => (
-          <MenuItem key={area.id} value={area.id}>
-            {area.name}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        select
-        label="Grupo"
-        value={groupId}
-        onChange={(event) => narrow(setGroupId)(event.target.value)}
-      >
-        <MenuItem value={ALL}>Todos</MenuItem>
-        {groupsOfArea.map((group) => (
-          <MenuItem key={group.id} value={group.id}>
-            {group.name}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        select
-        label="Marca"
-        value={brandId}
-        onChange={(event) => narrow(setBrandId)(event.target.value)}
-      >
-        <MenuItem value={ALL}>Todas</MenuItem>
-        {(brands.data?.data ?? []).map((brand) => (
-          <MenuItem key={brand.id} value={brand.id}>
-            {brand.name}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Box sx={FILTER_FIELD}>
+        <SearchableSelect
+          label="Área"
+          choices={(areas.data?.data ?? []).map((area) => ({ id: area.id, label: area.name }))}
+          value={areaId}
+          onChange={(next) => {
+            setAreaId(next);
+            setGroupId(ALL);
+            filters.resetPage();
+          }}
+        />
+      </Box>
+      <Box sx={FILTER_FIELD}>
+        <SearchableSelect
+          label="Grupo"
+          choices={groupsOfArea.map((group) => ({ id: group.id, label: group.name }))}
+          value={groupId}
+          onChange={narrow(setGroupId)}
+        />
+      </Box>
+      <Box sx={FILTER_FIELD}>
+        <SearchableSelect
+          label="Marca"
+          choices={(brands.data?.data ?? []).map((brand) => ({ id: brand.id, label: brand.name }))}
+          value={brandId}
+          onChange={narrow(setBrandId)}
+        />
+      </Box>
       <TextField
         select
         label="Margen"
@@ -487,6 +476,7 @@ export function ProductsPage() {
         getRowId={(product) => product.id}
         getRowName={(product) => product.name}
         getActions={actionsFor}
+        rowSx={(product) => (product.is_active ? undefined : INACTIVE_ROW)}
         selection={
           canSelect && (!isMobile || choosing) ? { selected, onChange: setSelected } : undefined
         }
@@ -615,11 +605,41 @@ function reactivationFailure(error: unknown, pending: PendingAction): string {
   return problemMessage(error);
 }
 
-/** The line under a product name: brand and unit, and whether it is off. */
+/** The line under a product name: brand and unit. */
 function productSubline(product: Product): string {
-  return [product.brand?.name, product.unit.name, product.is_active ? null : 'Inactivo']
-    .filter(Boolean)
-    .join(' · ');
+  return [product.brand?.name, product.unit.name].filter(Boolean).join(' · ');
+}
+
+/**
+ * How an inactive product shows in the list, with three quiet signals so «Todos» still tells them apart: a stripe at
+ * the left, a faint wash and grey text (the name keeps its colour), plus the «Inactivo» tag. Amber stays for the stale
+ * cost, so the two never read as the same thing.
+ */
+const INACTIVE_ROW = {
+  bgcolor: color.inactive.wash,
+  '& > td': { color: 'text.secondary' },
+  '& > td:first-of-type': { boxShadow: `inset 3px 0 0 ${color.inactive.stripe}` },
+  '&.MuiTableRow-hover:hover': { bgcolor: color.inactive.wash },
+} as const;
+
+function InactiveTag() {
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        bgcolor: color.error.tint,
+        color: color.error.main,
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        borderRadius: 999,
+        px: 1,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Inactivo
+    </Box>
+  );
 }
 
 function PriceBlock({ product, currencyCode }: { product: Product; currencyCode: string }) {
@@ -650,12 +670,22 @@ function ProductCard({
   return (
     <Paper
       variant="outlined"
-      sx={{ px: 1.5, py: 1, opacity: product.is_active ? 1 : 0.75 }}
+      sx={{
+        px: 1.5,
+        py: 1,
+        ...(product.is_active
+          ? {}
+          : {
+              bgcolor: color.inactive.wash,
+              borderLeft: `3px solid ${color.inactive.stripe}`,
+            }),
+      }}
       data-testid="product-card"
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         {slots.select}
         <CodeChip code={product.code} match={match} />
+        {product.is_active ? null : <InactiveTag />}
         <Typography variant="body2" color="text.secondary" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
           {productSubline(product)}
         </Typography>
@@ -698,7 +728,16 @@ function columnsFor({
       header: 'Código',
       mobile: 'subtitle',
       nowrap: true,
-      render: (product) => <CodeChip code={product.code} match={match} />,
+      render: (product) => (
+        <>
+          <CodeChip code={product.code} match={match} />
+          {product.is_active ? null : (
+            <Box sx={{ mt: 0.5 }}>
+              <InactiveTag />
+            </Box>
+          )}
+        </>
+      ),
     },
     {
       id: 'name',
@@ -706,8 +745,8 @@ function columnsFor({
       mobile: 'title',
       minWidth: 220,
       render: (product) => (
-        <Box sx={{ opacity: product.is_active ? 1 : 0.75 }}>
-          <Typography component="div" sx={{ fontWeight: 600 }}>
+        <Box>
+          <Typography component="div" sx={{ fontWeight: 600, color: 'text.primary' }}>
             <Highlight text={product.name} match={match} />
           </Typography>
           <Typography component="div" variant="body2" color="text.secondary">

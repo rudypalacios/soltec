@@ -242,7 +242,9 @@ test('whoever edits products creates a brand from the form only with the permiss
   await signIn(editorPage, editor.email, editor.password);
   await editorPage.goto(`/productos/${product.id}/editar`);
   // The group and the unit the product has are there, chosen from lists that need no access to their sections.
-  await expect(editorPage.getByRole('combobox', { name: /^Área y grupo/ })).toHaveText(group.label);
+  await expect(editorPage.getByRole('combobox', { name: /^Área y grupo/ })).toHaveValue(
+    group.label,
+  );
   await expect(editorPage.getByRole('button', { name: 'Crear marca' })).toHaveCount(0);
   await expect(editorPage.getByRole('button', { name: 'Crear grupo' })).toHaveCount(0);
 
@@ -254,7 +256,7 @@ test('whoever edits products creates a brand from the form only with the permiss
   const dialog = branderPage.getByRole('dialog', { name: 'Nueva marca' });
   await dialog.getByLabel(/^Nombre/).fill(brandName);
   await dialog.getByRole('button', { name: 'Crear' }).click();
-  await expect(branderPage.getByRole('combobox', { name: /^Marca/ })).toHaveText(brandName);
+  await expect(branderPage.getByRole('combobox', { name: /^Marca/ })).toHaveValue(brandName);
 });
 
 test(

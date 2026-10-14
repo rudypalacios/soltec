@@ -17,6 +17,7 @@ import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
+import { SearchableSelect } from '../../components/SearchableSelect';
 import { StatusBadge } from '../../components/StatusBadge';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { formatMoment } from '../access/formatting';
@@ -273,7 +274,15 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
       </Box>
 
       <Box>
-        {select('Área y grupo', groupId, setGroupId, 'group_id', groupChoices, { required: true })}
+        <SearchableSelect
+          label="Área y grupo"
+          choices={groupChoices}
+          value={groupId}
+          onChange={setGroupId}
+          required
+          readOnly={readOnly}
+          error={fieldErrors.group_id}
+        />
         {!readOnly && can('product_groups', 'create') ? (
           <Button size="small" onClick={() => setCreating('group')} sx={{ mt: 0.5 }}>
             Crear grupo
@@ -282,14 +291,14 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
       </Box>
 
       <Box>
-        {select(
-          'Marca',
-          brandId,
-          setBrandId,
-          'brand_id',
-          brandChoices.map((brand) => ({ id: brand.id, label: brand.name })),
-          { none: 'Sin marca' },
-        )}
+        <SearchableSelect
+          label="Marca"
+          choices={brandChoices.map((brand) => ({ id: brand.id, label: brand.name }))}
+          value={brandId}
+          onChange={setBrandId}
+          readOnly={readOnly}
+          error={fieldErrors.brand_id}
+        />
         {!readOnly && can('brands', 'create') ? (
           <Button size="small" onClick={() => setCreating('brand')} sx={{ mt: 0.5 }}>
             Crear marca
