@@ -41,7 +41,8 @@ final class OptionsTest extends AccessTestCase
         $roleless = $this->tokenFor($this->createUser('roleless@example.com')['id']);
 
         foreach ([$unrelated, $roleless] as $token) {
-            foreach (['/areas/options', '/unit-categories/options'] as $path) {
+            $paths = ['/areas/options', '/unit-categories/options', '/contact-types/options', '/suppliers/options'];
+            foreach ($paths as $path) {
                 self::assertSame(200, $this->api('GET', $path, $token)->getStatusCode(), $path);
             }
             // The section itself keeps its own permissions: the list, the creation and the edition.
@@ -66,12 +67,16 @@ final class OptionsTest extends AccessTestCase
 
         self::assertSame(403, $this->api('GET', '/areas/options', $token)->getStatusCode());
         self::assertSame(403, $this->api('GET', '/unit-categories/options', $token)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/contact-types/options', $token)->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/suppliers/options', $token)->getStatusCode());
     }
 
     public function testNeedsASession(): void
     {
         self::assertSame(401, $this->api('GET', '/areas/options')->getStatusCode());
         self::assertSame(401, $this->api('GET', '/unit-categories/options')->getStatusCode());
+        self::assertSame(401, $this->api('GET', '/contact-types/options')->getStatusCode());
+        self::assertSame(401, $this->api('GET', '/suppliers/options')->getStatusCode());
     }
 
     public function testAListNobodyConsumesYetHasNoOptionsRoute(): void

@@ -13,7 +13,7 @@ final class ParameterCatalog
     public static function all(): array
     {
         return [
-            new ParameterDefinition('contact-types', 'contact_types', 'contactTypeId'),
+            new ParameterDefinition('contact-types', 'contact_types', 'contactTypeId', offersOptions: true),
             new ParameterDefinition('client-statuses', 'client_statuses', 'clientStatusId', hasColor: true),
             new ParameterDefinition('segments', 'segments', 'segmentId'),
             new ParameterDefinition('tax-regimes', 'tax_regimes', 'taxRegimeId'),

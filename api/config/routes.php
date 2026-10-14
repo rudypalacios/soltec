@@ -26,6 +26,7 @@ use Soltec\Modules\Catalog\Http\ParameterController;
 use Soltec\Modules\Contacts\Http\ContactController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Settings\Http\BrandingController;
+use Soltec\Modules\Suppliers\Http\SupplierController;
 use Soltec\Modules\Settings\Http\CompanyController;
 use Soltec\Modules\Settings\Http\FinancialSettingsController;
 use Soltec\Modules\Settings\Http\MarginLevelController;
@@ -134,6 +135,21 @@ return static function (App $app): void {
             ->setArgument('permission', 'contacts.deactivate');
         $group->post('/contacts/{contactId}/reactivate', [ContactController::class, 'reactivate'])
             ->setArgument('permission', 'contacts.deactivate');
+
+        // Suppliers have no data scope; `options` is open to any internal session (ADR-0024).
+        $group->get('/suppliers/options', [SupplierController::class, 'options'])
+            ->setArgument('permission', 'internal');
+        $group->get('/suppliers', [SupplierController::class, 'list'])->setArgument('permission', 'suppliers.view');
+        $group->post('/suppliers', [SupplierController::class, 'create'])
+            ->setArgument('permission', 'suppliers.create');
+        $group->get('/suppliers/{supplierId}', [SupplierController::class, 'show'])
+            ->setArgument('permission', 'suppliers.view');
+        $group->patch('/suppliers/{supplierId}', [SupplierController::class, 'update'])
+            ->setArgument('permission', 'suppliers.edit');
+        $group->post('/suppliers/{supplierId}/deactivate', [SupplierController::class, 'deactivate'])
+            ->setArgument('permission', 'suppliers.deactivate');
+        $group->post('/suppliers/{supplierId}/reactivate', [SupplierController::class, 'reactivate'])
+            ->setArgument('permission', 'suppliers.deactivate');
 
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');

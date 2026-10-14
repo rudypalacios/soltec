@@ -103,17 +103,24 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - **Rutas (7):** `GET/POST /v1/contacts`, `GET/PATCH /v1/contacts/{contactId}`, `deactivate`, `reactivate` y `GET /v1/contacts/owner-options` (a quién puede pasar el contacto quien lo edita: su equipo con `team`, todos con `all`, nadie con `own`; lo puede leer cualquier usuario interno (sirve también al filtro por dueño), no pide `users.view`, y calcula la lista con la misma regla que valida el cambio). La lista busca por nombre, correo, teléfonos y código y filtra por `owner_id`; el contacto trae su dueño como `owner`
   - **Reglas:** quien crea es el dueño; el alcance (`own`, `team`, `all`) decide por dueño y un contacto fuera del alcance responde `404`; editar reemplaza los datos (lo que falta se borra) y `owner_id` omitido conserva el dueño; pasar el contacto a otro dueño exige alcance `team` (dentro del equipo, `422 out_of_scope`) o `all`, el nuevo dueño debe ser un usuario interno activo (`422 not_found`) y con `own` responde `403`; desactivar no bloquea
   - **Pantalla:** «Contactos» en el menú (`/contactos`, lista tabla/tarjetas, formulario de alta y edición); el responsable se elige solo con alcance `team` o `all` y el selector ofrece únicamente a quienes el servidor aceptaría; con `own` se muestra de solo lectura; sección «Contactos» en la matriz
-  - **Fuera:** vínculos con clientes y proveedores (2.3b y 2.5), reasignación en bloque (2.5), lista `/options`, `contact_id` en el formulario de usuarios (Hito 9)
-- [ ] **2.3b Proveedores**: identificación NIT/CUI/ninguna única (ADR-0022), direcciones, vínculo con contactos y crédito
-  - **QA de permisos y opciones** (ADR-0024; pendiente desde el PR #54, se hace en `staging` con esta rebanada):
-    - Perfil con solo `suppliers.view`: el formulario y los filtros se llenan (tipos de contacto, contactos) sin `contact_types.view` ni `contacts.view`; no ve esas secciones en el menú, `GET /v1/contact-types` y `GET /v1/contacts` dan `403` y `/options` da `200`
-    - Sin `suppliers.create`, `edit` o `deactivate`: no aparecen el botón ni la acción y la API responde `403`; un perfil con acciones pero sin `view` no se guarda (web y servidor)
-    - «Crear contacto» desde el formulario de proveedor: el botón solo aparece con `contacts.create` y sin él la API da `403`; lo mismo con tipo de contacto
-    - Alcance en el selector de contactos del proveedor: `own`, `team` y `all`, y un usuario sin rol sobre `contacts` (regla confirmada el 2026-10-13: no se restringe por dueño)
-    - Usuario externo: `403` en cualquier `/options`; usuario interno sin rol: `200`, y vacías las listas con dueño
-    - Todo a 390 px y a 1280 px
+  - **Fuera:** vínculo con clientes (2.5; los proveedores tienen contactos propios, 2.3b), reasignación en bloque (2.5), lista `/options`, `contact_id` en el formulario de usuarios (Hito 9)
+- [ ] **2.3b Proveedores** (ficha aprobada el 2026-10-13; un solo PR con `pre-deploy`; falta el QA en `staging`)
+  - **Datos:** una migración con `suppliers` (identificación NIT/CUI/ninguna única entre activos, ADR-0022, crédito), `supplier_addresses` (una principal por proveedor) y `supplier_contacts`, y el recurso `suppliers` para `admin`, sin alcance
+  - **Los contactos del proveedor son suyos, no de un asesor** (decisión del usuario, 2026-10-13; enmienda del ADR-0025): `supplier_contacts` con los datos de un contacto más el cargo y el tipo, sin dueño ni permiso propio; los ve y edita quien vea y edite proveedores. Por eso no hay unión con `contacts` ni `GET /v1/contacts/options`
+  - **Rutas (8):** `GET/POST /v1/suppliers`, `GET/PATCH /v1/suppliers/{supplierId}`, `deactivate`, `reactivate`, `GET /v1/suppliers/options` (abierta a todo usuario interno) y `GET /v1/contact-types/options`. Direcciones y contactos viajan dentro del proveedor y editar los reemplaza como conjunto. La lista no los trae
+  - **Reglas:** `409 identification_taken` con mensaje fijo (no dice de quién es). Un proveedor desactivado conserva su identificación: registrarla de nuevo da `409 identification_inactive` y quien puede reactivar recibe el proveedor y un botón «Reactivar» (decisión del usuario, 2026-10-14; enmienda del ADR-0022, se aplicará igual a clientes); el tipo de contacto debe estar activo, salvo uno que el proveedor ya usaba; si ninguna dirección es principal, la primera lo es; desactivar no bloquea (la cascada a productos llega con la 2.4a)
+  - **Pantalla:** «Proveedores» (`/proveedores`, `/nuevo`, `/:id` solo lectura para quien solo ve, `/:id/editar`); «Crear tipo de contacto» desde el formulario solo con `contact_types.create`; sección «Proveedores» en la matriz
+  - **Fuera:** productos y la cascada (2.4a), contactos de cliente (2.5), validación completa del CUI, saldos y cuentas por pagar (Hito 6), aviso de coincidencia por nombre (queda para clientes), teléfono o correo general del proveedor (se verá con el volcado del legacy)
+  - **Usuario limitado del QA:** `contacto@musicos-catolicos.com` (variables `EDITOR_EMAIL` y `EDITOR_PASSWORD` del environment) con el perfil `qa-editor`, que Claude reconfigura en `staging` por escenario con la cuenta QA; no se usa para bloquear la cuenta ni cambiar su contraseña
+  - **QA de permisos y opciones** (ADR-0024; se hace en `staging` con esta rebanada):
+    - A. Perfil con solo `suppliers.view`: lista, detalle de solo lectura y filtros llenos sin `contact_types.view` ni `contacts.view`; no ve esas secciones en el menú; `GET /v1/contact-types` y `GET /v1/contacts` dan `403` y `GET /v1/contact-types/options` da `200`
+    - B. Sin `suppliers.create`, `edit` o `deactivate`: no aparecen el botón ni la acción y la API responde `403`; un perfil con acciones pero sin `view` no se guarda (web y servidor)
+    - C. «Crear tipo de contacto» desde el formulario: solo con `contact_types.create`; sin él la API da `403`
+    - D. Con solo `suppliers.view` los contactos del proveedor se ven completos; con `suppliers.edit` se agregan y quitan; ningún permiso de `contacts` interviene
+    - E. Usuario externo: `403` en cualquier `/options` (integración y E2E; no se crean usuarios en `staging`); usuario interno sin rol: `200`
+    - F. Todo a 390 px y a 1280 px
 - [ ] **2.4a Productos**: costo con IVA y precio calculado, alerta de costo desactualizado, `deactivation_reason`, cascada desde el proveedor, acciones en bloque y selección de filas en `DataList`
-  - **QA de permisos y opciones** (ADR-0024): repetir los escenarios de 2.3b con perfil de solo `products.view`; marcas, grupos de producto, unidades, áreas (filtro) y proveedores se llenan sin acceso a sus secciones, y crear una marca, un grupo o un proveedor desde Productos exige el `create` de ese recurso
+  - **QA de permisos y opciones** (ADR-0024): repetir los escenarios A a F de 2.3b con perfil de solo `products.view`; marcas, grupos de producto, unidades, áreas (filtro) y proveedores se llenan sin acceso a sus secciones, y crear una marca, un grupo o un proveedor desde Productos exige el `create` de ese recurso
 - [ ] **2.4b Paquetes**: composición de productos con cantidad decimal y precio como suma
 - [ ] **2.5 Clientes**: prospecto y venta, perfil de facturación, varios asesores (`client_sellers`) con un responsable, vínculo de contactos, reasignación (individual y de cartera con los contactos), alcance `client`, FK `users.client_id`, `GET /v1/me/client` reducido, widget `quick_create_client` y pruebas de aislamiento por cliente
 - **Acordado:**
@@ -126,11 +133,20 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - **Criterio de cierre del Hito 2:** las rebanadas en `develop` y desplegadas en `staging`; el E2E de cada una en verde; ERD y `TODO.md` al día; P3 anotada como provisional; pendientes de abajo registrados
 - **Pendientes anotados (no bloquean el hito):**
   - Formas de pago: sin siembra hasta que el usuario las defina
-  - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior
+  - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior; ver «Solicitudes internas y avisos» abajo
   - Volcado de estructura del legacy: el usuario lo entregará; se revisa antes del Hito 3
   - Regla completa del CUI (dígito verificador y municipio) si hiciera falta
   - Valores de costo desactualizado (`stale_cost_days`, hoy 90) y colores de los estados: provisionales
 - **Fuera:** cotizaciones, conversión automática a cliente, aviso a cotizaciones vigentes, inventario y stock, descuento y anidación de paquetes, conversiones entre unidades, historial de compras, pantallas del usuario externo (Hito 9), PM3, PM4, PM8 y PM13.
+
+### Solicitudes internas y avisos entre áreas (idea del usuario, 2026-10-14; **no se construye ahora**)
+Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal área») que sustituya los «avísale a administración / a tu jefe». Se decide al planear el hito donde ya existan tareas, notificaciones y tickets: lo más probable es el **Hito 7 (helpdesk extendido)**, y antes solo si el Hito 3 ya trae lo necesario. Hasta entonces el cierre del flujo de catálogo y clientes va primero.
+- **Cómo se llega con la lista completa:** cada rebanada que escriba un mensaje del tipo «consulta con tu jefe / pide a administración» lo anota aquí. La solicitud sería una tarea con destinatario (quién pide, qué, a qué área o rol) sobre el motor de estados, el hilo y las notificaciones del Hito 3.
+- **Regla que ya aplica:** quien pide no debe ver datos del registro ajeno; quien resuelve, sí.
+- **Puntos anotados hasta hoy:**
+  - 2.3b: NIT o CUI de un proveedor **activo** repetido: el mensaje manda a consultar con el jefe directo o con administración (ADR-0022)
+  - 2.3b: NIT o CUI de un proveedor **desactivado**: quien no puede reactivar debe pedir la reactivación a administración (ADR-0022, enmienda)
+  - 2.5 (por construir): lo mismo para clientes, sin nombrar el registro; y el acceso a un cliente que ya tiene otro asesor
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
 - [ ] Motor de estados
@@ -164,6 +180,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
 - [ ] RRHH y comisiones
 - [ ] Reportes e indicadores
 - [ ] Helpdesk extendido y mantenimiento
+- [ ] Solicitudes internas y avisos entre áreas (candidata; ver la nota bajo el Hito 2, se decide al planear este hito)
 - [ ] Sala de reuniones
 - **Fuera:** móvil y portal.
 

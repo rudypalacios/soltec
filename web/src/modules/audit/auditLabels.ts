@@ -20,6 +20,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   unit_categories: 'Categorías de unidad',
   units_of_measure: 'Unidades de medida',
   contacts: 'Contactos',
+  suppliers: 'Proveedores',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   unit_categories: 'Categoría de unidad',
   units_of_measure: 'Unidad de medida',
   contacts: 'Contacto',
+  suppliers: 'Proveedor',
 };
 
 /**
@@ -82,6 +84,9 @@ export function recordPath(
   }
   if (entityType === 'contacts' && can('contacts', 'edit')) {
     return `/contactos/${entityId}/editar`;
+  }
+  if (entityType === 'suppliers' && can('suppliers', 'edit')) {
+    return `/proveedores/${entityId}/editar`;
   }
   return null;
 }
