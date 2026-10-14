@@ -35,13 +35,17 @@ export interface Line {
   costIsStale: boolean;
 }
 
-/** Visually hidden, for the header of a column that only holds a button. */
+/** Text for screen readers only (the recipe `DataList` uses); its cell must be `position: relative` to anchor it. */
 const HIDDEN = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  overflow: 'hidden',
+  border: 0,
   clip: 'rect(0 0 0 0)',
+  height: '1px',
+  margin: -1,
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: '1px',
 } as const;
 
 interface Props {
@@ -146,7 +150,7 @@ function DesktopTable({
             <TableCell align="right">Costo unitario</TableCell>
             <TableCell align="right">Subtotal</TableCell>
             {readOnly ? null : (
-              <TableCell align="right">
+              <TableCell align="right" sx={{ position: 'relative' }}>
                 <Box component="span" sx={HIDDEN}>
                   Quitar
                 </Box>

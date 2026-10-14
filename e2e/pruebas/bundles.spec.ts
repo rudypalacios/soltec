@@ -43,6 +43,10 @@ test(
     await bundles.setQuantity(1, '3');
     // 2 × 10.00 + 3 × 5.50: a preview while editing; the server decides the figure on saving.
     await expect(page.getByText(/^Q\s?36\.50$/)).toBeVisible();
+    // The table of components never widens the page (its hidden «Quitar» header once pushed it to twice the width).
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
     await bundles.save();
     await page.waitForURL((url) => url.pathname === '/paquetes');
 
