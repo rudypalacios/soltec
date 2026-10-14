@@ -236,3 +236,12 @@ export const CATALOG_VIEWS: readonly ParameterView[] = [
 
 /** Every list, to find the one a view's parent points at. */
 export const ALL_VIEWS: readonly ParameterView[] = [...PARAMETER_VIEWS, ...CATALOG_VIEWS];
+
+/** The view of a list, for a screen that works with one of them outside the catalog pages. */
+export function viewOf(slug: ParameterView['slug']): ParameterView {
+  const view = ALL_VIEWS.find((candidate) => candidate.slug === slug);
+  if (!view) {
+    throw new Error(`Unknown catalog list "${slug}".`);
+  }
+  return view;
+}

@@ -27,6 +27,12 @@ import { FinancialPage } from '../modules/settings/FinancialPage';
 import { MarginLevelsPage } from '../modules/settings/MarginLevelsPage';
 import { ContactCreatePage, ContactEditPage } from '../modules/contacts/ContactFormPage';
 import { ContactsPage } from '../modules/contacts/ContactsPage';
+import {
+  SupplierCreatePage,
+  SupplierEditPage,
+  SupplierViewPage,
+} from '../modules/suppliers/SupplierFormPage';
+import { SuppliersPage } from '../modules/suppliers/SuppliersPage';
 import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
@@ -137,6 +143,38 @@ export function App() {
           element={
             <RequirePermission resource="contacts" action="edit">
               <ContactEditPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="proveedores"
+          element={
+            <RequirePermission resource="suppliers" action="view">
+              <SuppliersPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="proveedores/nuevo"
+          element={
+            <RequirePermission resource="suppliers" action="create">
+              <SupplierCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="proveedores/:supplierId"
+          element={
+            <RequirePermission resource="suppliers" action="view">
+              <SupplierViewPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="proveedores/:supplierId/editar"
+          element={
+            <RequirePermission resource="suppliers" action="edit">
+              <SupplierEditPage />
             </RequirePermission>
           }
         />

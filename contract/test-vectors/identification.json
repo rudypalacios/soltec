@@ -1,0 +1,26 @@
+{
+  "description": "NIT and CUI validation (ADR-0022). Only the API validates identifications; the web shows the server's error. The NIT examples are checked by hand with the module-11 rule (the first digit weighs n + 1, the last one 2; check = (11 - sum mod 11) mod 11, 10 written K).",
+  "valid": [
+    { "type": "nit", "input": "6647912-6", "canonical": "66479126", "display": "6647912-6" },
+    { "type": "nit", "input": "66479126", "canonical": "66479126", "display": "6647912-6" },
+    { "type": "nit", "input": " 1234567 - 9 ", "canonical": "12345679", "display": "1234567-9" },
+    { "type": "nit", "input": "555-K", "canonical": "555K", "display": "555-K" },
+    { "type": "nit", "input": "81234-k", "canonical": "81234K", "display": "81234-K" },
+    { "type": "nit", "input": "123456-0", "canonical": "1234560", "display": "123456-0" },
+    { "type": "cui", "input": "2432156780101", "canonical": "2432156780101", "display": "2432156780101" },
+    { "type": "cui", "input": "2432 15678 0101", "canonical": "2432156780101", "display": "2432156780101" }
+  ],
+  "invalid": [
+    { "type": "nit", "input": "6647912-5" },
+    { "type": "nit", "input": "1234567-8" },
+    { "type": "nit", "input": "555-0" },
+    { "type": "nit", "input": "ABC-1" },
+    { "type": "nit", "input": "" },
+    { "type": "nit", "input": "-" },
+    { "type": "nit", "input": "1234567890123-1" },
+    { "type": "cui", "input": "243215678010" },
+    { "type": "cui", "input": "24321567801011" },
+    { "type": "cui", "input": "2432156780X01" },
+    { "type": "none", "input": "123" }
+  ]
+}
