@@ -1,0 +1,497 @@
+paths:
+  /v1/bundles:
+    get:
+      operationId: listBundles
+      summary: List bundles.
+      description: >-
+        A bundle is a compound product: its components are products with a quantity. Inactive bundles are hidden unless
+        status says otherwise. Bundles have no owner and no data scope: whoever may view the section sees every one, with the
+        cost of the bundle and of each component. Sorted by name unless `sort` says otherwise; with `grouped=true` it is
+        ordered by area and group first.
+
+        `q` searches the name and the code of the bundle and also the name and the code of its components; when a component
+        is what matched, `matched_component` says which. `supplier_id` keeps the bundles that contain a product of that
+        supplier. `stale=true` keeps the bundles whose cost is stale, that is, with a component whose cost was last updated or
+        confirmed longer ago than the days set in the financial settings.
+
+        Every bundle carries its price at one margin level: the default one, or the one `margin_level_id` names. Nothing is
+        stored: the server adds up quantity times cost of the components and derives the price from that sum, never from a
+        price already shown (ADR-0011, ADR-0014).
+      tags:
+        - Bundles
+      x-permission: bundles.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - $ref: '#/components/parameters/ProductSupplierFilter'
+        - $ref: '#/components/parameters/ProductAreaFilter'
+        - $ref: '#/components/parameters/ProductGroupFilter'
+        - $ref: '#/components/parameters/ProductBrandFilter'
+        - $ref: '#/components/parameters/ProductStaleFilter'
+        - $ref: '#/components/parameters/MarginLevelFilter'
+        - $ref: '#/components/parameters/ProductSort'
+        - $ref: '#/components/parameters/ProductGrouped'
+      responses:
+        '200':
+          description: A page of bundles, without their components.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BundlePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createBundle
+      summary: Create a bundle.
+      description: >-
+        The code is assigned from the `bundle` numbering. It needs at least one component (422 `items: required`) and at most
+        100. A component is an active product, once per bundle (422 `items.N.product_id: duplicate`), with a quantity greater
+        than zero and up to three decimals (422 `items.N.quantity`). The group and the brand must be active (422 `not_found`
+        on the field that is not).
+      tags:
+        - Bundles
+      x-permission: bundles.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BundleCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bundle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/bundles/candidates:
+    get:
+      operationId: listBundleCandidates
+      summary: Search the products a bundle can be built from.
+      description: >-
+        Active products matching `q` by name or code, with their cost, leaving out the ids in `exclude` (the components the
+        bundle already has). It carries costs, which is what whoever may view bundles sees. At most `limit` (20 by default,
+        50 at most), by name.
+      tags:
+        - Bundles
+      x-permission: bundles.view
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: exclude
+          in: query
+          required: false
+          description: Product ids separated by commas, up to 4000 characters. Anything that is not an id answers 422.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: The candidates.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BundleCandidate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/bundles/{bundleId}:
+    parameters:
+      - $ref: '#/components/parameters/BundleId'
+    get:
+      operationId: getBundle
+      summary: Get a bundle by id.
+      description: >-
+        Returns the bundle, active or not, with its components and its price at the default margin level or at
+        `margin_level_id`.
+      tags:
+        - Bundles
+      x-permission: bundles.view
+      parameters:
+        - $ref: '#/components/parameters/MarginLevelFilter'
+      responses:
+        '200':
+          description: The bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bundle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateBundle
+      summary: Edit a bundle.
+      description: >-
+        Replaces the data and the components of the bundle as a whole, in one transaction. A reference that is inactive is
+        refused (422 `not_found`) unless the bundle already had it, so a component switched off since can stay. A stale
+        version answers 409 `conflict`.
+      tags:
+        - Bundles
+      x-permission: bundles.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BundleUpdate'
+      responses:
+        '200':
+          description: The updated bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bundle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/bundles/{bundleId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/BundleId'
+    post:
+      operationId: deactivateBundle
+      summary: Deactivate a bundle.
+      description: >-
+        Logical deactivation. It never blocks and does not touch its components. Idempotent.
+      tags:
+        - Bundles
+      x-permission: bundles.deactivate
+      responses:
+        '200':
+          description: The deactivated bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bundle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/bundles/{bundleId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/BundleId'
+    post:
+      operationId: reactivateBundle
+      summary: Reactivate a bundle.
+      description: >-
+        Idempotent. It is refused while its group is deactivated (422 `group_id: parent_inactive`).
+      tags:
+        - Bundles
+      x-permission: bundles.deactivate
+      responses:
+        '200':
+          description: The reactivated bundle.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bundle'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    BundleId:
+      name: bundleId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    BundleItemInput:
+      type: object
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          type: string
+          description: >-
+            Greater than zero, as a decimal string with up to nine integer digits and three decimals, for example `18` or
+            `4.5`. The unit is the one of the product.
+    BundleFields:
+      type: object
+      required:
+        - name
+        - group_id
+        - items
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 190
+        description:
+          type: [string, 'null']
+          maxLength: 2000
+        group_id:
+          $ref: '#/components/schemas/Uuid'
+          description: The area of the bundle comes from its group.
+        brand_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: The components, in the order they are shown; a product appears once.
+          items:
+            $ref: '#/components/schemas/BundleItemInput'
+    BundleCreate:
+      $ref: '#/components/schemas/BundleFields'
+    BundleUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/BundleFields'
+    BundleComponent:
+      type: object
+      required:
+        - product
+        - unit
+        - supplier
+        - quantity
+        - cost
+        - line_cost
+        - cost_updated_at
+        - cost_is_stale
+        - is_active
+      properties:
+        product:
+          type: object
+          required:
+            - id
+            - code
+            - name
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            code:
+              type: string
+            name:
+              type: string
+        unit:
+          $ref: '#/components/schemas/NamedRef'
+        supplier:
+          $ref: '#/components/schemas/NamedRef'
+        quantity:
+          type: string
+          description: With three decimals.
+        cost:
+          type: string
+          description: The cost of one unit of the product, VAT included, with four decimals.
+        line_cost:
+          type: string
+          description: >-
+            Quantity times cost rounded to four decimals, for display. The cost of the bundle adds up the exact values, so
+            the lines may differ from it by a rounding.
+        cost_updated_at:
+          type: string
+          format: date-time
+        cost_is_stale:
+          type: boolean
+        is_active:
+          type: boolean
+          description: False for a product deactivated after it went into the bundle.
+    BundleMatchedComponent:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    Bundle:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - code
+            - name
+            - description
+            - group
+            - area
+            - brand
+            - suppliers
+            - component_count
+            - cost
+            - cost_updated_at
+            - cost_is_stale
+            - has_inactive_components
+            - inactive_component_count
+            - check_availability
+            - margin_level
+            - price_without_vat
+            - price_with_vat
+            - is_active
+            - matched_component
+          properties:
+            code:
+              type: string
+              description: Assigned from the `bundle` numbering, for example `PAQ-0001`.
+            name:
+              type: string
+            description:
+              type: [string, 'null']
+            group:
+              $ref: '#/components/schemas/NamedRef'
+            area:
+              $ref: '#/components/schemas/NamedRef'
+            brand:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            suppliers:
+              type: array
+              description: The suppliers of the components, by name, each once.
+              items:
+                $ref: '#/components/schemas/NamedRef'
+            component_count:
+              type: integer
+            cost:
+              type: string
+              description: >-
+                Derived: the sum of quantity times cost of the components, rounded once to four decimals, VAT included. Never
+                stored.
+            cost_updated_at:
+              type: string
+              format: date-time
+              description: The oldest `cost_updated_at` among the components.
+            cost_is_stale:
+              type: boolean
+              description: True when any component has a stale cost, with the days set in the financial settings.
+            has_inactive_components:
+              type: boolean
+              description: >-
+                True when a component was deactivated after it went in. The bundle keeps adding it up. The Cotizador will
+                refuse to quote a bundle in this state.
+            inactive_component_count:
+              type: integer
+            check_availability:
+              type: boolean
+              description: True when any component asks for availability to be confirmed.
+            margin_level:
+              $ref: '#/components/schemas/ProductMarginLevel'
+            price_without_vat:
+              type: [string, 'null']
+              description: >-
+                Derived from `cost` at `margin_level`, never stored and never a base for another calculation. Null when it
+                could not be computed.
+            price_with_vat:
+              type: [string, 'null']
+            is_active:
+              type: boolean
+            matched_component:
+              oneOf:
+                - $ref: '#/components/schemas/BundleMatchedComponent'
+                - type: 'null'
+              description: >-
+                In a list searched with `q`: the first component that matched when the bundle itself did not. Null otherwise.
+            items:
+              type: array
+              description: The components, only when the bundle is read on its own.
+              items:
+                $ref: '#/components/schemas/BundleComponent'
+    BundlePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bundle'
+        meta:
+          allOf:
+            - $ref: '#/components/schemas/PageMeta'
+            - type: object
+              required:
+                - currency_code
+              properties:
+                currency_code:
+                  type: string
+                  description: The currency the prices and costs are in, from the financial settings.
+    BundleCandidate:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - cost
+        - unit
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        name:
+          type: string
+        cost:
+          type: string
+          description: The cost of one unit, VAT included, with four decimals.
+        unit:
+          $ref: '#/components/schemas/NamedRef'

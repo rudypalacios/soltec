@@ -157,14 +157,14 @@ Las personas del proveedor. Pertenecen al proveedor, no a un asesor: sin dueño,
 No se guarda ningún precio. «Costo desactualizado» tampoco: es `NOW() − cost_updated_at > stale_cost_days`, calculado al consultar, de modo que cambiar el parámetro aplica de inmediato.
 
 ### `bundles` y `bundle_items`
-Un paquete es un ítem aparte, solo de productos simples (P17 y P18: sin descuento propio ni anidados).
+Un paquete es un producto compuesto: se trata como un producto en lo que pueda (grupo y, por él, área; marca opcional; costos visibles para quien ve la sección) y solo de productos simples (P17 y P18: sin descuento propio ni anidados). No tiene unidad (sus componentes vienen en unidades distintas), proveedor ni costo propios: los proveedores son los de los componentes y el costo se suma de ellos.
 
 | Tabla | Columnas |
 |---|---|
-| `bundles` | `code` (secuencia `bundle`, único), `name VARCHAR(190)`, `description TEXT` NULL |
-| `bundle_items` (unión) | `bundle_id`, `product_id`, `quantity DECIMAL(12,3)`; PK (`bundle_id`, `product_id`); sin campos comunes |
+| `bundles` | `code` (secuencia `bundle`, único), `name VARCHAR(190)`, `description TEXT` NULL, `group_id` (FK `product_groups`), `brand_id` NULL (FK `brands`) |
+| `bundle_items` (unión) | `bundle_id`, `product_id`, `sort_order` (el orden en que se listaron), `quantity DECIMAL(12,3)`; PK (`bundle_id`, `product_id`); sin campos comunes |
 
-La cantidad es mayor que cero y admite decimales («18 metros de cable»). Cambiar la composición reemplaza todas las filas en una transacción y sube la `version` del paquete. El precio del paquete es la suma de `cantidad × costo` de sus componentes, pasada una sola vez por la fórmula del ADR-0011, sin redondear por línea.
+La cantidad es mayor que cero y admite decimales («18 metros de cable»). Cambiar la composición reemplaza todas las filas en una transacción y sube la `version` del paquete. No se guarda costo ni precio. El costo del paquete es la suma de `cantidad × costo` de sus componentes, redondeada una sola vez a cuatro decimales, y su precio sale de esa suma con la fórmula del ADR-0011, sin redondear por línea. Se derivan también: la antigüedad del costo (la del componente más viejo, para el aviso de costo desactualizado), `check_availability` (si algún componente lo pide) y `has_inactive_components` (un componente desactivado después de entrar sigue en el paquete; el Cotizador del Hito 4 no cotiza un paquete así). Buscar por texto encuentra el paquete también por el nombre y el código de sus componentes.
 
 ## 12 Clientes
 

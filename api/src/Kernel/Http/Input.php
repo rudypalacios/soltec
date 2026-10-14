@@ -61,6 +61,14 @@ final class Input
         return array_key_exists($field, $this->data);
     }
 
+    /** Whether the field is absent, null or an empty list: for a list that must have at least one entry. */
+    public function isEmptyList(string $field): bool
+    {
+        $value = $this->data[$field] ?? null;
+
+        return $value === null || $value === [];
+    }
+
     /** A trimmed text with a length in characters between $min and $max. Null when optional and absent. */
     public function text(string $field, int $min, int $max, bool $required = true): ?string
     {
