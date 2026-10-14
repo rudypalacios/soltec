@@ -5,7 +5,6 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  Link,
   MenuItem,
   Stack,
   TextField,
@@ -24,6 +23,7 @@ import { formatMoment } from '../access/formatting';
 import { useCan } from '../access/SessionContext';
 import { viewOf } from '../parameters/parameterViews';
 import { QuickParameterDialog } from '../parameters/QuickParameterDialog';
+import { QuickSupplierDialog } from '../suppliers/QuickSupplierDialog';
 import { formatAmount } from './productFormat';
 import { SupplierSelect, type SupplierChoice } from './SupplierSelect';
 import {
@@ -135,7 +135,14 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
   const [cost, setCost] = useState(product?.cost ? formatAmount(product.cost) : '');
   const [checkAvailability, setCheckAvailability] = useState(product?.check_availability ?? false);
   const [costReviewed, setCostReviewed] = useState(false);
-  const [creating, setCreating] = useState<'brand' | 'group' | null>(null);
+  // What the person is creating from a search box, and the text they had typed, which the dialog starts with.
+  const [creating, setCreating] = useState<{
+    kind: 'brand' | 'group' | 'supplier';
+    text: string;
+    open: boolean;
+  } | null>(null);
+  const offerCreate = (kind: 'brand' | 'group' | 'supplier') => (text: string) =>
+    setCreating({ kind, text, open: true });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -265,12 +272,8 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
           required
           readOnly={readOnly}
           error={fieldErrors.supplier_id}
+          onCreate={!readOnly && can('suppliers', 'create') ? offerCreate('supplier') : undefined}
         />
-        {!readOnly && can('suppliers', 'create') ? (
-          <Link component={RouterLink} to="/proveedores/nuevo" variant="body2">
-            Registrar un proveedor nuevo
-          </Link>
-        ) : null}
       </Box>
 
       <Box>
@@ -282,12 +285,8 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
           required
           readOnly={readOnly}
           error={fieldErrors.group_id}
+          onCreate={!readOnly && can('product_groups', 'create') ? offerCreate('group') : undefined}
         />
-        {!readOnly && can('product_groups', 'create') ? (
-          <Button size="small" onClick={() => setCreating('group')} sx={{ mt: 0.5 }}>
-            Crear grupo
-          </Button>
-        ) : null}
       </Box>
 
       <Box>
@@ -298,12 +297,8 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
           onChange={setBrandId}
           readOnly={readOnly}
           error={fieldErrors.brand_id}
+          onCreate={!readOnly && can('brands', 'create') ? offerCreate('brand') : undefined}
         />
-        {!readOnly && can('brands', 'create') ? (
-          <Button size="small" onClick={() => setCreating('brand')} sx={{ mt: 0.5 }}>
-            Crear marca
-          </Button>
-        ) : null}
       </Box>
 
       {select(
@@ -380,18 +375,28 @@ function ProductForm({ product, readOnly }: { product: Product | null; readOnly:
       </FormActions>
 
       <QuickParameterDialog
-        view={creating === 'group' ? GROUPS : BRANDS}
-        open={creating !== null}
-        onClose={() => setCreating(null)}
-        parents={creating === 'group' ? (areas.data?.data ?? []) : undefined}
+        view={creating?.kind === 'group' ? GROUPS : BRANDS}
+        open={creating?.open === true && creating.kind !== 'supplier'}
+        initialName={creating?.text}
+        onClose={() => setCreating(creating && { ...creating, open: false })}
+        parents={creating?.kind === 'group' ? (areas.data?.data ?? []) : undefined}
         onCreated={(created) => {
-          if (creating === 'group') {
+          if (creating?.kind === 'group') {
             setGroupId(created.id);
           } else {
             setBrandId(created.id);
           }
-          setCreating(null);
+          setCreating(creating && { ...creating, open: false });
           void refreshOptions();
+        }}
+      />
+      <QuickSupplierDialog
+        open={creating?.open === true && creating.kind === 'supplier'}
+        initialName={creating?.text}
+        onClose={() => setCreating(creating && { ...creating, open: false })}
+        onCreated={(created) => {
+          setSupplier(created);
+          setCreating(creating && { ...creating, open: false });
         }}
       />
     </FormPage>

@@ -583,7 +583,7 @@ describe('product form', () => {
     expect(await screen.findByText('No tienes permiso para ver esta pantalla.')).toBeVisible();
   });
 
-  it('offers to create a brand or a group only with the permission of that section, and uses what was created', async () => {
+  it('offers «Crear "…"» in the search of a brand or a group only with the permission of that section, and not when it already exists', async () => {
     const calls: Call[] = [];
     const created = {
       id: '0192f1c2-7d3a-7a11-8f2e-0000000000e2',
@@ -605,13 +605,22 @@ describe('product form', () => {
     const user = userEvent.setup();
 
     await screen.findByLabelText(/^Nombre/);
-    expect(screen.queryByRole('button', { name: 'Crear grupo' })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /Registrar un proveedor nuevo/ }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Crear marca' }));
+    // The group has no `create` for this person: nothing to offer, only the plain answer.
+    await user.type(screen.getByRole('combobox', { name: /Área y grupo/ }), 'Cables');
+    expect(await screen.findByText('Nada coincide')).toBeVisible();
+    await user.clear(screen.getByRole('combobox', { name: /Área y grupo/ }));
+
+    // A brand that exists is chosen, not created again.
+    const brand = screen.getByRole('combobox', { name: 'Marca' });
+    await user.type(brand, 'Panduit');
+    expect(screen.queryByRole('option', { name: /^Crear/ })).not.toBeInTheDocument();
+    await user.clear(brand);
+
+    await user.type(brand, 'Nueva marca');
+    await user.click(await screen.findByRole('option', { name: 'Crear "Nueva marca"' }));
     const dialog = await screen.findByRole('dialog', { name: 'Nueva marca' });
-    await user.type(within(dialog).getByLabelText(/Nombre/), 'Nueva marca');
+    // It starts from what was typed.
+    expect(within(dialog).getByLabelText(/Nombre/)).toHaveValue('Nueva marca');
     await user.click(within(dialog).getByRole('button', { name: 'Crear' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));
@@ -619,16 +628,63 @@ describe('product form', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  it('links to the supplier registration only for whoever can create suppliers', async () => {
+  it('registers a supplier from the search with name and identification, and chooses it', async () => {
+    const calls: Call[] = [];
+    const created = {
+      id: '0192f1c2-7d3a-7a11-8f2e-0000000000c9',
+      code: 'PRV-0009',
+      name: 'Proveedor nuevo',
+      is_active: true,
+      version: 1,
+      ...STAMPS,
+    };
     const { session } = createTestSession(
-      formHandlers(),
+      formHandlers({
+        'POST /v1/suppliers': (call) => {
+          calls.push(call);
+          return calls.length === 1
+            ? problem(409, 'identification_taken')
+            : Response.json(created, { status: 201 });
+        },
+      }),
       meWith({ products: ALL, suppliers: ['view', 'create'] }),
     );
     renderApp(session, '/productos/nuevo');
+    const user = userEvent.setup();
 
-    expect(
-      await screen.findByRole('link', { name: /Registrar un proveedor nuevo/ }),
-    ).toHaveAttribute('href', '/proveedores/nuevo');
+    await user.type(await screen.findByRole('combobox', { name: /Proveedor/ }), 'Proveedor nuevo');
+    await user.click(await screen.findByRole('option', { name: 'Crear "Proveedor nuevo"' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo proveedor' });
+    expect(within(dialog).getByLabelText(/^Nombre/)).toHaveValue('Proveedor nuevo');
+    expect(within(dialog).getByRole('button', { name: 'Crear' })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText(/Número de NIT/), '6647912-6');
+    await user.click(within(dialog).getByRole('button', { name: 'Crear' }));
+
+    // A taken identification is refused without saying whose it is, and the dialog stays for another try.
+    expect(await within(dialog).findByText(/Ya existe un registro activo/)).toBeVisible();
+    expect(calls[0]?.body).toEqual({
+      name: 'Proveedor nuevo',
+      identification_type: 'nit',
+      identification: '6647912-6',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Crear' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('combobox', { name: /Proveedor/ })).toHaveValue('Proveedor nuevo');
+    // The product form was not saved by the dialog's submit.
+    expect(calls).toHaveLength(2);
+  });
+
+  it('does not offer to register a supplier without the permission to create suppliers', async () => {
+    const { session } = createTestSession(
+      formHandlers(),
+      meWith({ products: ALL, suppliers: ['view'] }),
+    );
+    renderApp(session, '/productos/nuevo');
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByRole('combobox', { name: /Proveedor/ }), 'Otro proveedor');
+    expect(screen.queryByRole('option', { name: /^Crear/ })).not.toBeInTheDocument();
   });
 
   const editHandlers = (extra: Record<string, Handler> = {}) =>
