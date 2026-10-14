@@ -722,7 +722,7 @@ describe('bundle form', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
     expect(within(list).getByText('Inactivo')).toBeVisible();
-    expect(within(list).getByText(/^× Q\s?22\.96$/)).toBeVisible();
+    expect(within(list).getByText(/^× Q\s?22\.96 por metro$/)).toBeVisible();
 
     const quantity = within(list).getByLabelText('Cantidad de Cable UTP');
     await user.clear(quantity);

@@ -69,16 +69,26 @@ export function ComponentsTable(props: Props) {
   return isMobile ? <CompactList {...props} /> : <DesktopTable {...props} />;
 }
 
+/** The width of the code on a phone, which the quantity box repeats so the two line up and the name and the cost start at the same place. */
+const CODE_COLUMN = 96;
+
+/**
+ * The quantity of a component. In the table the unit of its product sits inside the box; on a phone the box has a fixed
+ * width and only the number, because a unit can be as long as «Metro cuadrado» and would not fit (the compact list says
+ * the unit in the line of the cost instead).
+ */
 function QuantityField({
   line,
   readOnly,
   error,
   onChange,
+  compact = false,
 }: {
   line: Line;
   readOnly: boolean;
   error: string | undefined;
   onChange: (quantity: string) => void;
+  compact?: boolean;
 }) {
   return (
     <TextField
@@ -96,19 +106,21 @@ function QuantityField({
           readOnly,
           sx: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
         },
-        input: {
-          endAdornment: (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
-            >
-              {line.unit}
-            </Typography>
-          ),
-        },
+        input: compact
+          ? undefined
+          : {
+              endAdornment: (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
+                >
+                  {line.unit}
+                </Typography>
+              ),
+            },
       }}
-      sx={{ width: { xs: 128, md: 160 }, flexShrink: 0 }}
+      sx={{ width: compact ? CODE_COLUMN : 180, flexShrink: 0 }}
     />
   );
 }
@@ -253,23 +265,25 @@ function CompactList({
                   }),
             }}
           >
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <CodeChip code={line.code} />
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+              {/* Aligned with the first line of the name, which can take several. */}
+              <Box sx={{ width: CODE_COLUMN, flex: 'none', pt: 0.25 }}>
+                <CodeChip code={line.code} />
+              </Box>
               <Typography
                 sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
                 {line.name}
               </Typography>
               {readOnly ? null : (
-                <RemoveButton line={line} onRemove={() => onRemove(line.productId)} />
+                <Box sx={{ mt: -1, mr: -1 }}>
+                  <RemoveButton line={line} onRemove={() => onRemove(line.productId)} />
+                </Box>
               )}
             </Stack>
-            <Stack
-              direction="row"
-              spacing={1.5}
-              sx={{ alignItems: 'flex-start', flexWrap: 'wrap', mt: 0.5 }}
-            >
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mt: 0.5 }}>
               <QuantityField
+                compact
                 line={line}
                 readOnly={readOnly}
                 error={errorAt(position)}
@@ -278,15 +292,16 @@ function CompactList({
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ pt: 1, fontVariantNumeric: 'tabular-nums' }}
+                sx={{ pt: 1.25, flexGrow: 1, minWidth: 0, fontVariantNumeric: 'tabular-nums' }}
               >
-                × {money(line.cost)}
+                × {money(line.cost)} por {line.unit.toLowerCase()}
               </Typography>
               <Typography
                 sx={{
-                  pt: 0.75,
-                  flexGrow: 1,
+                  pt: 1,
+                  flex: 'none',
                   textAlign: 'right',
+                  whiteSpace: 'nowrap',
                   fontWeight: 600,
                   fontVariantNumeric: 'tabular-nums',
                 }}
