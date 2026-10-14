@@ -33,6 +33,29 @@ export function useProduct(productId: string | undefined) {
   });
 }
 
+/** One product priced at a given margin level, for «Ver con otro margen»: the server computes it from the cost. */
+export function useProductAtLevel(
+  productId: string,
+  levelId: string | undefined,
+  enabled: boolean,
+) {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['products', 'at-level', productId, levelId],
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/v1/products/{productId}', {
+          params: {
+            path: { productId },
+            query: levelId ? { margin_level_id: levelId } : {},
+          },
+        }),
+      ),
+    enabled: enabled && levelId !== undefined,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useCreateProduct() {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();

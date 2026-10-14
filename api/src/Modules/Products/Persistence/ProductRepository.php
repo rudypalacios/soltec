@@ -14,6 +14,7 @@ use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Uuid;
 use Soltec\Modules\Products\Domain\ProductData;
 use Soltec\Modules\Products\Domain\ProductFilters;
+use Soltec\Modules\Products\Domain\ProductOrder;
 use Soltec\Modules\Products\Domain\ProductRecord;
 
 /**
@@ -61,8 +62,12 @@ final class ProductRepository
     /**
      * @return array{records: list<ProductRecord>, total: int}
      */
-    public function search(ProductFilters $filters, DateTimeImmutable $staleBefore, Pagination $page): array
-    {
+    public function search(
+        ProductFilters $filters,
+        ProductOrder $order,
+        DateTimeImmutable $staleBefore,
+        Pagination $page,
+    ): array {
         $filtered = function (QueryBuilder $query) use ($filters, $staleBefore): QueryBuilder {
             if ($filters->status === 'active') {
                 $query->andWhere('p.deleted_at IS NULL');
@@ -94,9 +99,7 @@ final class ProductRepository
         };
 
         $total = $filtered($this->base('COUNT(*)'))->executeQuery()->fetchOne();
-        $rows = $filtered($this->base(self::COLUMNS))
-            ->orderBy('p.name')
-            ->addOrderBy('p.id')
+        $rows = $this->ordered($filtered($this->base(self::COLUMNS)), $order)
             ->setFirstResult($page->offset())
             ->setMaxResults($page->perPage)
             ->executeQuery()
@@ -106,6 +109,21 @@ final class ProductRepository
             'records' => array_map($this->hydrate(...), $rows),
             'total' => is_numeric($total) ? (int) $total : 0,
         ];
+    }
+
+    private function ordered(QueryBuilder $query, ProductOrder $order): QueryBuilder
+    {
+        if ($order->grouped) {
+            $query->addOrderBy('a.name')->addOrderBy('g.name');
+        }
+        match ($order->sort) {
+            ProductOrder::CODE => $query->addOrderBy('p.code'),
+            ProductOrder::COST => $query->addOrderBy('p.cost')->addOrderBy('p.name'),
+            ProductOrder::COST_REVIEW => $query->addOrderBy('p.cost_updated_at')->addOrderBy('p.name'),
+            default => $query->addOrderBy('p.name'),
+        };
+
+        return $query->addOrderBy('p.id');
     }
 
     public function insert(string $id, string $code, ProductData $data, DateTimeImmutable $now): void

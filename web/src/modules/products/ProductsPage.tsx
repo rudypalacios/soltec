@@ -12,7 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { ApiError, type components } from '@soltec/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -20,12 +20,16 @@ import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import type { RowAction } from '../../components/RowActions';
-import { ActiveBadge, StatusBadge } from '../../components/StatusBadge';
+import { StatusBadge } from '../../components/StatusBadge';
 import { StatusFilter } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { formatAmount } from './productFormat';
+import { Highlight } from '../../components/Highlight';
+import { useIsMobile } from '../../components/useIsMobile';
+import { CodeChip } from './CodeChip';
+import { MarginPreviewDialog } from './MarginPreviewDialog';
+import { formatMoney } from './productFormat';
 import { SupplierSelect, type SupplierChoice } from './SupplierSelect';
 import {
   useAreaOptions,
@@ -41,12 +45,20 @@ import {
 } from './useProducts';
 
 type Product = components['schemas']['Product'];
-const PER_PAGE = 25;
+const PER_PAGE_OPTIONS = [25, 50, 100];
+const SORTS = [
+  { value: 'name', label: 'Nombre' },
+  { value: 'code', label: 'Código' },
+  { value: 'cost', label: 'Costo, de menor a mayor' },
+  { value: 'cost_review', label: 'Costo revisado hace más tiempo' },
+] as const;
+type Sort = (typeof SORTS)[number]['value'];
 
 /** A change waiting for the person to confirm it (`open` false while the dialog fades out). */
+type Change = 'deactivate' | 'reactivate' | 'review';
 type PendingAction =
-  | { kind: 'one'; product: Product; activate: boolean; open: boolean }
-  | { kind: 'many'; open: boolean }
+  | { kind: 'one'; product: Product; change: Change; open: boolean }
+  | { kind: 'many'; change: Change; open: boolean }
   | { kind: 'supplier'; open: boolean };
 const ALL = '';
 
@@ -77,6 +89,13 @@ export function ProductsPage() {
   const [brandId, setBrandId] = useState(ALL);
   const [staleOnly, setStaleOnly] = useState(false);
   const [levelId, setLevelId] = useState(ALL);
+  const [sort, setSort] = useState<Sort>('name');
+  const [grouped, setGrouped] = useState(false);
+  const [perPage, setPerPage] = useState(PER_PAGE_OPTIONS[0] ?? 25);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [preview, setPreview] = useState<{ product: Product; open: boolean } | null>(null);
+  const isMobile = useIsMobile();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -94,7 +113,9 @@ export function ProductsPage() {
     q: filters.query,
     status: filters.status,
     page: filters.page + 1,
-    per_page: PER_PAGE,
+    per_page: perPage,
+    sort,
+    ...(grouped ? { grouped: 'true' as const } : {}),
     ...(supplier ? { supplier_id: supplier.id } : {}),
     ...(areaId !== ALL ? { area_id: areaId } : {}),
     ...(groupId !== ALL ? { group_id: groupId } : {}),
@@ -117,9 +138,13 @@ export function ProductsPage() {
     groupId,
     brandId,
     staleOnly,
+    sort,
+    grouped,
+    perPage,
   ]);
   useEffect(() => setSelected(new Set()), [rowsKey]);
 
+  const currencyCode = products.data?.meta.currency_code ?? 'GTQ';
   const levelName =
     levels.data?.data.find((level) => (levelId === ALL ? level.is_default : level.id === levelId))
       ?.name ?? null;
@@ -150,12 +175,24 @@ export function ProductsPage() {
     setNotice(null);
     try {
       if (pending.kind === 'one') {
-        await setActive.mutateAsync({
-          productId: pending.product.id,
-          active: pending.activate,
-        });
+        const { product, change } = pending;
+        if (change === 'review') {
+          await confirmCost.mutateAsync(product.id);
+          setNotice(`Se marcó el costo de «${product.name}» como revisado.`);
+        } else {
+          await setActive.mutateAsync({ productId: product.id, active: change === 'reactivate' });
+        }
       } else if (pending.kind === 'many') {
-        await run({ kind: 'deactivate', ids: [...selected] }, 'desactivaron');
+        const request: Record<
+          Change,
+          { kind: 'deactivate' | 'reactivate' | 'confirm-cost'; verb: string }
+        > = {
+          deactivate: { kind: 'deactivate', verb: 'desactivaron' },
+          reactivate: { kind: 'reactivate', verb: 'reactivaron' },
+          review: { kind: 'confirm-cost', verb: 'marcó el costo de' },
+        };
+        const { kind, verb } = request[pending.change];
+        await run({ kind, ids: [...selected] }, verb);
       } else if (supplier) {
         await run({ kind: 'reactivate-supplier', supplierId: supplier.id }, 'reactivaron');
       }
@@ -163,17 +200,6 @@ export function ProductsPage() {
       setFailure(reactivationFailure(error, pending));
     } finally {
       setPending({ ...pending, open: false });
-    }
-  };
-
-  const review = async (product: Product) => {
-    setFailure(null);
-    setNotice(null);
-    try {
-      await confirmCost.mutateAsync(product.id);
-      setNotice(`Se marcó el costo de «${product.name}» como revisado.`);
-    } catch (error) {
-      setFailure(problemMessage(error));
     }
   };
 
@@ -199,7 +225,15 @@ export function ProductsPage() {
         key: 'review',
         label: 'Marcar costo como revisado',
         icon: ACTION_ICONS.review,
-        onSelect: () => void review(product),
+        onSelect: () => setPending({ kind: 'one', product, change: 'review', open: true }),
+      });
+    }
+    if ((levels.data?.data.length ?? 0) > 1) {
+      actions.push({
+        key: 'margin',
+        label: 'Ver con otro margen',
+        icon: ACTION_ICONS.margin,
+        onSelect: () => setPreview({ product, open: true }),
       });
     }
     if (can('products', 'deactivate')) {
@@ -208,28 +242,118 @@ export function ProductsPage() {
         label: product.is_active ? 'Desactivar' : 'Reactivar',
         icon: product.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
         tone: product.is_active ? 'danger' : undefined,
-        // Reactivating asks nothing: it only brings it back. Deactivating asks.
-        onSelect: product.is_active
-          ? () => setPending({ kind: 'one', product, activate: false, open: true })
-          : () => void reactivateOne(product),
+        onSelect: () =>
+          setPending({
+            kind: 'one',
+            product,
+            change: product.is_active ? 'deactivate' : 'reactivate',
+            open: true,
+          }),
       });
     }
     return actions;
   };
 
-  const reactivateOne = async (product: Product) => {
-    setFailure(null);
-    setNotice(null);
-    try {
-      await setActive.mutateAsync({ productId: product.id, active: true });
-    } catch (error) {
-      setFailure(reactivationFailure(error, { kind: 'one', product, activate: true, open: false }));
-    }
-  };
-
   const picked = [...selected];
   const canSweepSupplier =
     supplier !== null && can('products', 'deactivate') && filters.status !== 'active';
+  const canSelect = can('products', 'edit') || can('products', 'deactivate');
+  const total = products.data?.meta.total;
+
+  const filterFields = (
+    <>
+      <StatusFilter value={filters.status} onChange={filters.setStatus} />
+      <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
+        <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
+      </Box>
+      <TextField
+        select
+        label="Área"
+        value={areaId}
+        onChange={(event) => {
+          setAreaId(event.target.value);
+          setGroupId(ALL);
+          filters.resetPage();
+        }}
+      >
+        <MenuItem value={ALL}>Todas</MenuItem>
+        {(areas.data?.data ?? []).map((area) => (
+          <MenuItem key={area.id} value={area.id}>
+            {area.name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField
+        select
+        label="Grupo"
+        value={groupId}
+        onChange={(event) => narrow(setGroupId)(event.target.value)}
+      >
+        <MenuItem value={ALL}>Todos</MenuItem>
+        {groupsOfArea.map((group) => (
+          <MenuItem key={group.id} value={group.id}>
+            {group.name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField
+        select
+        label="Marca"
+        value={brandId}
+        onChange={(event) => narrow(setBrandId)(event.target.value)}
+      >
+        <MenuItem value={ALL}>Todas</MenuItem>
+        {(brands.data?.data ?? []).map((brand) => (
+          <MenuItem key={brand.id} value={brand.id}>
+            {brand.name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField
+        select
+        label="Margen"
+        value={levelId}
+        onChange={(event) => setLevelId(event.target.value)}
+      >
+        <MenuItem value={ALL}>Por defecto</MenuItem>
+        {(levels.data?.data ?? []).map((level) => (
+          <MenuItem key={level.id} value={level.id}>
+            {level.name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <TextField
+        select
+        label="Ordenar por"
+        value={sort}
+        onChange={(event) => narrow(setSort)(event.target.value as Sort)}
+      >
+        {SORTS.map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.label}
+          </MenuItem>
+        ))}
+      </TextField>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={staleOnly}
+            onChange={(event) => narrow(setStaleOnly)(event.target.checked)}
+          />
+        }
+        label="Solo costo desactualizado"
+      />
+      <FormControlLabel
+        control={
+          <Switch
+            checked={grouped}
+            onChange={(event) => narrow(setGrouped)(event.target.checked)}
+          />
+        }
+        label="Agrupar por área y grupo"
+      />
+    </>
+  );
 
   return (
     <>
@@ -253,83 +377,42 @@ export function ProductsPage() {
         searchLabel="Buscar por nombre o código"
         search={filters.text}
         onSearchChange={filters.setText}
+        collapsed={isMobile && !filtersOpen}
+        beside={
+          isMobile ? (
+            <>
+              <Button
+                variant={filtersOpen ? 'contained' : 'outlined'}
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                sx={{ minHeight: 48 }}
+              >
+                Filtros
+              </Button>
+              {canSelect ? (
+                <Button
+                  variant={choosing ? 'contained' : 'outlined'}
+                  aria-pressed={choosing}
+                  onClick={() => {
+                    setChoosing(!choosing);
+                    setSelected(new Set());
+                  }}
+                  sx={{ minHeight: 48 }}
+                >
+                  Elegir
+                </Button>
+              ) : null}
+            </>
+          ) : null
+        }
       >
-        <StatusFilter value={filters.status} onChange={filters.setStatus} />
-        <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
-          <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
-        </Box>
-        <TextField
-          select
-          label="Área"
-          value={areaId}
-          onChange={(event) => {
-            setAreaId(event.target.value);
-            setGroupId(ALL);
-            filters.resetPage();
-          }}
-        >
-          <MenuItem value={ALL}>Todas</MenuItem>
-          {(areas.data?.data ?? []).map((area) => (
-            <MenuItem key={area.id} value={area.id}>
-              {area.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Grupo"
-          value={groupId}
-          onChange={(event) => narrow(setGroupId)(event.target.value)}
-        >
-          <MenuItem value={ALL}>Todos</MenuItem>
-          {groupsOfArea.map((group) => (
-            <MenuItem key={group.id} value={group.id}>
-              {group.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Marca"
-          value={brandId}
-          onChange={(event) => narrow(setBrandId)(event.target.value)}
-        >
-          <MenuItem value={ALL}>Todas</MenuItem>
-          {(brands.data?.data ?? []).map((brand) => (
-            <MenuItem key={brand.id} value={brand.id}>
-              {brand.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Margen"
-          value={levelId}
-          onChange={(event) => setLevelId(event.target.value)}
-        >
-          <MenuItem value={ALL}>Por defecto</MenuItem>
-          {(levels.data?.data ?? []).map((level) => (
-            <MenuItem key={level.id} value={level.id}>
-              {level.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={staleOnly}
-              onChange={(event) => narrow(setStaleOnly)(event.target.checked)}
-            />
-          }
-          label="Solo costo desactualizado"
-        />
+        {filterFields}
       </FilterBar>
 
-      {levelName ? (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Los precios se calculan desde el costo con «{levelName}».
-        </Typography>
-      ) : null}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        {total === undefined ? ' ' : `${total === 1 ? '1 resultado' : `${total} resultados`}`}
+        {levelName ? ` · Precios desde el costo con «${levelName}».` : ''}
+      </Typography>
 
       {failure ? (
         <Alert severity="error" onClose={() => setFailure(null)} sx={{ mb: 2 }}>
@@ -358,7 +441,7 @@ export function ProductsPage() {
               <Button
                 variant="outlined"
                 disabled={bulk.isPending}
-                onClick={() => void run({ kind: 'confirm-cost', ids: picked }, 'marcó el costo de')}
+                onClick={() => setPending({ kind: 'many', change: 'review', open: true })}
               >
                 Marcar costo como revisado
               </Button>
@@ -369,14 +452,14 @@ export function ProductsPage() {
                   variant="outlined"
                   color="error"
                   disabled={bulk.isPending}
-                  onClick={() => setPending({ kind: 'many', open: true })}
+                  onClick={() => setPending({ kind: 'many', change: 'deactivate', open: true })}
                 >
                   Desactivar
                 </Button>
                 <Button
                   variant="outlined"
                   disabled={bulk.isPending}
-                  onClick={() => void run({ kind: 'reactivate', ids: picked }, 'reactivaron')}
+                  onClick={() => setPending({ kind: 'many', change: 'reactivate', open: true })}
                 >
                   Reactivar
                 </Button>
@@ -398,58 +481,129 @@ export function ProductsPage() {
       <DataList
         label="Lista de productos"
         noun="productos"
-        columns={COLUMNS}
+        columns={columnsFor({ currencyCode, match: filters.query, grouped })}
         rows={products.data?.data}
         error={products.isError ? problemMessage(products.error) : null}
         getRowId={(product) => product.id}
         getRowName={(product) => product.name}
         getActions={actionsFor}
         selection={
-          can('products', 'edit') || can('products', 'deactivate')
-            ? { selected, onChange: setSelected }
+          canSelect && (!isMobile || choosing) ? { selected, onChange: setSelected } : undefined
+        }
+        groupBy={
+          grouped
+            ? (product) => ({
+                key: `${product.area.id}/${product.group.id}`,
+                title: product.area.name,
+                subtitle: product.group.name,
+              })
             : undefined
         }
+        renderCard={(product, slots) => (
+          <ProductCard
+            product={product}
+            currencyCode={currencyCode}
+            match={filters.query}
+            slots={slots}
+          />
+        )}
         pagination={{
           page: filters.page,
-          perPage: PER_PAGE,
-          total: products.data?.meta.total ?? 0,
+          perPage,
+          total: total ?? 0,
           onPageChange: filters.setPage,
+          perPageOptions: PER_PAGE_OPTIONS,
+          onPerPageChange: (next) => {
+            setPerPage(next);
+            filters.resetPage();
+          },
         }}
       />
 
       <ConfirmDialog
         open={pending?.open === true}
-        title={confirmTitle(pending)}
-        message={confirmMessage(pending, picked.length, supplier)}
-        confirmLabel={pending?.kind === 'supplier' ? 'Reactivar' : 'Desactivar'}
-        destructive={pending?.kind !== 'supplier'}
-        busy={setActive.isPending || bulk.isPending}
+        {...confirmCopy(pending, picked.length, supplier)}
+        busy={setActive.isPending || bulk.isPending || confirmCost.isPending}
         onConfirm={() => void confirmPending()}
         onCancel={() => setPending(pending && { ...pending, open: false })}
+      />
+      <MarginPreviewDialog
+        product={preview?.product ?? null}
+        levels={levels.data?.data ?? []}
+        currencyCode={currencyCode}
+        open={preview?.open === true}
+        onClose={() => setPreview(preview && { ...preview, open: false })}
       />
     </>
   );
 }
 
-function confirmTitle(pending: PendingAction | null): string {
-  if (pending?.kind === 'supplier') {
-    return 'Reactivar los productos del proveedor';
-  }
-  return pending?.kind === 'many' ? 'Desactivar productos' : 'Desactivar producto';
+interface Copy {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive: boolean;
 }
 
-function confirmMessage(
+/** What each change says before it runs: nothing that writes to the database starts from a single click. */
+function confirmCopy(
   pending: PendingAction | null,
   count: number,
   supplier: SupplierChoice | null,
-): string {
+): Copy {
   if (pending?.kind === 'supplier') {
-    return `Se reactivarán los productos que «${supplier?.name ?? ''}» desactivó al desactivarse. Los que alguien desactivó a mano se quedan como están.`;
+    return {
+      title: 'Reactivar los productos del proveedor',
+      message: `Se reactivarán los productos que «${supplier?.name ?? ''}» desactivó al desactivarse. Los que alguien desactivó a mano se quedan como están.`,
+      confirmLabel: 'Reactivar',
+      destructive: false,
+    };
   }
+  const change = pending?.change ?? 'deactivate';
   if (pending?.kind === 'many') {
-    return `${count === 1 ? 'Se desactivará 1 producto' : `Se desactivarán ${count} productos`}. Sus datos se conservan y se pueden reactivar.`;
+    const these = count === 1 ? '1 producto' : `${count} productos`;
+    return {
+      deactivate: {
+        title: 'Desactivar productos',
+        message: `Se desactivarán ${these}. Sus datos se conservan y se pueden reactivar.`,
+        confirmLabel: 'Desactivar',
+        destructive: true,
+      },
+      reactivate: {
+        title: 'Reactivar productos',
+        message: `Se reactivarán ${these}. Los que tienen el proveedor desactivado no se podrán reactivar.`,
+        confirmLabel: 'Reactivar',
+        destructive: false,
+      },
+      review: {
+        title: 'Marcar costo como revisado',
+        message: `Se registrará que el costo de ${these} se revisó y sigue siendo correcto. Dejan de figurar como desactualizados.`,
+        confirmLabel: 'Marcar como revisado',
+        destructive: false,
+      },
+    }[change];
   }
-  return `«${pending?.kind === 'one' ? pending.product.name : ''}» dejará de aparecer en las listas activas. Sus datos se conservan.`;
+  const name = `«${pending?.kind === 'one' ? pending.product.name : ''}»`;
+  return {
+    deactivate: {
+      title: 'Desactivar producto',
+      message: `${name} dejará de aparecer en las listas activas. Sus datos se conservan.`,
+      confirmLabel: 'Desactivar',
+      destructive: true,
+    },
+    reactivate: {
+      title: 'Reactivar producto',
+      message: `${name} volverá a aparecer en las listas activas.`,
+      confirmLabel: 'Reactivar',
+      destructive: false,
+    },
+    review: {
+      title: 'Marcar costo como revisado',
+      message: `Se registrará que el costo de ${name} se revisó y sigue siendo correcto. Deja de figurar como desactualizado.`,
+      confirmLabel: 'Marcar como revisado',
+      destructive: false,
+    },
+  }[change];
 }
 
 /** Why a reactivation failed: the supplier of the product is the usual reason, and says what to do about it. */
@@ -461,65 +615,152 @@ function reactivationFailure(error: unknown, pending: PendingAction): string {
   return problemMessage(error);
 }
 
-const COLUMNS: DataColumn<Product>[] = [
-  {
-    id: 'name',
-    header: 'Nombre',
-    mobile: 'title',
-    minWidth: 200,
-    render: (product) => product.name,
-  },
-  {
-    id: 'code',
-    header: 'Código',
-    mobile: 'subtitle',
-    nowrap: true,
-    render: (product) => product.code,
-  },
-  {
-    id: 'supplier',
-    header: 'Proveedor',
-    mobile: 'meta',
-    minWidth: 140,
-    render: (product) => product.supplier.name,
-  },
-  {
-    id: 'group',
-    header: 'Área y grupo',
-    mobile: 'hidden',
-    minWidth: 140,
-    render: (product) => `${product.area.name} · ${product.group.name}`,
-  },
-  {
-    id: 'unit',
-    header: 'Unidad',
-    mobile: 'hidden',
-    nowrap: true,
-    render: (product) => product.unit.name,
-  },
-  {
-    id: 'cost',
-    header: 'Costo con IVA',
-    mobile: 'meta',
-    render: (product) => (
-      <Stack spacing={0.25}>
-        <span>{formatAmount(product.cost)}</span>
-        {product.cost_is_stale ? <StatusBadge tone="warning" label="Costo desactualizado" /> : null}
+/** The line under a product name: brand and unit, and whether it is off. */
+function productSubline(product: Product): string {
+  return [product.brand?.name, product.unit.name, product.is_active ? null : 'Inactivo']
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function PriceBlock({ product, currencyCode }: { product: Product; currencyCode: string }) {
+  return (
+    <Box sx={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+      <Typography component="div" sx={{ fontWeight: 600 }}>
+        {formatMoney(product.price_with_vat, currencyCode)}
+      </Typography>
+      <Typography component="div" variant="body2" color="text.secondary">
+        {formatMoney(product.price_without_vat, currencyCode)} sin IVA
+      </Typography>
+    </Box>
+  );
+}
+
+/** The card of a phone: code, brand and unit with the ⋮ menu on top; the name; supplier and group, and the price. */
+function ProductCard({
+  product,
+  currencyCode,
+  match,
+  slots,
+}: {
+  product: Product;
+  currencyCode: string;
+  match: string | undefined;
+  slots: { select: ReactNode; menu: ReactNode };
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{ px: 1.5, py: 1, opacity: product.is_active ? 1 : 0.75 }}
+      data-testid="product-card"
+    >
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        {slots.select}
+        <CodeChip code={product.code} match={match} />
+        <Typography variant="body2" color="text.secondary" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
+          {productSubline(product)}
+        </Typography>
+        {slots.menu}
       </Stack>
-    ),
-  },
-  {
-    id: 'price',
-    header: 'Precio con IVA',
-    mobile: 'meta',
-    nowrap: true,
-    render: (product) => formatAmount(product.price_with_vat),
-  },
-  {
-    id: 'status',
-    header: 'Estado',
-    mobile: 'badge',
-    nowrap: true,
-    render: (product) => <ActiveBadge active={product.is_active} />,
-  },
-];
+      <Typography sx={{ fontWeight: 600, mt: 0.25 }}>
+        <Highlight text={product.name} match={match} />
+      </Typography>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ justifyContent: 'space-between', alignItems: 'flex-end', mt: 0.5 }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" color="text.secondary">
+            {product.supplier.name} · {product.group.name}
+          </Typography>
+          {product.cost_is_stale ? (
+            <StatusBadge tone="warning" label="Costo desactualizado" />
+          ) : null}
+        </Box>
+        <PriceBlock product={product} currencyCode={currencyCode} />
+      </Stack>
+    </Paper>
+  );
+}
+
+function columnsFor({
+  currencyCode,
+  match,
+  grouped,
+}: {
+  currencyCode: string;
+  match: string | undefined;
+  grouped: boolean;
+}): DataColumn<Product>[] {
+  const columns: DataColumn<Product>[] = [
+    {
+      id: 'code',
+      header: 'Código',
+      mobile: 'subtitle',
+      nowrap: true,
+      render: (product) => <CodeChip code={product.code} match={match} />,
+    },
+    {
+      id: 'name',
+      header: 'Producto',
+      mobile: 'title',
+      minWidth: 220,
+      render: (product) => (
+        <Box sx={{ opacity: product.is_active ? 1 : 0.75 }}>
+          <Typography component="div" sx={{ fontWeight: 600 }}>
+            <Highlight text={product.name} match={match} />
+          </Typography>
+          <Typography component="div" variant="body2" color="text.secondary">
+            {productSubline(product)}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'supplier',
+      header: 'Proveedor',
+      mobile: 'meta',
+      minWidth: 140,
+      render: (product) => product.supplier.name,
+    },
+  ];
+  if (!grouped) {
+    columns.push({
+      id: 'group',
+      header: 'Grupo',
+      mobile: 'hidden',
+      minWidth: 140,
+      render: (product) => (
+        <>
+          {product.group.name}
+          <Typography component="div" variant="body2" color="text.secondary">
+            {product.area.name}
+          </Typography>
+        </>
+      ),
+    });
+  }
+  columns.push(
+    {
+      id: 'cost',
+      header: 'Costo',
+      align: 'right',
+      mobile: 'hidden',
+      render: (product) => (
+        <Stack spacing={0.25} sx={{ alignItems: 'flex-end', fontVariantNumeric: 'tabular-nums' }}>
+          <span>{formatMoney(product.cost, currencyCode)}</span>
+          {product.cost_is_stale ? <StatusBadge tone="warning" label="Desactualizado" /> : null}
+        </Stack>
+      ),
+    },
+    {
+      id: 'price',
+      header: 'Precio con IVA',
+      align: 'right',
+      mobile: 'hidden',
+      nowrap: true,
+      render: (product) => <PriceBlock product={product} currencyCode={currencyCode} />,
+    },
+  );
+  return columns;
+}

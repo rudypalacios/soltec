@@ -16,7 +16,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { ActionButton, ActionMenu, type RowAction } from './RowActions';
 import { useIsMobile } from './useIsMobile';
 
@@ -35,6 +35,8 @@ export interface DataColumn<T> {
   mobileLabel?: boolean;
   /** Table only: keep the cell on one line (dates, states) so the width goes to the columns that can wrap. */
   nowrap?: boolean;
+  /** Table only: right-align the column (amounts), header included. */
+  align?: 'right';
   /** Table only: the narrowest the column may get, in px, so a long name wraps in two lines and not five. */
   minWidth?: number;
 }
@@ -67,6 +69,16 @@ interface DataListProps<T> {
     selected: ReadonlySet<string>;
     onChange: (selected: ReadonlySet<string>) => void;
   };
+  /**
+   * Puts a header before the first row of each block of consecutive rows that share a key (the list must already
+   * come in that order). The first row of a page always gets one, so a block cut by the page break shows it again.
+   */
+  groupBy?: (row: T) => { key: string; title: string; subtitle?: string };
+  /**
+   * Replaces the card of a phone with the screen's own. It receives the selection checkbox (null when the rows are
+   * not selectable) and the ⋮ menu with every action of the row.
+   */
+  renderCard?: (row: T, slots: { select: ReactNode; menu: ReactNode }) => ReactNode;
   /** Omit it for a list that is never long (a handful of fixed rows). */
   pagination?: {
     /** Zero-based. */
@@ -74,6 +86,9 @@ interface DataListProps<T> {
     perPage: number;
     total: number;
     onPageChange: (page: number) => void;
+    /** With `onPerPageChange`, lets the person pick how many rows a page has. */
+    perPageOptions?: number[];
+    onPerPageChange?: (perPage: number) => void;
   };
 }
 
@@ -105,6 +120,8 @@ export function DataList<T>({
   getActions,
   dense = false,
   selection,
+  groupBy,
+  renderCard,
   pagination,
 }: DataListProps<T>) {
   const isMobile = useIsMobile();
@@ -152,6 +169,17 @@ export function DataList<T>({
       />
     ) : null;
 
+  const headerBefore = (index: number) => {
+    const row = rows[index];
+    if (!groupBy || row === undefined) {
+      return null;
+    }
+    const group = groupBy(row);
+    const previous = rows[index - 1];
+    return previous !== undefined && groupBy(previous).key === group.key ? null : group;
+  };
+  const columnCount = columns.length + (selection ? 1 : 0) + (getActions ? 1 : 0);
+
   return (
     <>
       {isMobile && dense ? (
@@ -178,17 +206,38 @@ export function DataList<T>({
           aria-label={label}
           sx={{ listStyle: 'none', m: 0, p: 0 }}
         >
-          {rows.map((row) => (
-            <li key={getRowId(row)}>
-              <RowCard
-                row={row}
-                columns={columns}
-                rowName={getRowName(row)}
-                actions={getActions?.(row) ?? []}
-                leading={checkbox(row)}
-              />
-            </li>
-          ))}
+          {rows.map((row, index) => {
+            const header = headerBefore(index);
+            const actions = getActions?.(row) ?? [];
+            return (
+              <Fragment key={getRowId(row)}>
+                {header ? (
+                  <Box component="li" sx={{ pt: index === 0 ? 0 : 1 }}>
+                    <GroupHeader title={header.title} subtitle={header.subtitle} />
+                  </Box>
+                ) : null}
+                <li>
+                  {renderCard ? (
+                    renderCard(row, {
+                      select: checkbox(row),
+                      menu:
+                        actions.length > 0 ? (
+                          <ActionMenu actions={actions} rowName={getRowName(row)} />
+                        ) : null,
+                    })
+                  ) : (
+                    <RowCard
+                      row={row}
+                      columns={columns}
+                      rowName={getRowName(row)}
+                      actions={actions}
+                      leading={checkbox(row)}
+                    />
+                  )}
+                </li>
+              </Fragment>
+            );
+          })}
         </Stack>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -208,7 +257,11 @@ export function DataList<T>({
                   </TableCell>
                 ) : null}
                 {columns.map((column) => (
-                  <TableCell key={column.id} sx={{ minWidth: column.minWidth }}>
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    sx={{ minWidth: column.minWidth }}
+                  >
                     {column.header}
                   </TableCell>
                 ))}
@@ -222,32 +275,38 @@ export function DataList<T>({
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.map((row) => {
+              {rows.map((row, index) => {
                 const actions = getActions?.(row) ?? [];
                 const rowName = getRowName(row);
+                const header = headerBefore(index);
                 return (
-                  <TableRow
-                    key={getRowId(row)}
-                    hover
-                    selected={selection?.selected.has(getRowId(row))}
-                  >
-                    {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
-                    {columns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        sx={column.nowrap ? { whiteSpace: 'nowrap' } : undefined}
-                      >
-                        {column.render(row)}
-                      </TableCell>
-                    ))}
-                    {getActions ? (
-                      <TableCell align="right" sx={{ whiteSpace: 'nowrap', py: 0.5 }}>
-                        {actions.length > 0 ? (
-                          <ActionMenu actions={actions} rowName={rowName} />
-                        ) : null}
-                      </TableCell>
+                  <Fragment key={getRowId(row)}>
+                    {header ? (
+                      <TableRow>
+                        <TableCell colSpan={columnCount} sx={{ bgcolor: 'action.hover' }}>
+                          <GroupHeader title={header.title} subtitle={header.subtitle} inline />
+                        </TableCell>
+                      </TableRow>
                     ) : null}
-                  </TableRow>
+                    <TableRow hover selected={selection?.selected.has(getRowId(row))}>
+                      {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          sx={column.nowrap ? { whiteSpace: 'nowrap' } : undefined}
+                        >
+                          {column.render(row)}
+                        </TableCell>
+                      ))}
+                      {getActions ? (
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap', py: 0.5 }}>
+                          {actions.length > 0 ? (
+                            <ActionMenu actions={actions} rowName={rowName} />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  </Fragment>
                 );
               })}
             </TableBody>
@@ -261,12 +320,39 @@ export function DataList<T>({
           page={pagination.page}
           onPageChange={(_, next) => pagination.onPageChange(next)}
           rowsPerPage={pagination.perPage}
-          rowsPerPageOptions={[]}
+          rowsPerPageOptions={pagination.onPerPageChange ? (pagination.perPageOptions ?? []) : []}
+          onRowsPerPageChange={(event) => pagination.onPerPageChange?.(Number(event.target.value))}
+          labelRowsPerPage="Por página"
           labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
           sx={{ '.MuiTablePagination-toolbar': { px: 0 } }}
         />
       ) : null}
     </>
+  );
+}
+
+/** The title of a block of rows: an area and a group, say. */
+function GroupHeader({
+  title,
+  subtitle,
+  inline = false,
+}: {
+  title: string;
+  subtitle?: string;
+  inline?: boolean;
+}) {
+  return (
+    <Box sx={inline ? undefined : { bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1 }}>
+      <Typography component="span" sx={{ fontWeight: 600 }}>
+        {title}
+      </Typography>
+      {subtitle ? (
+        <Typography component="span" color="text.secondary">
+          {' › '}
+          {subtitle}
+        </Typography>
+      ) : null}
+    </Box>
   );
 }
 

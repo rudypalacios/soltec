@@ -7,3 +7,19 @@ export function formatAmount(value: string | null | undefined): string {
   const trimmed = decimals.replace(/0+$/, '').padEnd(2, '0');
   return `${whole}.${trimmed}`;
 }
+
+/**
+ * An amount as money in the currency of the settings («Q 1.92»): two decimals, up to four when the cost has them.
+ * Display only: the server computes every price.
+ */
+export function formatMoney(value: string | null | undefined, currencyCode: string): string {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+  return new Intl.NumberFormat('es-GT', {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(Number(value));
+}

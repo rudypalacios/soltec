@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * «Productos». A table on a desktop and cards on a phone, so the page object hides how a row action and the selection
@@ -31,7 +31,20 @@ export class ProductsPage {
     await filtered;
   }
 
+  /** On a phone the filters are behind a button; on a desktop they are always there. */
+  async openFilters(): Promise<void> {
+    const toggle = this.page.getByRole('button', { name: 'Filtros', exact: true });
+    if (
+      this.isMobile &&
+      (await toggle.count()) > 0 &&
+      (await toggle.getAttribute('aria-expanded')) !== 'true'
+    ) {
+      await toggle.click();
+    }
+  }
+
   async filterByStatus(label: 'Activos' | 'Inactivos' | 'Todos'): Promise<void> {
+    await this.openFilters();
     await this.page.getByLabel('Estado', { exact: true }).click();
     await this.page.getByRole('option', { name: label, exact: true }).click();
   }
@@ -44,12 +57,30 @@ export class ProductsPage {
       return;
     }
     await this.page.getByRole('button', { name: `Acciones de ${rowName}` }).click();
-    await this.page.getByRole('menuitem', { name: action }).click();
+    await this.page.getByRole('menuitem', { name: action, exact: true }).click();
   }
 
-  /** The box that selects one row. */
-  selectRow(name: string): Locator {
+  /** The box that selects one row. On a phone the boxes appear after «Elegir». */
+  async selectRow(name: string): Promise<Locator> {
+    const choose = this.page.getByRole('button', { name: 'Elegir', exact: true });
+    if (this.isMobile && (await choose.getAttribute('aria-pressed')) !== 'true') {
+      await choose.click();
+    }
     return this.page.getByRole('checkbox', { name: `Seleccionar ${name}` });
+  }
+
+  /** Confirms the dialog every change asks for before it writes anything. */
+  async confirm(dialogName: string, buttonName: string): Promise<void> {
+    const dialog = this.page.getByRole('dialog', { name: dialogName });
+    await dialog.getByRole('button', { name: buttonName }).click();
+    // The next step must not start while the dialog still covers the page as it fades out.
+    await expect(dialog).toBeHidden();
+  }
+
+  /** Picks the supplier in the filters of the list (not in the form). */
+  async filterBySupplier(name: string): Promise<void> {
+    await this.openFilters();
+    await this.chooseSupplier(name);
   }
 
   /** Picks a supplier in the filter or in the form, searching for it by name. */

@@ -85,15 +85,20 @@ describe('products list', () => {
     expect(within(table).getByText('Conector RJ45')).toBeVisible();
     expect(within(table).getByText('PRD-0001')).toBeVisible();
     expect(within(table).getAllByText('Cables del Sur')).toHaveLength(2);
-    expect(within(table).getAllByText('Aire Acondicionado · Conectores')).toHaveLength(2);
-    // The cost reads as an amount, not as the four decimals the API stores.
-    expect(within(table).getByText('22.96')).toBeVisible();
-    expect(within(table).getByText('35.33')).toBeVisible();
-    expect(within(table).getByText('1.50')).toBeVisible();
+    expect(within(table).getAllByText('Conectores')).toHaveLength(2);
+    expect(within(table).getAllByText('Aire Acondicionado')).toHaveLength(2);
+    // The brand and the unit sit under the name; a product without brand shows only its unit.
+    expect(within(table).getByText('Panduit · Unidad')).toBeVisible();
+    expect(within(table).getByText('Unidad')).toBeVisible();
+    // Amounts read as money in the currency the API names, not as the four decimals it stores.
+    expect(within(table).getByText(/^Q\s?22\.96$/)).toBeVisible();
+    expect(within(table).getByText(/^Q\s?35\.33$/)).toBeVisible();
+    expect(within(table).getByText(/^Q\s?31\.54 sin IVA$/)).toBeVisible();
+    expect(within(table).getByText(/^Q\s?1\.50$/)).toBeVisible();
     // Only the product whose cost is stale carries the alert.
-    expect(within(table).getAllByText('Costo desactualizado')).toHaveLength(1);
+    expect(within(table).getAllByText('Desactualizado')).toHaveLength(1);
     expect(
-      await screen.findByText(/Los precios se calculan desde el costo con «Margen 33 %»/),
+      await screen.findByText(/2 resultados · Precios desde el costo con «Margen 33 %»/),
     ).toBeVisible();
   });
 
@@ -107,10 +112,19 @@ describe('products list', () => {
 
     const cards = await screen.findByLabelText('Lista de productos');
     expect(within(cards).getByText('Conector RJ45')).toBeVisible();
+    expect(within(cards).getByText('PRD-0001')).toBeVisible();
+    expect(within(cards).getByText('Cables del Sur · Conectores')).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // The filters and the selection boxes stay out of the way until they are asked for.
+    expect(screen.queryByRole('combobox', { name: 'Área' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Filtros' }));
+    expect(await screen.findByRole('combobox', { name: 'Área' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Elegir' }));
     expect(
       within(cards).getByRole('checkbox', { name: 'Seleccionar Conector RJ45' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('offers only what the permissions allow: whoever only views can look and nothing else', async () => {
@@ -125,7 +139,7 @@ describe('products list', () => {
     expect(screen.queryByRole('link', { name: /Nuevo producto/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Acciones de Conector RJ45' }));
-    expect(await screen.findByRole('menuitem', { name: /Ver/ })).toBeVisible();
+    expect(await screen.findByRole('menuitem', { name: 'Ver' })).toBeVisible();
     expect(screen.queryByRole('menuitem', { name: /Editar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: /Desactivar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: /revisado/ })).not.toBeInTheDocument();
@@ -165,6 +179,13 @@ describe('products list', () => {
     await user.click(await screen.findByRole('option', { name: 'Margen 35 %' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('margin_level_id')).toBe(OTHER_LEVEL.id));
     expect(await screen.findByText(/con «Margen 35 %»/)).toBeVisible();
+
+    await user.click(screen.getByRole('combobox', { name: 'Ordenar por' }));
+    await user.click(await screen.findByRole('option', { name: 'Código' }));
+    await waitFor(() => expect(calls.at(-1)?.query.get('sort')).toBe('code'));
+    expect(calls.at(-1)?.query.has('grouped')).toBe(false);
+    await user.click(screen.getByRole('checkbox', { name: 'Agrupar por área y grupo' }));
+    await waitFor(() => expect(calls.at(-1)?.query.get('grouped')).toBe('true'));
   });
 
   it('marks the cost of a product as reviewed from its row', async () => {
@@ -185,6 +206,9 @@ describe('products list', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Acciones de Conector RJ45' }));
     await user.click(await screen.findByRole('menuitem', { name: /Marcar costo como revisado/ }));
+    const confirm = await screen.findByRole('dialog', { name: 'Marcar costo como revisado' });
+    expect(calls).toHaveLength(0);
+    await user.click(within(confirm).getByRole('button', { name: 'Marcar como revisado' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(
@@ -192,7 +216,7 @@ describe('products list', () => {
     ).toBeVisible();
   });
 
-  it('asks before deactivating one product and reactivates without asking', async () => {
+  it('asks before deactivating or reactivating one product', async () => {
     const calls: string[] = [];
     const inactive = { ...CABLE, is_active: false, deactivation_reason: 'manual' };
     const { session } = createTestSession(
@@ -223,6 +247,9 @@ describe('products list', () => {
 
     await user.click(screen.getByRole('button', { name: 'Acciones de Cable UTP' }));
     await user.click(await screen.findByRole('menuitem', { name: /Reactivar/ }));
+    const again = await screen.findByRole('dialog', { name: 'Reactivar producto' });
+    expect(calls).toEqual(['deactivate']);
+    await user.click(within(again).getByRole('button', { name: 'Reactivar' }));
     await waitFor(() => expect(calls).toEqual(['deactivate', 'reactivate']));
   });
 
@@ -242,10 +269,57 @@ describe('products list', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Acciones de Cable UTP' }));
     await user.click(await screen.findByRole('menuitem', { name: /Reactivar/ }));
+    const confirm = await screen.findByRole('dialog', { name: 'Reactivar producto' });
+    await user.click(within(confirm).getByRole('button', { name: 'Reactivar' }));
 
     expect(
       await screen.findByText(/No se puede reactivar «Cable UTP»: su proveedor está desactivado/),
     ).toBeVisible();
+  });
+});
+
+describe('products list: reading', () => {
+  it('shows the block header of the area and group when grouping, and the page size is offered', async () => {
+    const { session } = createTestSession(
+      { ...OPTIONS, 'GET /v1/products': () => Response.json(page([RJ45, CABLE])) },
+      meWith({ products: ALL }),
+    );
+    renderApp(session, '/productos');
+    const user = userEvent.setup();
+
+    const table = await screen.findByRole('table', { name: 'Lista de productos' });
+    expect(within(table).queryByRole('columnheader', { name: 'Grupo' })).toBeVisible();
+    await user.click(screen.getByRole('checkbox', { name: 'Agrupar por área y grupo' }));
+    // Both products share one block: one header, and the group column is not repeated in the rows.
+    await waitFor(() =>
+      expect(within(table).queryByRole('columnheader', { name: 'Grupo' })).not.toBeInTheDocument(),
+    );
+    expect(within(table).getAllByText('Aire Acondicionado')).toHaveLength(1);
+    expect(screen.getByRole('combobox', { name: /Por página/ })).toBeVisible();
+  });
+
+  it('prices one product at another margin level on the server, without saving anything', async () => {
+    const levels: (string | null)[] = [];
+    const { session } = createTestSession(
+      {
+        ...OPTIONS,
+        'GET /v1/products': () => Response.json(page([RJ45])),
+        [`GET /v1/products/${RJ45.id}`]: (call) => {
+          levels.push(call.query.get('margin_level_id'));
+          return Response.json({ ...RJ45, price_with_vat: '36.42', price_without_vat: '32.52' });
+        },
+      },
+      meWith({ products: ['view'] }),
+    );
+    renderApp(session, '/productos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Conector RJ45' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Ver con otro margen' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Ver con otro margen' });
+
+    expect(await within(dialog).findByText(/^Q\s?36\.42$/)).toBeVisible();
+    expect(levels).toEqual([OTHER_LEVEL.id]);
   });
 });
 
@@ -320,6 +394,9 @@ describe('products list: several at once', () => {
       screen.getByRole('checkbox', { name: 'Seleccionar todos los productos de la página' }),
     );
     await user.click(screen.getByRole('button', { name: 'Reactivar' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Reactivar productos' });
+    expect(calls).toHaveLength(0);
+    await user.click(within(confirm).getByRole('button', { name: 'Reactivar' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(
@@ -349,6 +426,9 @@ describe('products list: several at once', () => {
     );
     expect(screen.queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Marcar costo como revisado' }));
+    const confirm = await screen.findByRole('dialog', { name: 'Marcar costo como revisado' });
+    expect(calls).toHaveLength(0);
+    await user.click(within(confirm).getByRole('button', { name: 'Marcar como revisado' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]?.body).toEqual({ ids: [RJ45.id, CABLE.id] });

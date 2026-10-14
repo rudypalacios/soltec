@@ -9,11 +9,17 @@ export function FilterBar({
   searchLabel,
   search,
   onSearchChange,
+  beside,
+  collapsed = false,
   children,
 }: {
   searchLabel: string;
   search: string;
   onSearchChange: (value: string) => void;
+  /** Controls on the search row, after the field (on a phone, the buttons that open the filters). */
+  beside?: ReactNode;
+  /** Hides the filters, for a phone that opens them on demand. */
+  collapsed?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -34,9 +40,14 @@ export function FilterBar({
         type="search"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
-        sx={{ flex: { xs: '1 1 100%', sm: '1 1 280px' }, maxWidth: { sm: 360 } }}
+        sx={{
+          flex: { xs: beside ? '1 1 0' : '1 1 100%', sm: '1 1 280px' },
+          minWidth: { xs: beside ? 0 : undefined },
+          maxWidth: { sm: 360 },
+        }}
       />
-      {children}
+      {beside}
+      {collapsed ? null : children}
     </Box>
   );
 }
