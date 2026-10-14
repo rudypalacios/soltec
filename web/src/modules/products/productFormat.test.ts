@@ -7,6 +7,12 @@ describe('formatMoney', () => {
     expect(formatMoney('22.9600', 'GTQ')).toMatch(/^Q\s?22\.96$/);
   });
 
+  it('never prints the code of the quetzal, and shows a currency without a symbol as its code', () => {
+    expect(formatMoney('1', 'GTQ')).not.toContain('GTQ');
+    expect(formatMoney('1234.5', 'USD')).toBe('$ 1,234.50');
+    expect(formatMoney('1234.5', 'CRC')).toBe('CRC 1,234.50');
+  });
+
   it('keeps up to four decimals when the amount has them, and shows a dash for nothing', () => {
     expect(formatMoney('0.1234', 'GTQ')).toMatch(/^Q\s?0\.1234$/);
     expect(formatMoney(null, 'GTQ')).toBe('—');
