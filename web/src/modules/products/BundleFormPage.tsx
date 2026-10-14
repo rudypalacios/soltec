@@ -186,20 +186,25 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
     setLines(lines.map((line) => (line.productId === productId ? { ...line, quantity } : line)));
   const remove = (productId: string) =>
     setLines(lines.filter((line) => line.productId !== productId));
+  // A product is in a bundle once: a second pick of the same one (from a list that was still loading) is ignored.
   const add = (candidate: Candidate) =>
-    setLines([
-      ...lines,
-      {
-        productId: candidate.id,
-        code: candidate.code,
-        name: candidate.name,
-        unit: candidate.unit.name,
-        cost: candidate.cost,
-        quantity: '1',
-        isActive: true,
-        costIsStale: false,
-      },
-    ]);
+    setLines((current) =>
+      current.some((line) => line.productId === candidate.id)
+        ? current
+        : [
+            ...current,
+            {
+              productId: candidate.id,
+              code: candidate.code,
+              name: candidate.name,
+              unit: candidate.unit.name,
+              cost: candidate.cost,
+              quantity: '1',
+              isActive: true,
+              costIsStale: false,
+            },
+          ],
+    );
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

@@ -545,6 +545,24 @@ describe('bundle form', () => {
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent(/^\/paquetes$/));
   });
 
+  it('never offers a product already in the bundle, even while the list of the last search is still shown', async () => {
+    // A server that ignores `exclude` stands for the moment before the new search arrives.
+    const { session } = createTestSession(
+      formHandlers({ 'GET /v1/bundles/candidates': () => Response.json({ data: CANDIDATES }) }),
+      meWith({ bundles: ALL }),
+    );
+    renderApp(session, '/paquetes/nuevo');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('combobox', { name: /Agregar componente/ }));
+    await user.click(await screen.findByRole('option', { name: /Cable UTP/ }));
+    await user.click(screen.getByRole('combobox', { name: /Agregar componente/ }));
+
+    await screen.findByRole('option', { name: /Jack RJ45/ });
+    expect(screen.queryByRole('option', { name: /Cable UTP/ })).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Cantidad')).toHaveLength(1);
+  });
+
   it('removes a component, and cannot be saved without a name or without components', async () => {
     const { session } = createTestSession(
       formHandlers({ 'GET /v1/bundles/candidates': candidatesHandler() }),

@@ -47,8 +47,9 @@ export function ComponentSearch({
           setText('');
         }
       }}
-      // The API already filters by what was typed (name or code); filtering again would hide matches by code.
-      filterOptions={(all) => all}
+      // The API already filters by what was typed (name or code); filtering again would hide matches by code. What is
+      // already in the bundle is dropped here too: while a new search loads, the list of the last one is still shown.
+      filterOptions={(all) => all.filter((candidate) => !exclude.includes(candidate.id))}
       getOptionLabel={(candidate) => candidate.name}
       isOptionEqualToValue={(a, b) => a.id === b.id}
       noOptionsText={candidates.isError ? problemMessage(candidates.error) : 'Nada coincide'}
