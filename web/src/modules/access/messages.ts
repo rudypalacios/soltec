@@ -22,6 +22,7 @@ const PROBLEM_MESSAGES: Record<string, string> = {
     'Ya existe un registro activo con esta identificación. Consulta con tu jefe directo o con administración.',
   identification_inactive:
     'Ya existe un registro inactivo con esta identificación. Pide a administración que lo reactive en lugar de registrarlo de nuevo.',
+  product_inactive: 'Un producto desactivado no tiene un costo que confirmar. Reactívalo primero.',
   link_invalid:
     'Este enlace ya no sirve: ya se usó o se envió uno más reciente. Pide que te lo envíen de nuevo.',
   link_expired: 'Este enlace venció. Pide que te lo envíen de nuevo.',
@@ -48,6 +49,8 @@ const FIELD_MESSAGES: Record<string, string> = {
   locked: 'Ya no se puede cambiar.',
   too_low: 'No puede ser menor que el valor actual.',
   current_password_incorrect: 'La contraseña actual no es correcta.',
+  parent_inactive: 'Está desactivado. Reactívalo primero.',
+  too_many: 'Son demasiados.',
   cycle: 'Esa persona depende de este usuario: no puede ser su jefe.',
 };
 

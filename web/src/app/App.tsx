@@ -32,6 +32,12 @@ import {
   SupplierEditPage,
   SupplierViewPage,
 } from '../modules/suppliers/SupplierFormPage';
+import {
+  ProductCreatePage,
+  ProductEditPage,
+  ProductViewPage,
+} from '../modules/products/ProductFormPage';
+import { ProductsPage } from '../modules/products/ProductsPage';
 import { SuppliersPage } from '../modules/suppliers/SuppliersPage';
 import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
@@ -143,6 +149,38 @@ export function App() {
           element={
             <RequirePermission resource="contacts" action="edit">
               <ContactEditPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="productos"
+          element={
+            <RequirePermission resource="products" action="view">
+              <ProductsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="productos/nuevo"
+          element={
+            <RequirePermission resource="products" action="create">
+              <ProductCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="productos/:productId"
+          element={
+            <RequirePermission resource="products" action="view">
+              <ProductViewPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="productos/:productId/editar"
+          element={
+            <RequirePermission resource="products" action="edit">
+              <ProductEditPage />
             </RequirePermission>
           }
         />

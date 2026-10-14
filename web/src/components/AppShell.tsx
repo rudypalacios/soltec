@@ -7,6 +7,7 @@ import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
 import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
 import ContactsOutlined from '@mui/icons-material/ContactsOutlined';
+import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined';
 import LocalShippingOutlined from '@mui/icons-material/LocalShippingOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
@@ -73,6 +74,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/contactos',
     icon: <ContactsOutlined />,
     permissions: [{ resource: 'contacts', action: 'view' }],
+  },
+  {
+    label: 'Productos',
+    path: '/productos',
+    icon: <Inventory2Outlined />,
+    permissions: [{ resource: 'products', action: 'view' }],
   },
   {
     label: 'Proveedores',

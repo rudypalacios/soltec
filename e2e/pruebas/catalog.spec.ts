@@ -114,8 +114,12 @@ test(
     await expect(units.getByText('Metro cuadrado', { exact: true })).toBeVisible();
     await expect(units.getByText('Superficie', { exact: true })).toBeVisible();
 
+    // The brands start empty, but other scenarios (a product form creating one) share the database: the list is
+    // there, empty or not.
     await catalog.choose('Marcas');
-    await expect(page.getByText('No hay marcas con esos filtros.')).toBeVisible();
+    await expect(
+      page.getByLabel('Lista de marcas').or(page.getByText('No hay marcas con esos filtros.')),
+    ).toBeVisible();
   },
 );
 

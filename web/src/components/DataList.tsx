@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   CardContent,
+  Checkbox,
   CircularProgress,
   Paper,
   Stack,
@@ -57,6 +58,15 @@ interface DataListProps<T> {
    * (title and subtitle on the left, the badges on the right, every action behind ⋮) instead of a card.
    */
   dense?: boolean;
+  /**
+   * Makes the rows selectable (a checkbox per row, and on the table one in the header for the whole page), for the
+   * actions that apply to several records. The screen keeps the set and clears it when the rows change. Not offered in
+   * the dense list.
+   */
+  selection?: {
+    selected: ReadonlySet<string>;
+    onChange: (selected: ReadonlySet<string>) => void;
+  };
   /** Omit it for a list that is never long (a handful of fixed rows). */
   pagination?: {
     /** Zero-based. */
@@ -94,6 +104,7 @@ export function DataList<T>({
   getRowName,
   getActions,
   dense = false,
+  selection,
   pagination,
 }: DataListProps<T>) {
   const isMobile = useIsMobile();
@@ -107,6 +118,39 @@ export function DataList<T>({
   if (rows.length === 0) {
     return <Alert severity="info">No hay {noun} con esos filtros.</Alert>;
   }
+
+  const pageIds = rows.map(getRowId);
+  const selectedHere = pageIds.filter((id) => selection?.selected.has(id)).length;
+  const toggle = (id: string, on: boolean) => {
+    if (!selection) {
+      return;
+    }
+    const next = new Set(selection.selected);
+    if (on) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    selection.onChange(next);
+  };
+  const toggleAll = (on: boolean) => {
+    if (!selection) {
+      return;
+    }
+    const next = new Set(selection.selected);
+    pageIds.forEach((id) => (on ? next.add(id) : next.delete(id)));
+    selection.onChange(next);
+  };
+  const checkbox = (row: T) =>
+    selection ? (
+      <Checkbox
+        checked={selection.selected.has(getRowId(row))}
+        onChange={(event) => toggle(getRowId(row), event.target.checked)}
+        slotProps={{ input: { 'aria-label': `Seleccionar ${getRowName(row)}` } }}
+        // 44 px: the touch target of a phone.
+        sx={{ p: 1.25 }}
+      />
+    ) : null;
 
   return (
     <>
@@ -141,6 +185,7 @@ export function DataList<T>({
                 columns={columns}
                 rowName={getRowName(row)}
                 actions={getActions?.(row) ?? []}
+                leading={checkbox(row)}
               />
             </li>
           ))}
@@ -150,6 +195,18 @@ export function DataList<T>({
           <Table size="small" aria-label={label}>
             <TableHead>
               <TableRow>
+                {selection ? (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={selectedHere === pageIds.length}
+                      indeterminate={selectedHere > 0 && selectedHere < pageIds.length}
+                      onChange={(event) => toggleAll(event.target.checked)}
+                      slotProps={{
+                        input: { 'aria-label': `Seleccionar todos los ${noun} de la página` },
+                      }}
+                    />
+                  </TableCell>
+                ) : null}
                 {columns.map((column) => (
                   <TableCell key={column.id} sx={{ minWidth: column.minWidth }}>
                     {column.header}
@@ -169,7 +226,12 @@ export function DataList<T>({
                 const actions = getActions?.(row) ?? [];
                 const rowName = getRowName(row);
                 return (
-                  <TableRow key={getRowId(row)} hover>
+                  <TableRow
+                    key={getRowId(row)}
+                    hover
+                    selected={selection?.selected.has(getRowId(row))}
+                  >
+                    {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
                     {columns.map((column) => (
                       <TableCell
                         key={column.id}
@@ -213,11 +275,14 @@ function RowCard<T>({
   columns,
   rowName,
   actions,
+  leading,
 }: {
   row: T;
   columns: DataColumn<T>[];
   rowName: string;
   actions: RowAction[];
+  /** The selection checkbox, before the title. */
+  leading?: ReactNode;
 }) {
   const withRole = (role: MobileRole) => columns.filter((column) => column.mobile === role);
   const [title] = withRole('title');
@@ -235,7 +300,8 @@ function RowCard<T>({
           spacing={1}
           sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
         >
-          <Box sx={{ minWidth: 0 }}>
+          {leading ? <Box sx={{ mt: -1, ml: -1, flexShrink: 0 }}>{leading}</Box> : null}
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
             {title ? (
               <Typography component="div" sx={{ fontWeight: 600 }}>
                 {title.render(row)}
