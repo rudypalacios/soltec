@@ -31,6 +31,7 @@ final class AuditEntityLabels
         'contacts',
         'suppliers',
         'products',
+        'bundles',
     ];
 
     /** Longest label stored: the column's width. */
