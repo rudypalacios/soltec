@@ -521,11 +521,11 @@ describe('bundle form', () => {
     expect(searches.at(-1)?.query.get('exclude')).toBe(CABLE.id);
     await user.click(screen.getByRole('option', { name: /Jack RJ45/ }));
 
-    const quantity = screen.getAllByLabelText('Cantidad')[0] as HTMLElement;
+    const quantity = screen.getAllByLabelText(/^Cantidad de/)[0] as HTMLElement;
     await user.clear(quantity);
     await user.type(quantity, '18');
-    await user.clear(screen.getAllByLabelText('Cantidad')[1] as HTMLElement);
-    await user.type(screen.getAllByLabelText('Cantidad')[1] as HTMLElement, '2');
+    await user.clear(screen.getAllByLabelText(/^Cantidad de/)[1] as HTMLElement);
+    await user.type(screen.getAllByLabelText(/^Cantidad de/)[1] as HTMLElement, '2');
 
     // 18 × 22.96 + 2 × 3.50 = 420.28
     expect(await screen.findByText(/^Q\s?420\.28$/)).toBeVisible();
@@ -560,7 +560,7 @@ describe('bundle form', () => {
 
     await screen.findByRole('option', { name: /Jack RJ45/ });
     expect(screen.queryByRole('option', { name: /Cable UTP/ })).not.toBeInTheDocument();
-    expect(screen.getAllByLabelText('Cantidad')).toHaveLength(1);
+    expect(screen.getAllByLabelText(/^Cantidad de/)).toHaveLength(1);
   });
 
   it('removes a component, and cannot be saved without a name or without components', async () => {
@@ -595,7 +595,7 @@ describe('bundle form', () => {
     await user.type(await screen.findByLabelText(/^Nombre/), 'X');
     await user.click(screen.getByRole('combobox', { name: /Agregar componente/ }));
     await user.click(await screen.findByRole('option', { name: /Cable UTP/ }));
-    const quantity = screen.getByLabelText('Cantidad');
+    const quantity = screen.getByLabelText(/^Cantidad de/);
     await user.clear(quantity);
     await user.type(quantity, '0');
 
@@ -664,7 +664,7 @@ describe('bundle form', () => {
     expect(screen.getAllByText('Inactivo')).toHaveLength(1);
 
     await user.clear(screen.getByDisplayValue('18'));
-    await user.type(screen.getAllByLabelText('Cantidad')[0] as HTMLElement, '20');
+    await user.type(screen.getAllByLabelText(/^Cantidad de/)[0] as HTMLElement, '20');
     await user.click(screen.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(saved).toHaveLength(1));
@@ -672,6 +672,65 @@ describe('bundle form', () => {
       version: 1,
       group_id: GROUP.id,
       brand_id: BRAND.id,
+      items: [
+        { product_id: CABLE.id, quantity: '20' },
+        { product_id: JACK.id, quantity: '2' },
+      ],
+    });
+  });
+
+  it('lists the components as a table on a desktop, with the total in its last row', async () => {
+    const { session } = createTestSession(editHandlers(), meWith({ bundles: ALL }));
+    renderApp(session, `/paquetes/${POINT.id}/editar`);
+
+    const table = await screen.findByRole('table', { name: 'Componentes del paquete' });
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent);
+    expect(headers.slice(0, 5)).toEqual([
+      'Código',
+      'Componente',
+      'Cantidad',
+      'Costo unitario',
+      'Subtotal',
+    ]);
+    const rows = within(table).getAllByRole('row');
+    // Header, the two components and the total.
+    expect(rows).toHaveLength(4);
+    expect(within(rows[1] as HTMLElement).getByText('Cable UTP')).toBeVisible();
+    expect(within(rows[2] as HTMLElement).getByText('Inactivo')).toBeVisible();
+    expect(within(rows[3] as HTMLElement).getByText('Costo del paquete')).toBeVisible();
+    expect(within(rows[3] as HTMLElement).getByText(/^Q\s?420\.28$/)).toBeVisible();
+  });
+
+  it('lists them as a compact list on a phone, with no table, and the quantity still edits', async () => {
+    setViewportWidth(390);
+    const saved: Call[] = [];
+    const { session } = createTestSession(
+      editHandlers({
+        [`PATCH /v1/bundles/${POINT.id}`]: (call) => {
+          saved.push(call);
+          return Response.json(POINT);
+        },
+      }),
+      meWith({ bundles: ALL }),
+    );
+    renderApp(session, `/paquetes/${POINT.id}/editar`);
+    const user = userEvent.setup();
+
+    const list = await screen.findByRole('list', { name: 'Componentes del paquete' });
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(list).getByText('Inactivo')).toBeVisible();
+    expect(within(list).getByText(/^× Q\s?22\.96$/)).toBeVisible();
+
+    const quantity = within(list).getByLabelText('Cantidad de Cable UTP');
+    await user.clear(quantity);
+    await user.type(quantity, '20');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]?.body).toMatchObject({
       items: [
         { product_id: CABLE.id, quantity: '20' },
         { product_id: JACK.id, quantity: '2' },

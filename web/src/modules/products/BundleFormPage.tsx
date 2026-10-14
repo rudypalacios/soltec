@@ -1,22 +1,5 @@
-import DeleteOutline from '@mui/icons-material/DeleteOutline';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
-import {
-  ApiError,
-  bundleCostPreview,
-  isValidQuantity,
-  lineCostPreview,
-  type components,
-} from '@soltec/shared';
+import { Alert, Box, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material';
+import { ApiError, bundleCostPreview, isValidQuantity, type components } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { FormActions, FormPage } from '../../components/FormPage';
@@ -26,8 +9,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { formatMoment } from '../access/formatting';
 import { fieldMessage, fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { InactiveTag } from './catalogParts';
-import { CodeChip } from './CodeChip';
+import { ComponentsTable, type Line } from './ComponentsTable';
 import { ComponentSearch, type Candidate } from './ComponentSearch';
 import { formatMoney } from './productFormat';
 import { useBundle, useBundleCurrency, useCreateBundle, useUpdateBundle } from './useBundles';
@@ -59,20 +41,6 @@ const SAVE_CONFLICTS = {
   conflict:
     'Otra persona cambió este paquete mientras lo editabas. Recarga la página para ver sus cambios.',
 };
-
-/** A component as the form keeps it: what the person edits (the quantity) and what it shows of the product. */
-interface Line {
-  productId: string;
-  code: string;
-  name: string;
-  unit: string;
-  /** The cost of one unit, VAT included, four decimals. */
-  cost: string;
-  quantity: string;
-  /** False for a product deactivated after it went into the bundle. */
-  isActive: boolean;
-  costIsStale: boolean;
-}
 
 function linesOf(bundle: Bundle | null): Line[] {
   return (bundle?.items ?? []).map((item) => ({
@@ -237,7 +205,7 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
   const hasInactive = lines.some((line) => !line.isActive);
 
   return (
-    <FormPage onSubmit={(event) => void submit(event)} maxWidth={760}>
+    <FormPage onSubmit={(event) => void submit(event)} maxWidth={900}>
       {failure ? <Alert severity="error">{failure}</Alert> : null}
       {bundle && !bundle.is_active ? (
         <Alert severity="info">
@@ -316,55 +284,43 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
             Todavía no tiene componentes.
           </Typography>
         ) : (
-          <Stack spacing={1} component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-            {lines.map((line, position) => (
-              <LineRow
-                key={line.productId}
-                line={line}
-                currencyCode={currencyCode}
-                readOnly={readOnly}
-                error={
-                  fieldErrors[`items.${position}.quantity`] ??
-                  fieldErrors[`items.${position}.product_id`] ??
-                  (invalidQuantity(line) ? ITEM_MESSAGES.quantity.invalid : undefined)
-                }
-                onQuantity={(quantity) => setQuantity(line.productId, quantity)}
-                onRemove={() => remove(line.productId)}
-              />
-            ))}
-          </Stack>
+          <ComponentsTable
+            lines={lines}
+            currencyCode={currencyCode}
+            readOnly={readOnly}
+            total={readOnly && bundle ? bundle.cost : preview}
+            errorAt={(position) =>
+              fieldErrors[`items.${position}.quantity`] ??
+              fieldErrors[`items.${position}.product_id`] ??
+              (lines[position] && invalidQuantity(lines[position])
+                ? ITEM_MESSAGES.quantity.invalid
+                : undefined)
+            }
+            onQuantity={setQuantity}
+            onRemove={remove}
+          />
         )}
       </Stack>
 
-      <Paper variant="outlined" sx={{ p: 1.5 }}>
+      {bundle ? (
         <Stack spacing={0.5}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-            <Typography sx={{ fontWeight: 600 }}>Costo del paquete</Typography>
-            <Typography sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-              {formatMoney(readOnly && bundle ? bundle.cost : preview, currencyCode)}
-            </Typography>
-          </Stack>
-          {bundle ? (
-            <>
-              <Typography variant="body2" color="text.secondary">
-                Costo más antiguo revisado el {formatMoment(bundle.cost_updated_at)}.
-              </Typography>
-              {bundle.cost_is_stale ? (
-                <StatusBadge tone="warning" label="Costo desactualizado" />
-              ) : null}
-              <Typography variant="body2" color="text.secondary">
-                Precio con IVA: {formatMoney(bundle.price_with_vat, currencyCode)} con «
-                {bundle.margin_level.name}».
-              </Typography>
-            </>
+          <Typography variant="body2" color="text.secondary">
+            Costo más antiguo revisado el {formatMoment(bundle.cost_updated_at)}.
+          </Typography>
+          {bundle.cost_is_stale ? (
+            <StatusBadge tone="warning" label="Costo desactualizado" />
           ) : null}
-          <Typography variant="caption" color="text.secondary">
-            {readOnly
-              ? 'Se calcula con los costos actuales de los componentes; no se guarda.'
-              : 'Es una vista previa con los costos actuales. El servidor calcula el costo y el precio al guardar; nada de esto se guarda.'}
+          <Typography variant="body2" color="text.secondary">
+            Precio con IVA: {formatMoney(bundle.price_with_vat, currencyCode)} con «
+            {bundle.margin_level.name}».
           </Typography>
         </Stack>
-      </Paper>
+      ) : null}
+      <Typography variant="caption" color="text.secondary">
+        {readOnly
+          ? 'Se calcula con los costos actuales de los componentes; no se guarda.'
+          : 'El costo es una vista previa con los costos actuales. El servidor calcula el costo y el precio al guardar; nada de esto se guarda.'}
+      </Typography>
 
       <FormActions>
         <Button component={RouterLink} to="/paquetes" variant="outlined" color="inherit">
@@ -405,85 +361,4 @@ function serverMessages(error: unknown): Record<string, string> {
     }
   }
   return messages;
-}
-
-function LineRow({
-  line,
-  currencyCode,
-  readOnly,
-  error,
-  onQuantity,
-  onRemove,
-}: {
-  line: Line;
-  currencyCode: string;
-  readOnly: boolean;
-  error: string | undefined;
-  onQuantity: (quantity: string) => void;
-  onRemove: () => void;
-}) {
-  const lineCost = lineCostPreview({ quantity: line.quantity, cost: line.cost });
-  return (
-    <Paper
-      component="li"
-      variant="outlined"
-      sx={{ p: 1.5, ...(line.isActive ? {} : { opacity: 0.85 }) }}
-    >
-      <Stack spacing={1}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <CodeChip code={line.code} />
-          {line.isActive ? null : <InactiveTag />}
-          {line.costIsStale ? <StatusBadge tone="warning" label="Costo desactualizado" /> : null}
-          <Typography sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0 }}>{line.name}</Typography>
-          {readOnly ? null : (
-            <IconButton
-              aria-label={`Quitar ${line.name}`}
-              onClick={onRemove}
-              sx={{ width: 44, height: 44 }}
-            >
-              <DeleteOutline />
-            </IconButton>
-          )}
-        </Stack>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={{ xs: 1, sm: 2 }}
-          sx={{ alignItems: { sm: 'flex-start' } }}
-        >
-          <TextField
-            label="Cantidad"
-            value={line.quantity}
-            onChange={(event) => onQuantity(event.target.value)}
-            error={Boolean(error)}
-            helperText={error}
-            slotProps={{
-              htmlInput: { inputMode: 'decimal', maxLength: 13, readOnly },
-              input: { endAdornment: <UnitTag unit={line.unit} /> },
-            }}
-            sx={{ width: { sm: 200 } }}
-          />
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ pt: { sm: 2 }, fontVariantNumeric: 'tabular-nums' }}
-          >
-            {formatMoney(line.cost, currencyCode)} por {line.unit.toLowerCase()}
-          </Typography>
-          <Typography
-            sx={{ pt: { sm: 1.75 }, ml: { sm: 'auto' }, fontVariantNumeric: 'tabular-nums' }}
-          >
-            {formatMoney(lineCost, currencyCode)}
-          </Typography>
-        </Stack>
-      </Stack>
-    </Paper>
-  );
-}
-
-function UnitTag({ unit }: { unit: string }) {
-  return (
-    <Typography variant="body2" color="text.secondary" sx={{ ml: 1, whiteSpace: 'nowrap' }}>
-      {unit}
-    </Typography>
-  );
 }
