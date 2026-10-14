@@ -25,6 +25,7 @@ use Soltec\Modules\Catalog\Domain\ParameterCatalog;
 use Soltec\Modules\Catalog\Http\ParameterController;
 use Soltec\Modules\Contacts\Http\ContactController;
 use Soltec\Modules\Organization\Http\DepartmentController;
+use Soltec\Modules\Products\Http\BundleController;
 use Soltec\Modules\Products\Http\ProductController;
 use Soltec\Modules\Settings\Http\BrandingController;
 use Soltec\Modules\Suppliers\Http\SupplierController;
@@ -171,6 +172,21 @@ return static function (App $app): void {
             ->setArgument('permission', 'products.deactivate');
         $group->post('/products/{productId}/confirm-cost', [ProductController::class, 'confirmCost'])
             ->setArgument('permission', 'products.edit');
+
+        // Bundles have no data scope. The fixed `candidates` comes before `{bundleId}`; it carries costs, which is
+        // what whoever sees bundles sees (the section is for the people who sell).
+        $group->get('/bundles', [BundleController::class, 'list'])->setArgument('permission', 'bundles.view');
+        $group->get('/bundles/candidates', [BundleController::class, 'candidates'])
+            ->setArgument('permission', 'bundles.view');
+        $group->post('/bundles', [BundleController::class, 'create'])->setArgument('permission', 'bundles.create');
+        $group->get('/bundles/{bundleId}', [BundleController::class, 'show'])
+            ->setArgument('permission', 'bundles.view');
+        $group->patch('/bundles/{bundleId}', [BundleController::class, 'update'])
+            ->setArgument('permission', 'bundles.edit');
+        $group->post('/bundles/{bundleId}/deactivate', [BundleController::class, 'deactivate'])
+            ->setArgument('permission', 'bundles.deactivate');
+        $group->post('/bundles/{bundleId}/reactivate', [BundleController::class, 'reactivate'])
+            ->setArgument('permission', 'bundles.deactivate');
 
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');

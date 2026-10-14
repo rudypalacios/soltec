@@ -56,6 +56,8 @@ tags:
     description: People that advisers keep, each owned by the user who entered it.
   - name: Products
     description: Products with their cost; the price is derived from it and never stored.
+  - name: Bundles
+    description: Bundles of products with a quantity each; their cost and price are derived from the components and never stored.
   - name: Suppliers
     description: Suppliers with their addresses and their own people, shared by everyone who may see the section.
   - name: Settings

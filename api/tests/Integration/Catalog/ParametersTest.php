@@ -277,7 +277,7 @@ final class ParametersTest extends AccessTestCase
 
         self::assertSame(8, $this->countRows('SELECT COUNT(*) FROM segments'));
         self::assertSame(6, $this->countRows('SELECT COUNT(*) FROM client_statuses'));
-        self::assertSame(77, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(81, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
     }
 
     /** @return array<string, string> */
