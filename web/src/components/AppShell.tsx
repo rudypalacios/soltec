@@ -30,7 +30,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useState, type ReactElement, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
 import { CATALOG_VIEWS } from '../modules/parameters/parameterViews';
 import { SETTINGS_SECTIONS } from '../modules/settings/sections';
@@ -46,6 +46,10 @@ interface NavItem {
   icon: ReactElement;
   /** Without permissions the item is for every signed-in user; with several, any one of them is enough. */
   permissions?: { resource: string; action: string }[];
+  /** For an item that opens one of several screens: the address to use for whoever may view this one first. */
+  fallbacks?: { path: string; resource: string }[];
+  /** Other addresses that keep the item highlighted (the tabs of the same section). */
+  alsoActiveOn?: string[];
 }
 
 /** The side navigation. Each item shows only to whoever may open it; the server enforces it anyway. */
@@ -79,7 +83,13 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Productos',
     path: '/productos',
     icon: <Inventory2Outlined />,
-    permissions: [{ resource: 'products', action: 'view' }],
+    // Products and bundles are tabs of one section: the item opens the first one the person may view.
+    permissions: [
+      { resource: 'products', action: 'view' },
+      { resource: 'bundles', action: 'view' },
+    ],
+    fallbacks: [{ path: '/paquetes', resource: 'bundles' }],
+    alsoActiveOn: ['/paquetes'],
   },
   {
     label: 'Proveedores',
@@ -109,6 +119,22 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+/** Where an item leads: its own address, or the first alternative the person may open when they cannot view it. */
+function targetOf(item: NavItem, can: (resource: string, action: string) => boolean): string {
+  const own = item.permissions?.[0];
+  if (!own || can(own.resource, own.action)) {
+    return item.path;
+  }
+  return item.fallbacks?.find((fallback) => can(fallback.resource, 'view'))?.path ?? item.path;
+}
+
+/** Whether the current address belongs to the section of an item without being its own address. */
+function isAlsoActive(item: NavItem, pathname: string): boolean {
+  return (item.alsoActiveOn ?? []).some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 /**
  * The frame of every signed-in screen: a fixed side menu on a desktop, a drawer behind a button on a phone.
  * While the password has to be changed there is no menu: the only way forward is the change itself.
@@ -120,6 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const restricted = state.status === 'authenticated' && state.passwordChangeRequired;
+  const location = useLocation();
   const items = restricted
     ? []
     : NAV_ITEMS.filter(
@@ -136,8 +163,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ListItemButton
             key={item.path}
             component={NavLink}
-            to={item.path}
+            to={targetOf(item, can)}
             end={item.path === '/'}
+            className={isAlsoActive(item, location.pathname) ? 'active' : undefined}
             onClick={() => setDrawerOpen(false)}
             sx={{
               minHeight: 44,
