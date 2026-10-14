@@ -69,8 +69,8 @@ export function ComponentsTable(props: Props) {
   return isMobile ? <CompactList {...props} /> : <DesktopTable {...props} />;
 }
 
-/** The width of the code on a phone, which the quantity box repeats so the two line up and the name and the cost start at the same place. */
-const CODE_COLUMN = 96;
+/** The width of the quantity box on a phone: room for a large quantity with decimals (about eleven characters). */
+const QUANTITY_WIDTH = 120;
 
 /**
  * The quantity of a component. In the table the unit of its product sits inside the box; on a phone the box has a fixed
@@ -97,7 +97,8 @@ function QuantityField({
       value={line.quantity}
       onChange={(event) => onChange(event.target.value)}
       error={Boolean(error)}
-      helperText={error}
+      // On a phone the box is narrow: its message goes under the whole row instead (see CompactList).
+      helperText={compact ? undefined : error}
       slotProps={{
         htmlInput: {
           'aria-label': `Cantidad de ${line.name}`,
@@ -120,7 +121,7 @@ function QuantityField({
               ),
             },
       }}
-      sx={{ width: compact ? CODE_COLUMN : 180, flexShrink: 0 }}
+      sx={{ width: compact ? QUANTITY_WIDTH : 180, flexShrink: 0 }}
     />
   );
 }
@@ -265,23 +266,39 @@ function CompactList({
                   }),
             }}
           >
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-              {/* Aligned with the first line of the name, which can take several. */}
-              <Box sx={{ width: CODE_COLUMN, flex: 'none', pt: 0.25 }}>
-                <CodeChip code={line.code} />
-              </Box>
+            {/* The name takes the whole width; its code and alerts go on their own line below it. */}
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
               <Typography
                 sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0, overflowWrap: 'anywhere' }}
               >
                 {line.name}
               </Typography>
               {readOnly ? null : (
-                <Box sx={{ mt: -1, mr: -1 }}>
+                <Box sx={{ my: -1, mr: -1 }}>
                   <RemoveButton line={line} onRemove={() => onRemove(line.productId)} />
                 </Box>
               )}
             </Stack>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', mt: 0.5 }}>
+            <Stack
+              direction="row"
+              sx={{ alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px', mt: 0.75 }}
+            >
+              <CodeChip code={line.code} />
+              {line.isActive ? null : <InactiveTag />}
+              {line.costIsStale ? (
+                <StatusBadge tone="warning" label="Costo desactualizado" />
+              ) : null}
+            </Stack>
+            {/* The box on the left, alone; the cost of a unit over the subtotal on the right, both against the edge. */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: `${QUANTITY_WIDTH}px minmax(0, 1fr)`,
+                columnGap: 1.5,
+                alignItems: 'start',
+                mt: 1.25,
+              }}
+            >
               <QuantityField
                 compact
                 line={line}
@@ -289,34 +306,27 @@ function CompactList({
                 error={errorAt(position)}
                 onChange={(quantity) => onQuantity(line.productId, quantity)}
               />
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ pt: 1.25, flexGrow: 1, minWidth: 0, fontVariantNumeric: 'tabular-nums' }}
+              <Stack
+                spacing={0.25}
+                sx={{ minHeight: 48, justifyContent: 'center', textAlign: 'right', minWidth: 0 }}
               >
-                × {money(line.cost)} por {line.unit.toLowerCase()}
-              </Typography>
-              <Typography
-                sx={{
-                  pt: 1,
-                  flex: 'none',
-                  textAlign: 'right',
-                  whiteSpace: 'nowrap',
-                  fontWeight: 600,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {money(lineCostPreview({ quantity: line.quantity, cost: line.cost }))}
-              </Typography>
-            </Stack>
-            {line.isActive && !line.costIsStale ? null : (
-              <Stack direction="row" spacing={1.5} sx={{ mt: 0.5 }}>
-                {line.isActive ? null : <InactiveTag />}
-                {line.costIsStale ? (
-                  <StatusBadge tone="warning" label="Costo desactualizado" />
-                ) : null}
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  × {money(line.cost)} por {line.unit.toLowerCase()}
+                </Typography>
+                <Typography sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                  {money(lineCostPreview({ quantity: line.quantity, cost: line.cost }))}
+                </Typography>
               </Stack>
-            )}
+            </Box>
+            {errorAt(position) ? (
+              <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                {errorAt(position)}
+              </Typography>
+            ) : null}
           </Box>
         ))}
       </Box>
