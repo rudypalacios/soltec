@@ -266,19 +266,21 @@ function CompactList({
                   }),
             }}
           >
-            {/* The name takes the whole width; its code and alerts go on their own line below it. */}
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-              <Typography
-                sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0, overflowWrap: 'anywhere' }}
-              >
+            {/*
+              The name takes the whole width and sets the height of its row: one line, one line; five lines, five. The
+              button of 44 px is taken out of the flow (absolute, centred on the first line) so it never stretches a
+              short row; the name leaves room for it on the right.
+            */}
+            <Box sx={{ position: 'relative', pr: readOnly ? 0 : 4.5 }}>
+              <Typography sx={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>
                 {line.name}
               </Typography>
               {readOnly ? null : (
-                <Box sx={{ my: -1, mr: -1 }}>
+                <Box sx={{ position: 'absolute', top: -10, right: -10 }}>
                   <RemoveButton line={line} onRemove={() => onRemove(line.productId)} />
                 </Box>
               )}
-            </Stack>
+            </Box>
             <Stack
               direction="row"
               sx={{ alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px', mt: 0.75 }}
