@@ -9,8 +9,6 @@ import {
   DialogTitle,
   MenuItem,
   Stack,
-  Tab,
-  Tabs,
   TextField,
 } from '@mui/material';
 import { ApiError } from '@soltec/shared';
@@ -21,9 +19,9 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
 import type { RowAction } from '../../components/RowActions';
+import { SectionNav } from '../../components/SectionNav';
 import { ActiveBadge } from '../../components/StatusBadge';
 import { StatusFilter } from '../../components/StatusFilter';
-import { useIsMobile } from '../../components/useIsMobile';
 import { useListFilters } from '../../components/useListFilters';
 import { statusPalette } from '../../theme/tokens';
 import { fieldMessages, problemMessage } from '../access/messages';
@@ -48,24 +46,24 @@ const TAB_PARAM = 'parametro';
 
 /** `/configuracion/parametros`: the lookup lists other sections draw their options from. */
 export function ParametersPage() {
-  return <ParameterLists views={PARAMETER_VIEWS} tabsLabel="Parámetros" selectLabel="Parámetro" />;
+  // Inside Configuración, which already has its side list: the tabs go on top.
+  return <ParameterLists views={PARAMETER_VIEWS} tabsLabel="Parámetros" placement="top" />;
 }
 
 /**
- * One tab per list, only the ones the user may view (a select on a phone); the tab lives in the address so a reload
- * stays on it. Serves the parameters and the product structure alike.
+ * One section per list, only the ones the user may view, in the submenu every sectioned screen shares; the open one
+ * lives in the address so a reload stays on it. Serves the parameters and the product structure alike.
  */
 export function ParameterLists({
   views: allViews,
   tabsLabel,
-  selectLabel,
+  placement,
 }: {
   views: readonly ParameterView[];
   tabsLabel: string;
-  selectLabel: string;
+  placement?: 'side' | 'top';
 }) {
   const can = useCan();
-  const isMobile = useIsMobile();
   const [params, setParams] = useSearchParams();
   const views = allViews.filter((view) => can(view.resource, 'view'));
   const current = views.find((view) => view.slug === params.get(TAB_PARAM)) ?? views[0];
@@ -77,37 +75,16 @@ export function ParameterLists({
   const select = (slug: string) => setParams({ [TAB_PARAM]: slug }, { replace: true });
 
   return (
-    <>
-      {isMobile ? (
-        <TextField
-          select
-          label={selectLabel}
-          value={current.slug}
-          onChange={(event) => select(event.target.value)}
-          fullWidth
-          sx={{ mb: 2 }}
-        >
-          {views.map((view) => (
-            <MenuItem key={view.slug} value={view.slug}>
-              {view.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      ) : (
-        <Tabs
-          value={current.slug}
-          onChange={(_event, slug: string) => select(slug)}
-          aria-label={tabsLabel}
-          sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
-        >
-          {views.map((view) => (
-            <Tab key={view.slug} value={view.slug} label={view.label} />
-          ))}
-        </Tabs>
-      )}
+    <SectionNav
+      label={tabsLabel}
+      value={current.slug}
+      onChange={select}
+      placement={placement}
+      items={views.map((view) => ({ value: view.slug, label: view.label }))}
+    >
       {/* Keyed so each list starts with its own search, filter and page. */}
       <ParameterList key={current.slug} view={current} />
-    </>
+    </SectionNav>
   );
 }
 
@@ -278,18 +255,17 @@ function ParameterList({ view }: { view: ParameterView }) {
 
   return (
     <>
-      <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 2 }}>
-        {can(view.resource, 'create') ? (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
-            {view.newLabel}
-          </Button>
-        ) : null}
-      </Stack>
-
       <FilterBar
         searchLabel="Buscar por nombre"
         search={filters.text}
         onSearchChange={filters.setText}
+        action={
+          can(view.resource, 'create') ? (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
+              {view.newLabel}
+            </Button>
+          ) : null
+        }
       >
         <StatusFilter value={filters.status} onChange={filters.setStatus} />
         {parent && parents.allowed ? (
@@ -327,6 +303,7 @@ function ParameterList({ view }: { view: ParameterView }) {
         error={values.isError ? problemMessage(values.error) : null}
         getRowId={(value) => value.id}
         getRowName={(value) => value.name}
+        isInactive={(value) => !value.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,

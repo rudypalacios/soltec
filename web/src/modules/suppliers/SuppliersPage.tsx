@@ -131,6 +131,7 @@ export function SuppliersPage() {
         error={suppliers.isError ? problemMessage(suppliers.error) : null}
         getRowId={(supplier) => supplier.id}
         getRowName={(supplier) => supplier.name}
+        isInactive={(supplier) => !supplier.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,

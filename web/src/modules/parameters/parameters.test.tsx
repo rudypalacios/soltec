@@ -91,7 +91,7 @@ describe('catalog parameters', () => {
     expect(dot.parentElement).toHaveTextContent('Perdido');
   });
 
-  it('uses a select instead of tabs, and cards instead of a table, on a phone', async () => {
+  it('uses scrollable tabs and cards instead of a table on a phone', async () => {
     setViewportWidth(390);
     const { session } = createTestSession(
       { 'GET /v1/contact-types': () => Response.json(page([{ ...SEGMENT, name: 'Compras' }])) },
@@ -100,8 +100,8 @@ describe('catalog parameters', () => {
     renderApp(session, '/configuracion/parametros');
 
     expect(await screen.findByLabelText('Lista de tipos de contacto')).toBeVisible();
-    expect(screen.getByRole('combobox', { name: 'Parámetro' })).toBeVisible();
-    expect(screen.queryByRole('tablist', { name: 'Parámetros' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: 'Parámetros' })).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: 'Parámetro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -206,6 +206,39 @@ describe('catalog parameters', () => {
     expect(
       await within(dialog).findByText('Ya hay un segmento activo con ese nombre.'),
     ).toBeVisible();
+  });
+
+  it('marks an inactive value like an inactive product: the row wash and the pill in its own column', async () => {
+    const inactive = { ...SEGMENT, id: '0192f1c2-7d3a-7a11-8f2e-0000000000b3', is_active: false };
+    const { session } = createTestSession(
+      { 'GET /v1/segments': () => Response.json(page([SEGMENT, inactive])) },
+      withAccess(['segments']),
+    );
+    renderApp(session, '/configuracion/parametros');
+
+    const table = await screen.findByRole('table', { name: 'Lista de segmentos' });
+    const pill = within(table).getByText('Inactivo');
+    expect(pill).toHaveStyle({ backgroundColor: '#FCE8E6' });
+    // The pill sits in the «Estado» cell, and its row carries the wash of an inactive record.
+    expect(pill.closest('td')).toBe(pill.closest('tr')?.lastElementChild?.previousElementSibling);
+    expect(pill.closest('tr')).toHaveStyle({ backgroundColor: 'rgba(179, 38, 30, 0.045)' });
+    expect(within(table).getByText('Activo').closest('tr')).not.toHaveStyle({
+      backgroundColor: 'rgba(179, 38, 30, 0.045)',
+    });
+  });
+
+  it('puts the create button on the row of the search and the status filter', async () => {
+    const { session } = createTestSession(
+      { 'GET /v1/segments': () => Response.json(page([SEGMENT])) },
+      withAccess(['segments']),
+    );
+    renderApp(session, '/configuracion/parametros');
+
+    const button = await screen.findByRole('button', { name: 'Nuevo segmento' });
+    const search = screen.getByRole('searchbox', { name: 'Buscar por nombre' });
+    expect(button.closest('div[class*="MuiBox-root"]')?.parentElement).toBe(
+      search.closest('.MuiTextField-root')?.parentElement,
+    );
   });
 
   it('asks before deactivating and reactivates an inactive value', async () => {

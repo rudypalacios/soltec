@@ -16,14 +16,8 @@ import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { PER_PAGE_OPTIONS, useCatalogFilters } from './catalogFilters';
-import {
-  bulkSummary,
-  MetaLine,
-  INACTIVE_CARD,
-  INACTIVE_ROW,
-  InactiveTag,
-  PriceBlock,
-} from './catalogParts';
+import { bulkSummary, MetaLine, PriceBlock } from './catalogParts';
+import { INACTIVE_CARD, InactiveTag } from '../../components/inactiveMarks';
 import { CatalogTabs } from './CatalogTabs';
 import { CodeChip } from './CodeChip';
 import { MarginPreviewDialog } from './MarginPreviewDialog';
@@ -241,7 +235,7 @@ export function BundlesPage() {
         getRowId={(bundle) => bundle.id}
         getRowName={(bundle) => bundle.name}
         getActions={actionsFor}
-        rowSx={(bundle) => (bundle.is_active ? undefined : INACTIVE_ROW)}
+        isInactive={(bundle) => !bundle.is_active}
         selection={
           canSelect && (!isMobile || choosing) ? { selected, onChange: setSelected } : undefined
         }

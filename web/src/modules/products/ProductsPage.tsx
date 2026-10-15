@@ -15,14 +15,8 @@ import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { Highlight } from '../../components/Highlight';
 import { useIsMobile } from '../../components/useIsMobile';
-import {
-  bulkSummary,
-  MetaLine,
-  INACTIVE_CARD,
-  INACTIVE_ROW,
-  InactiveTag,
-  PriceBlock,
-} from './catalogParts';
+import { bulkSummary, MetaLine, PriceBlock } from './catalogParts';
+import { INACTIVE_CARD, InactiveTag } from '../../components/inactiveMarks';
 import { PER_PAGE_OPTIONS, useCatalogFilters } from './catalogFilters';
 import { CatalogTabs } from './CatalogTabs';
 import { CodeChip } from './CodeChip';
@@ -307,7 +301,7 @@ export function ProductsPage() {
         getRowId={(product) => product.id}
         getRowName={(product) => product.name}
         getActions={actionsFor}
-        rowSx={(product) => (product.is_active ? undefined : INACTIVE_ROW)}
+        isInactive={(product) => !product.is_active}
         selection={
           canSelect && (!isMobile || choosing) ? { selected, onChange: setSelected } : undefined
         }

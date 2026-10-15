@@ -1,5 +1,6 @@
 import { Box, Typography } from '@mui/material';
 import { color } from '../theme/tokens';
+import { InactiveTag } from './inactiveMarks';
 
 export type StatusTone = 'success' | 'warning' | 'neutral';
 
@@ -28,9 +29,7 @@ export function StatusBadge({ tone, label }: { tone: StatusTone; label: string }
   );
 }
 
-/** The state of a record that is simply active or not. */
+/** The state of a record that is simply active or not: a green dot, or the same «Inactivo» pill every list uses. */
 export function ActiveBadge({ active }: { active: boolean }) {
-  return (
-    <StatusBadge tone={active ? 'success' : 'neutral'} label={active ? 'Activo' : 'Inactivo'} />
-  );
+  return active ? <StatusBadge tone="success" label="Activo" /> : <InactiveTag />;
 }
