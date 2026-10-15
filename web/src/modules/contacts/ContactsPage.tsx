@@ -119,6 +119,7 @@ export function ContactsPage() {
         error={contacts.isError ? problemMessage(contacts.error) : null}
         getRowId={(contact) => contact.id}
         getRowName={(contact) => contact.name}
+        isInactive={(contact) => !contact.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,

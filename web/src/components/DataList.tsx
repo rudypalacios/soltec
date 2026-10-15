@@ -15,10 +15,9 @@ import {
   TablePagination,
   TableRow,
   Typography,
-  type SxProps,
-  type Theme,
 } from '@mui/material';
 import { Fragment, type ReactNode } from 'react';
+import { INACTIVE_CARD, INACTIVE_MARK, INACTIVE_ROW } from './inactiveMarks';
 import { ActionButton, ActionMenu, type RowAction } from './RowActions';
 import { useIsMobile } from './useIsMobile';
 
@@ -72,11 +71,14 @@ interface DataListProps<T> {
     onChange: (selected: ReadonlySet<string>) => void;
   };
   /**
+   * Marks the rows of inactive records (stripe, wash and grey text on the table; stripe and wash on the card of a
+   * phone), the same on every screen. A screen that draws its own card applies `INACTIVE_CARD` itself.
+   */
+  isInactive?: (row: T) => boolean;
+  /**
    * Puts a header before the first row of each block of consecutive rows that share a key (the list must already
    * come in that order). The first row of a page always gets one, so a block cut by the page break shows it again.
    */
-  /** Extra styles for the table row of a record, for one that has to stand out (an inactive one). */
-  rowSx?: (row: T) => SxProps<Theme> | undefined;
   groupBy?: (row: T) => { key: string; title: string; subtitle?: string };
   /**
    * Replaces the card of a phone with the screen's own. It receives the selection checkbox (null when the rows are
@@ -125,7 +127,7 @@ export function DataList<T>({
   dense = false,
   selection,
   groupBy,
-  rowSx,
+  isInactive,
   renderCard,
   pagination,
 }: DataListProps<T>) {
@@ -201,6 +203,7 @@ export function DataList<T>({
               columns={columns}
               rowName={getRowName(row)}
               actions={getActions?.(row) ?? []}
+              inactive={isInactive?.(row) ?? false}
             />
           ))}
         </Paper>
@@ -237,6 +240,7 @@ export function DataList<T>({
                       rowName={getRowName(row)}
                       actions={actions}
                       leading={checkbox(row)}
+                      inactive={isInactive?.(row) ?? false}
                     />
                   )}
                 </li>
@@ -296,7 +300,7 @@ export function DataList<T>({
                     <TableRow
                       hover
                       selected={selection?.selected.has(getRowId(row))}
-                      sx={rowSx?.(row)}
+                      sx={isInactive?.(row) ? INACTIVE_ROW : undefined}
                     >
                       {selection ? <TableCell padding="checkbox">{checkbox(row)}</TableCell> : null}
                       {columns.map((column) => (
@@ -371,6 +375,7 @@ function RowCard<T>({
   rowName,
   actions,
   leading,
+  inactive,
 }: {
   row: T;
   columns: DataColumn<T>[];
@@ -378,6 +383,7 @@ function RowCard<T>({
   actions: RowAction[];
   /** The selection checkbox, before the title. */
   leading?: ReactNode;
+  inactive: boolean;
 }) {
   const withRole = (role: MobileRole) => columns.filter((column) => column.mobile === role);
   const [title] = withRole('title');
@@ -388,7 +394,7 @@ function RowCard<T>({
   const [primary, ...others] = actions;
 
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" sx={inactive ? INACTIVE_CARD : undefined}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         <Stack
           direction="row"
@@ -452,11 +458,13 @@ function DenseRow<T>({
   columns,
   rowName,
   actions,
+  inactive,
 }: {
   row: T;
   columns: DataColumn<T>[];
   rowName: string;
   actions: RowAction[];
+  inactive: boolean;
 }) {
   const withRole = (role: MobileRole) => columns.filter((column) => column.mobile === role);
   const [title] = withRole('title');
@@ -467,6 +475,7 @@ function DenseRow<T>({
     <Box
       component="li"
       sx={{
+        ...(inactive ? INACTIVE_MARK : {}),
         display: 'flex',
         alignItems: 'center',
         gap: 1,

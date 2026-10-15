@@ -1,14 +1,13 @@
-import { Alert, Box, Stack, Tab, Tabs } from '@mui/material';
-import { Link as RouterLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Alert } from '@mui/material';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
-import { useIsMobile } from '../../components/useIsMobile';
+import { SectionNav } from '../../components/SectionNav';
 import { useCan } from '../access/SessionContext';
 import { SETTINGS_SECTIONS } from './sections';
 
 /** `/configuracion`: the frame of the settings sections, with a side list on a desktop and tabs on a phone. */
 export function SettingsLayout() {
   const can = useCan();
-  const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const sections = SETTINGS_SECTIONS.filter((section) =>
     section.resources.some((resource) => can(resource, 'view')),
@@ -22,35 +21,17 @@ export function SettingsLayout() {
   return (
     <>
       <PageHeader title="Configuración" />
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 2, md: 4 }}>
-        <Tabs
-          value={current?.path ?? false}
-          orientation={isMobile ? 'horizontal' : 'vertical'}
-          variant={isMobile ? 'scrollable' : 'standard'}
-          allowScrollButtonsMobile
-          aria-label="Secciones de la configuración"
-          sx={{
-            flexShrink: 0,
-            minWidth: { md: 180 },
-            borderBottom: { xs: 1, md: 0 },
-            borderColor: 'divider',
-          }}
-        >
-          {sections.map((section) => (
-            <Tab
-              key={section.path}
-              component={RouterLink}
-              to={section.path}
-              value={section.path}
-              label={section.label}
-              sx={{ alignItems: { md: 'flex-start' }, minHeight: 44 }}
-            />
-          ))}
-        </Tabs>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Outlet />
-        </Box>
-      </Stack>
+      <SectionNav
+        label="Secciones de la configuración"
+        value={current?.path ?? false}
+        items={sections.map((section) => ({
+          value: section.path,
+          label: section.label,
+          to: section.path,
+        }))}
+      >
+        <Outlet />
+      </SectionNav>
     </>
   );
 }

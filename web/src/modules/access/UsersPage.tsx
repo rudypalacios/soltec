@@ -198,6 +198,7 @@ export function UsersPage() {
         error={users.isError ? problemMessage(users.error) : null}
         getRowId={(user) => user.id}
         getRowName={(user) => user.name}
+        isInactive={(user) => !user.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,

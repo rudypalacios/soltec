@@ -7,7 +7,7 @@ export function CatalogPage() {
   return (
     <>
       <PageHeader title="Catálogo" />
-      <ParameterLists views={CATALOG_VIEWS} tabsLabel="Catálogo" selectLabel="Sección" />
+      <ParameterLists views={CATALOG_VIEWS} tabsLabel="Catálogo" />
     </>
   );
 }

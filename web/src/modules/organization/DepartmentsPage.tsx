@@ -161,6 +161,7 @@ export function DepartmentsPage() {
         error={departments.isError ? problemMessage(departments.error) : null}
         getRowId={(department) => department.id}
         getRowName={(department) => department.name}
+        isInactive={(department) => !department.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,

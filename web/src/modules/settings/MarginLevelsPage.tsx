@@ -23,6 +23,7 @@ import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
 import type { RowAction } from '../../components/RowActions';
+import { InactiveTag } from '../../components/inactiveMarks';
 import { StatusBadge } from '../../components/StatusBadge';
 import { useIsMobile } from '../../components/useIsMobile';
 import { color } from '../../theme/tokens';
@@ -253,6 +254,7 @@ export function MarginLevelsPage() {
         error={levels.isError ? problemMessage(levels.error) : null}
         getRowId={(level) => level.id}
         getRowName={(level) => level.name}
+        isInactive={(level) => !level.is_active}
         getActions={actionsFor}
       />
 
@@ -290,7 +292,7 @@ export function MarginLevelsPage() {
 
 const statusBadge = (level: MarginLevel) =>
   !level.is_active ? (
-    <StatusBadge tone="neutral" label="Inactivo" />
+    <InactiveTag />
   ) : level.is_default ? (
     <StatusBadge tone="success" label="Por defecto" />
   ) : (

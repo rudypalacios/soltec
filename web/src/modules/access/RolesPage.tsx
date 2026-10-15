@@ -146,6 +146,7 @@ export function RolesPage() {
         error={roles.isError ? problemMessage(roles.error) : null}
         getRowId={(role) => role.id}
         getRowName={(role) => role.name}
+        isInactive={(role) => !role.is_active}
         getActions={actionsFor}
         pagination={{
           page: filters.page,
