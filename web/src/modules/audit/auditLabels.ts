@@ -22,6 +22,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   contacts: 'Contactos',
   suppliers: 'Proveedores',
   products: 'Productos',
+  bundles: 'Paquetes',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -65,6 +66,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   contacts: 'Contacto',
   suppliers: 'Proveedor',
   products: 'Producto',
+  bundles: 'Paquete',
 };
 
 /**
@@ -93,6 +95,9 @@ export function recordPath(
   }
   if (entityType === 'products' && can('products', 'edit')) {
     return `/productos/${entityId}/editar`;
+  }
+  if (entityType === 'bundles' && can('bundles', 'edit')) {
+    return `/paquetes/${entityId}/editar`;
   }
   return null;
 }

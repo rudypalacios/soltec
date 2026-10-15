@@ -55,3 +55,14 @@ describe('groupBySection', () => {
     expect(groupBySection([])).toEqual([]);
   });
 });
+
+describe('groupBySection: products and bundles', () => {
+  it('puts bundles with products, since they are one catalog to the person using it', () => {
+    const sections = groupBySection(['bundles', 'suppliers', 'products'].map(resource));
+
+    expect(sections.map((section) => [section.label, section.items.map((i) => i.code)])).toEqual([
+      ['Proveedores', ['suppliers']],
+      ['Productos', ['products', 'bundles']],
+    ]);
+  });
+});

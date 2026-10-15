@@ -32,6 +32,7 @@ describe('design tokens', () => {
     ['error on a surface', color.error.main, color.surface],
     ['ink on the error tint', color.ink, color.error.tint],
     ['ink on the warning tint', color.ink, color.warning.tint],
+    ['warning on its tint (the stale-cost tag)', color.warning.main, color.warning.tint],
     ['ink on the success tint', color.ink, color.success.tint],
   ];
   it.each(text)('keeps %s readable (4.5:1)', (_name, foreground, background) => {

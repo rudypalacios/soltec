@@ -15,6 +15,8 @@ export {
   toPayload,
 } from './domain/permissionMatrix';
 export type { CheckState, MatrixScope, MatrixValue } from './domain/permissionMatrix';
+export { bundleCostPreview, isValidQuantity, lineCostPreview } from './domain/bundleCost';
+export type { CostLine } from './domain/bundleCost';
 export { calculatePrice, isValidCost, PriceError } from './domain/price';
 export type { Price, PriceErrorCode, PriceInput } from './domain/price';
 export { percentToRate, rateToPercent } from './domain/rates';

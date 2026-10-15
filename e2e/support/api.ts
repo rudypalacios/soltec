@@ -135,6 +135,15 @@ export class AdminApi {
     });
   }
 
+  /** A bundle, created through the API; `fields` are the ones of the creation body. */
+  async createBundle(fields: Record<string, unknown>): Promise<{ id: string; name: string }> {
+    return call<{ id: string; name: string }>('/bundles', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify(fields),
+    });
+  }
+
   /** Deactivates or reactivates a supplier, which takes its products along (or not). */
   async setSupplierActive(id: string, active: boolean): Promise<void> {
     await call(`/suppliers/${id}/${active ? 'reactivate' : 'deactivate'}`, {

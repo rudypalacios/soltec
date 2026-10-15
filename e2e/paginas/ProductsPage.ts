@@ -6,16 +6,21 @@ import { expect, type Locator, type Page } from '@playwright/test';
  */
 export class ProductsPage {
   constructor(
-    private readonly page: Page,
-    private readonly isMobile: boolean,
+    protected readonly page: Page,
+    protected readonly isMobile: boolean,
   ) {}
 
+  /** Where the list lives, the name of the list and the endpoint it reads: what the bundles screen changes. */
+  protected readonly route: string = '/productos';
+  protected readonly listLabel: string = 'Lista de productos';
+  protected readonly endpoint: string = '/products';
+
   async open(): Promise<void> {
-    await this.page.goto('/productos');
+    await this.page.goto(this.route);
   }
 
   get list(): Locator {
-    return this.page.getByLabel('Lista de productos', { exact: true });
+    return this.page.getByLabel(this.listLabel, { exact: true });
   }
 
   /** Types in the search box and waits for the filtered list, so the scenario never acts on the previous rows. */
@@ -23,7 +28,7 @@ export class ProductsPage {
     const filtered = this.page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
-        new URL(response.url()).pathname.endsWith('/products') &&
+        new URL(response.url()).pathname.endsWith(this.endpoint) &&
         new URL(response.url()).searchParams.get('q') === text &&
         response.ok(),
     );
