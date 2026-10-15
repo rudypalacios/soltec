@@ -328,9 +328,17 @@ function CompactList({
           </Box>
         ))}
       </Box>
+      {/* The total on a band against both edges, as the footer of the table on a desktop. */}
       <Stack
         direction="row"
-        sx={{ justifyContent: 'space-between', alignItems: 'baseline', pt: 1.5 }}
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          mx: -2,
+          px: 2,
+          py: 1.5,
+          bgcolor: 'action.hover',
+        }}
       >
         <Typography sx={{ fontWeight: 600 }}>Costo del paquete</Typography>
         <Typography sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
