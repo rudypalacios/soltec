@@ -1,0 +1,995 @@
+paths:
+  /v1/clients/similar:
+    get:
+      operationId: listSimilarClients
+      summary: Find clients whose name resembles the one being typed.
+      description: >-
+        A warning for the form that registers a client, before it is saved, up to five clients whose name contains
+        `name`, active or not, sorted by name. It looks only inside the caller's data scope, so it never reveals who
+        else works with a company (ADR-0022). A name shorter than three characters returns nothing.
+      tags:
+        - Clients
+      x-permission: clients.create|clients.edit
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 190
+      responses:
+        '200':
+          description: The similar clients, possibly none.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimilarClients'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/seller-options:
+    get:
+      operationId: listSellerOptions
+      summary: List the users that can be made advisers of a client.
+      description: >-
+        For the selector of advisers, the active internal users sorted by name; `q` searches name and email. Any
+        internal session may read it (ADR-0024).
+      tags:
+        - Clients
+      x-permission: internal
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The users, at most `limit`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/reassign:
+    post:
+      operationId: reassignClientPortfolio
+      summary: Hand over the whole portfolio of an adviser.
+      description: >-
+        Replaces `from_user_id` with `to_user_id` as adviser in every client the caller reaches, in one transaction;
+        where the first was the responsible adviser the second becomes it. It needs a scope that reaches other
+        people's clients (`team` or `all`; `own` answers 403) and only moves the clients inside it, so a portfolio
+        spread beyond the caller's scope is handed over in part. With `move_contacts` (the default) the people of the
+        leaving adviser that are linked to the clients handed over, and to no other client, go with them; the rest
+        stay and are counted in `contacts_kept`. This is what is needed before deactivating an adviser
+        (`user_has_clients`, ADR-0023).
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reassignment'
+      responses:
+        '200':
+          description: What was moved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioReassignment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients:
+    get:
+      operationId: listClients
+      summary: List clients.
+      description: >-
+        Only the clients the caller reaches by the data scope of `clients`, which follows their advisers (ADR-0025):
+        `own` the ones where they are an adviser, `team` the ones of their team, `all` every one. Inactive clients
+        are hidden unless status says otherwise. Sorted by name. `q` searches the name, the code, the legal name and
+        the identification (with or without hyphen). The list carries the responsible adviser and the number of
+        advisers but no addresses, billing profile or contacts.
+      tags:
+        - Clients
+      x-permission: clients.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ClientType'
+        - name: status_id
+          in: query
+          required: false
+          description: Only the clients in this client status.
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: segment_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: seller_id
+          in: query
+          required: false
+          description: Only the clients where this user is an adviser.
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: A page of clients.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createClient
+      summary: Register a prospect.
+      description: >-
+        Creates a prospect; the caller becomes its only adviser and the responsible one. The code is assigned from the
+        `client` numbering. The identification type is optional (`none` when left out) and the identification is a
+        NIT or a CUI that cannot repeat, and an active client that holds it answers 409 `identification_taken`, which never
+        says whose it is (ADR-0022); a deactivated one keeps it reserved and answers 409 `identification_inactive`. A
+        caller who may reactivate clients and already reaches that one also receives `inactive_client_id` and
+        `inactive_client_name` in the error, so the client is reactivated instead of registered again; for anyone
+        else the error does not say whose it is. Catalog values must be active (422 `not_found`). When no address is
+        marked primary, the first one is. A prospect has no billing profile; it is created with the conversion.
+      tags:
+        - Clients
+      x-permission: clients.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    get:
+      operationId: getClient
+      summary: Get a client by id.
+      description: >-
+        Returns the client, active or not, with its addresses, billing profile, advisers and contacts. The contacts are
+        only the ones the caller may see by the data scope of `contacts` (and none without `contacts.view`), so a person
+        linked by another adviser is not shown (ADR-0025). A client outside the caller's scope answers 404.
+      tags:
+        - Clients
+      x-permission: clients.view
+      responses:
+        '200':
+          description: The client.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateClient
+      summary: Edit a client.
+      description: >-
+        Replaces the data of the client as a whole, so a field left out is cleared; the addresses are replaced as a set,
+        in the order sent. The type does not change here (see `convert`). A customer needs `billing_profile` (422
+        `required`) and a prospect cannot have one (422 `not_applicable`). A stale version answers 409 `conflict`; an
+        identification another client holds, 409 `identification_taken` or `identification_inactive` (same extra
+        members as on creation). A catalog value that was switched off after the client used it is still accepted for
+        that client.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUpdate'
+      responses:
+        '200':
+          description: The updated client.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/convert:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: convertClient
+      summary: Turn a prospect into a customer.
+      description: >-
+        Manual conversion until the Cotizador does it (Hito 4). The identification type is now required (it may be
+        `none`, which invoices as a final consumer) and the billing profile is created. Answers 409
+        `already_customer` for a customer, `client_inactive` for a deactivated client, `conflict` for a stale version
+        and the identification errors of creation. It cannot be undone. The advisers do not change; the client can
+        now be shared with more of them.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientConvert'
+      responses:
+        '200':
+          description: The customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: deactivateClient
+      summary: Deactivate a client.
+      description: >-
+        Logical deactivation, independent of the client status ("Perdido" is a status, not this). It never blocks, and
+        the client keeps its identification reserved, so it cannot be registered again, and the client is reactivated instead.
+        Idempotent.
+      tags:
+        - Clients
+      x-permission: clients.deactivate
+      responses:
+        '200':
+          description: The deactivated client.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: reactivateClient
+      summary: Reactivate a client.
+      description: >-
+        Idempotent. Only data from before the identification was reserved can hold it twice; then it answers 409
+        `identification_taken`.
+      tags:
+        - Clients
+      x-permission: clients.deactivate
+      responses:
+        '200':
+          description: The reactivated client.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/sellers:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: addClientSeller
+      summary: Add an adviser to a customer.
+      description: >-
+        Idempotent. Only a customer is shared, because a prospect has a single adviser (409 `prospect_single_seller`). The user
+        must be an active internal user (422 `not_found`). The advisers are administered by the responsible adviser and
+        by whoever reaches the client with a `team` or `all` scope; any other adviser answers 403, so one adviser
+        cannot remove or add another (ADR-0025).
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRef'
+      responses:
+        '200':
+          description: The client with its advisers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/sellers/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+      - $ref: '#/components/parameters/SellerUserId'
+    delete:
+      operationId: removeClientSeller
+      summary: Remove an adviser from a client.
+      description: >-
+        The responsible adviser cannot be removed (409 `responsible_required`): another one is made responsible first,
+        or the client is reassigned. A user who is not an adviser of the client answers 404. Same who-may rule as
+        adding.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      responses:
+        '200':
+          description: The client with its advisers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/responsible:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: setClientResponsible
+      summary: Make an adviser the responsible one.
+      description: >-
+        Idempotent. The user must already be an adviser of the client (422 `not_found`); the previous responsible
+        adviser stays as an adviser. Same who-may rule as adding.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRef'
+      responses:
+        '200':
+          description: The client with its advisers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/reassign:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+    post:
+      operationId: reassignClient
+      summary: Replace one adviser of a client with another user.
+      description: >-
+        `from_user_id` must be an adviser of the client and `to_user_id` an active internal user (422 `not_found`),
+        and they must differ (422 `same_user`). The second takes the place of the first and is the responsible adviser
+        if the first was; if the second was already an adviser the first is simply removed. With `move_contacts` (the
+        default) the people of the first that are linked to this client and to no other go with the client; the
+        rest stay with their owner and are counted in `contacts_kept`. Same who-may rule as adding.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reassignment'
+      responses:
+        '200':
+          description: The client and what was moved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientReassignment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/clients/{clientId}/contacts/{contactId}:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+      - $ref: '#/components/parameters/LinkedContactId'
+    put:
+      operationId: setClientContactRoles
+      summary: Link a person to a client with their roles.
+      description: >-
+        Sets the roles (contact types) the person has with the client, linking them if they were not; sending the same
+        roles again changes nothing. Both must be inside the caller's reach: the client by the data scope of `clients`
+        and the person by the one of `contacts` (404 otherwise), and the caller needs `contacts.view` (403). Contact
+        types must be active, except one the person already had with the client (422 `not_found` on
+        `contact_type_ids.<n>`). Linking a person never makes them visible to the other advisers of the client.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientContactRoles'
+      responses:
+        '200':
+          description: The client with the people the caller may see.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    delete:
+      operationId: unlinkClientContact
+      summary: Unlink a person from a client.
+      description: >-
+        Removes every role of the person with the client. Idempotent. The person is never deleted. Same reach rules as
+        linking.
+      tags:
+        - Clients
+      x-permission: clients.edit
+      responses:
+        '200':
+          description: The client with the people the caller may see.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/me/client:
+    get:
+      operationId: getMyClient
+      summary: Get the client of the signed-in external user.
+      description: >-
+        The reduced profile of a client in the portal (ADR-0025): name, legal name, identification, tax regime and
+        addresses. It has no id in the path, so one client can never ask for another; the client comes from the
+        signed-in account. It never carries the status, the segment, the margin level, the advisers or the contacts.
+        It answers 404 for an internal user, an account without a client or a deactivated client.
+      tags:
+        - Clients
+      x-permission: client_profile.view
+      responses:
+        '200':
+          description: The client's own profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    ClientId:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    SellerUserId:
+      name: userId
+      in: path
+      required: true
+      description: The adviser.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    LinkedContactId:
+      name: contactId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    ClientType:
+      type: string
+      enum:
+        - prospect
+        - customer
+      description: A prospect becomes a customer by conversion.
+    UserRef:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+    Reassignment:
+      type: object
+      required:
+        - from_user_id
+        - to_user_id
+      properties:
+        from_user_id:
+          $ref: '#/components/schemas/Uuid'
+        to_user_id:
+          $ref: '#/components/schemas/Uuid'
+        move_contacts:
+          type: boolean
+          default: true
+          description: Whether the people of the leaving adviser that belong only to the clients handed over go with them.
+    PortfolioReassignment:
+      type: object
+      required:
+        - clients_reassigned
+        - contacts_moved
+        - contacts_kept
+      properties:
+        clients_reassigned:
+          type: integer
+        contacts_moved:
+          type: integer
+        contacts_kept:
+          type: integer
+          description: People of the leaving adviser linked to the clients that stay with their owner.
+    ClientReassignment:
+      type: object
+      required:
+        - client
+        - contacts_moved
+        - contacts_kept
+      properties:
+        client:
+          $ref: '#/components/schemas/Client'
+        contacts_moved:
+          type: integer
+        contacts_kept:
+          type: integer
+    SimilarClient:
+      type: object
+      required:
+        - id
+        - code
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        name:
+          type: string
+    SimilarClients:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimilarClient'
+    SellerOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+    StatusRef:
+      allOf:
+        - $ref: '#/components/schemas/NamedRef'
+        - type: object
+          required:
+            - color
+          properties:
+            color:
+              type: string
+              pattern: '^#[0-9A-Fa-f]{6}$'
+    BillingProfileInput:
+      type: object
+      required:
+        - legal_name
+        - tax_regime_id
+      properties:
+        legal_name:
+          type: string
+          minLength: 1
+          maxLength: 190
+          description: The name invoices are issued to.
+        tax_regime_id:
+          $ref: '#/components/schemas/Uuid'
+        payment_method_id:
+          type: [string, 'null']
+          format: uuid
+        credit_days:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 65535
+        credit_limit:
+          type: [string, 'null']
+          description: A decimal string with up to two decimals and twelve integer digits, for example `15000.50`.
+    BillingProfile:
+      type: object
+      required:
+        - legal_name
+        - tax_regime
+        - payment_method
+        - credit_days
+        - credit_limit
+      properties:
+        legal_name:
+          type: string
+        tax_regime:
+          oneOf:
+            - $ref: '#/components/schemas/NamedRef'
+            - type: 'null'
+        payment_method:
+          oneOf:
+            - $ref: '#/components/schemas/NamedRef'
+            - type: 'null'
+        credit_days:
+          type: [integer, 'null']
+        credit_limit:
+          type: [string, 'null']
+    ClientFields:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 190
+        identification_type:
+          $ref: '#/components/schemas/IdentificationType'
+        identification:
+          type: [string, 'null']
+          maxLength: 30
+          description: >-
+            A NIT with its check digit (`6647912-6`, hyphen and case optional) or a CUI of 13 digits. Required for
+            `nit` and `cui`, refused for `none` (422 `not_applicable`); invalid when the check digit fails.
+        status_id:
+          type: [string, 'null']
+          format: uuid
+          description: An active client status. It is assigned by hand; there are no transitions yet (P3).
+        segment_id:
+          type: [string, 'null']
+          format: uuid
+        area_id:
+          type: [string, 'null']
+          format: uuid
+          description: The area of interest.
+        margin_level_id:
+          type: [string, 'null']
+          format: uuid
+          description: The client's usual margin level; without it the default level is used.
+        addresses:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SupplierAddress'
+    ClientCreate:
+      $ref: '#/components/schemas/ClientFields'
+    ClientUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/ClientFields'
+        - type: object
+          properties:
+            billing_profile:
+              oneOf:
+                - $ref: '#/components/schemas/BillingProfileInput'
+                - type: 'null'
+              description: Required for a customer, not accepted for a prospect.
+    ClientConvert:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - identification_type
+            - billing_profile
+          properties:
+            identification_type:
+              $ref: '#/components/schemas/IdentificationType'
+            identification:
+              type: [string, 'null']
+              maxLength: 30
+            billing_profile:
+              $ref: '#/components/schemas/BillingProfileInput'
+    ClientSeller:
+      type: object
+      required:
+        - user
+        - is_responsible
+      properties:
+        user:
+          $ref: '#/components/schemas/NamedRef'
+        is_responsible:
+          type: boolean
+    ClientContactLink:
+      type: object
+      required:
+        - contact
+        - contact_type
+      properties:
+        contact:
+          type: object
+          required:
+            - id
+            - code
+            - name
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            code:
+              type: string
+            name:
+              type: string
+        contact_type:
+          $ref: '#/components/schemas/NamedRef'
+    ClientContactRoles:
+      type: object
+      required:
+        - contact_type_ids
+      properties:
+        contact_type_ids:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: The roles of the person with the client, each one an active contact type.
+    ClientSummary:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - code
+            - type
+            - name
+            - identification_type
+            - identification
+            - status
+            - segment
+            - area
+            - margin_level
+            - converted_at
+            - is_active
+            - responsible
+            - seller_count
+          properties:
+            code:
+              type: string
+              description: Assigned from the `client` numbering, for example `CLI-0001`.
+            type:
+              $ref: '#/components/schemas/ClientType'
+            name:
+              type: string
+            identification_type:
+              $ref: '#/components/schemas/IdentificationType'
+            identification:
+              type: [string, 'null']
+              description: Shown with the hyphen before the check digit when it is a NIT.
+            status:
+              oneOf:
+                - $ref: '#/components/schemas/StatusRef'
+                - type: 'null'
+            segment:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            area:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            margin_level:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+            converted_at:
+              oneOf:
+                - $ref: '#/components/schemas/Timestamp'
+                - type: 'null'
+            is_active:
+              type: boolean
+            responsible:
+              oneOf:
+                - $ref: '#/components/schemas/NamedRef'
+                - type: 'null'
+              description: The responsible adviser.
+            seller_count:
+              type: integer
+    Client:
+      allOf:
+        - $ref: '#/components/schemas/ClientSummary'
+        - type: object
+          required:
+            - addresses
+            - billing_profile
+            - sellers
+            - contacts
+          properties:
+            addresses:
+              type: array
+              items:
+                $ref: '#/components/schemas/SupplierAddress'
+            billing_profile:
+              oneOf:
+                - $ref: '#/components/schemas/BillingProfile'
+                - type: 'null'
+              description: Null for a prospect.
+            sellers:
+              type: array
+              description: The responsible adviser first.
+              items:
+                $ref: '#/components/schemas/ClientSeller'
+            contacts:
+              type: array
+              description: Only the people the caller may see by the data scope of contacts.
+              items:
+                $ref: '#/components/schemas/ClientContactLink'
+    ClientPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ClientProfile:
+      type: object
+      required:
+        - id
+        - name
+        - legal_name
+        - identification_type
+        - identification
+        - tax_regime
+        - addresses
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        legal_name:
+          type: [string, 'null']
+        identification_type:
+          $ref: '#/components/schemas/IdentificationType'
+        identification:
+          type: [string, 'null']
+        tax_regime:
+          oneOf:
+            - $ref: '#/components/schemas/NamedRef'
+            - type: 'null'
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupplierAddress'

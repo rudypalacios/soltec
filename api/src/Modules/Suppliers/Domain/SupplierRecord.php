@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Soltec\Modules\Suppliers\Domain;
 
 use DateTimeImmutable;
+use Soltec\Kernel\Address;
 use Soltec\Kernel\Db\Timestamps;
+use Soltec\Kernel\Identification;
 
 /** A stored supplier. A list carries no addresses or contacts (`detailed` false); a single read carries them. */
 final class SupplierRecord
@@ -66,7 +68,7 @@ final class SupplierRecord
             'version' => $this->version,
         ];
         if ($this->detailed) {
-            $api['addresses'] = array_map(static fn (SupplierAddress $a): array => $a->toArray(), $data->addresses);
+            $api['addresses'] = array_map(static fn (Address $a): array => $a->toArray(), $data->addresses);
             $api['contacts'] = array_map(static fn (SupplierContact $c): array => $c->toApi(), $data->contacts);
             $api['deactivated_product_count'] = $this->deactivatedProductCount ?? 0;
         }

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Soltec\Tests\Unit\Modules\Suppliers;
+namespace Soltec\Tests\Unit\Kernel;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Soltec\Modules\Suppliers\Domain\Identification;
+use Soltec\Kernel\Identification;
 
 /** Runs the vectors of `contract/test-vectors/identification.json`. */
 final class IdentificationTest extends TestCase
@@ -43,7 +43,7 @@ final class IdentificationTest extends TestCase
     /** @return array<string, array{array<string, string>}> */
     private static function vectors(string $group): array
     {
-        $file = dirname(__DIR__, 5) . '/contract/test-vectors/identification.json';
+        $file = dirname(__DIR__, 4) . '/contract/test-vectors/identification.json';
         $decoded = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($decoded);
         $rows = $decoded[$group] ?? [];

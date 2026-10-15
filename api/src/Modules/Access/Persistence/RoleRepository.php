@@ -238,13 +238,16 @@ final class RoleRepository
     }
 
     /**
-     * `scoped` says whether the rows of the resource have an owner, so a data scope applies to it.
+     * The resources a role of the matrix can hold: the internal ones, because only internal roles exist until the
+     * client portal. `scoped` says whether the rows of the resource have an owner, so a data scope applies to it.
      *
      * @return list<array{code: string, name: string, scoped: bool}>
      */
     public function resources(): array
     {
-        $rows = $this->connection->fetchAllAssociative('SELECT code, name, scoped FROM resources ORDER BY code');
+        $rows = $this->connection->fetchAllAssociative(
+            "SELECT code, name, scoped FROM resources WHERE audience = 'internal' ORDER BY code",
+        );
 
         return array_map(
             static fn (array $row): array => [

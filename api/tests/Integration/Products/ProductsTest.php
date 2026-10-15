@@ -405,7 +405,7 @@ final class ProductsTest extends ProductsTestCase
     {
         $this->applyMigrationAgain('20261014000002');
 
-        self::assertSame(81, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM sequences WHERE code = 'product'"));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM resources WHERE code = 'products' AND scoped = 0"));
     }
