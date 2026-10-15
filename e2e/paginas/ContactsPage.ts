@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * «Contactos». The list is a table on a desktop and cards on a phone, and so are its row actions (a ⋮ menu or text
@@ -45,6 +45,16 @@ export class ContactsPage {
     }
     await this.page.getByRole('button', { name: `Acciones de ${rowName}` }).click();
     await this.page.getByRole('menuitem', { name: action }).click();
+  }
+
+  /**
+   * Opens the edit form of a row and waits until it holds that contact. Until the contact arrives from the API the
+   * screen is not the form yet, and a step that types right away is lost when the form starts from the server's
+   * copy: the save then sends the old values. (A slow runner shows it; `E2E_CPU_THROTTLE=8` reproduces it.)
+   */
+  async edit(rowName: string): Promise<void> {
+    await this.act('Editar', rowName);
+    await expect(this.page.getByLabel(/^Nombre/)).toHaveValue(rowName);
   }
 
   async fillForm(fields: { name?: string; phone?: string; email?: string }): Promise<void> {

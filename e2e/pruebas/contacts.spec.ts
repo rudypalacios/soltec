@@ -25,7 +25,7 @@ test(
     await expect(contacts.list.getByText(/^CON-\d{4,}$/)).toBeVisible();
     await expect(contacts.list.getByText('contacto@example.com')).toBeVisible();
 
-    await contacts.act('Editar', name);
+    await contacts.edit(name);
     await contacts.fillForm({ phone: '5555-6666' });
     await contacts.save();
     await page.waitForURL((url) => url.pathname === '/contactos');
