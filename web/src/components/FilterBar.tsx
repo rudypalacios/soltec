@@ -1,9 +1,12 @@
 import { Box, TextField } from '@mui/material';
 import type { ReactNode } from 'react';
+import { density, touchQuery } from '../theme/tokens';
 
 /**
  * The bar above a list: a search field and, after it, the filters (selects). On a desktop it is one row; on a phone
  * the search takes its own row and the filters share the next ones, so the list starts higher on the screen.
+ * The screen's main action (the «Nuevo …» button) goes on the same row as the fields, at the far end, as tall as they
+ * are; on a phone it goes first, on its own row.
  */
 export function FilterBar({
   searchLabel,
@@ -11,6 +14,7 @@ export function FilterBar({
   onSearchChange,
   beside,
   collapsed = false,
+  action,
   children,
 }: {
   searchLabel: string;
@@ -20,6 +24,8 @@ export function FilterBar({
   beside?: ReactNode;
   /** Hides the filters, for a phone that opens them on demand. */
   collapsed?: boolean;
+  /** The screen's main action, if the person may use it. */
+  action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -48,6 +54,23 @@ export function FilterBar({
       />
       {beside}
       {collapsed ? null : children}
+      {action ? (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            order: { xs: -1, sm: 0 },
+            flex: { xs: '1 1 100%', sm: '0 0 auto' },
+            ml: { sm: 'auto' },
+            '& .MuiButton-root': {
+              minHeight: density.fieldDesktop,
+              [touchQuery]: { minHeight: density.fieldTouch },
+            },
+          }}
+        >
+          {action}
+        </Box>
+      ) : null}
     </Box>
   );
 }

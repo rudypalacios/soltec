@@ -16,14 +16,8 @@ import {
 } from '@mui/material';
 import { lineCostPreview } from '@soltec/shared';
 import { useIsMobile } from '../../components/useIsMobile';
-import {
-  INACTIVE_MARK,
-  INACTIVE_ROW,
-  InactiveTag,
-  STALE_MARK,
-  STALE_ROW,
-  StaleTag,
-} from './catalogParts';
+import { INACTIVE_MARK, INACTIVE_ROW, InactiveTag } from '../../components/inactiveMarks';
+import { STALE_MARK, STALE_ROW, StaleTag } from './catalogParts';
 import { CodeChip } from './CodeChip';
 import { formatMoney } from './productFormat';
 
