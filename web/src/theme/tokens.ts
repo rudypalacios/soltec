@@ -29,6 +29,8 @@ export const color = {
   error: { main: '#B3261E', tint: '#FCE8E6' },
   /** The marks of an inactive record: a stripe at half strength and a wash so faint it only tells rows apart. */
   inactive: { stripe: 'rgba(179, 38, 30, 0.5)', wash: 'rgba(179, 38, 30, 0.045)' },
+  /** The same marks, in amber, for a record whose cost is stale: its own signal, never mistaken for the red one. */
+  stale: { stripe: 'rgba(154, 88, 0, 0.5)', wash: 'rgba(154, 88, 0, 0.06)' },
   /** Marks what a search matched; dark text on it reaches 4.5:1. */
   highlight: '#FFE9A8',
 } as const;

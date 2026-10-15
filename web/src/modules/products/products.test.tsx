@@ -113,7 +113,11 @@ describe('products list', () => {
     const cards = await screen.findByLabelText('Lista de productos');
     expect(within(cards).getByText('Conector RJ45')).toBeVisible();
     expect(within(cards).getByText('PRD-0001')).toBeVisible();
-    expect(within(cards).getByText('Cables del Sur · Conectores')).toBeVisible();
+    // Unit on top; brand, supplier and group under the name, each one on its own so a long one cannot hide the others.
+    expect(within(cards).getByText('Unidad')).toBeVisible();
+    for (const part of ['Panduit', 'Cables del Sur', 'Conectores']) {
+      expect(within(cards).getByText(part)).toHaveAttribute('title', part);
+    }
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     // The filters and the selection boxes stay out of the way until they are asked for.
     expect(screen.queryByRole('combobox', { name: 'Área' })).not.toBeInTheDocument();

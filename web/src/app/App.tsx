@@ -37,6 +37,12 @@ import {
   ProductEditPage,
   ProductViewPage,
 } from '../modules/products/ProductFormPage';
+import {
+  BundleCreatePage,
+  BundleEditPage,
+  BundleViewPage,
+} from '../modules/products/BundleFormPage';
+import { BundlesPage } from '../modules/products/BundlesPage';
 import { ProductsPage } from '../modules/products/ProductsPage';
 import { SuppliersPage } from '../modules/suppliers/SuppliersPage';
 import { CatalogPage } from '../modules/catalog/CatalogPage';
@@ -181,6 +187,38 @@ export function App() {
           element={
             <RequirePermission resource="products" action="edit">
               <ProductEditPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="paquetes"
+          element={
+            <RequirePermission resource="bundles" action="view">
+              <BundlesPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="paquetes/nuevo"
+          element={
+            <RequirePermission resource="bundles" action="create">
+              <BundleCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="paquetes/:bundleId"
+          element={
+            <RequirePermission resource="bundles" action="view">
+              <BundleViewPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="paquetes/:bundleId/editar"
+          element={
+            <RequirePermission resource="bundles" action="edit">
+              <BundleEditPage />
             </RequirePermission>
           }
         />

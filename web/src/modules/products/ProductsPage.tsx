@@ -1,16 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
-import {
-  Alert,
-  Box,
-  Button,
-  FormControlLabel,
-  MenuItem,
-  Paper,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material';
 import { ApiError, type components } from '@soltec/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
@@ -20,82 +9,46 @@ import { DataList, type DataColumn } from '../../components/DataList';
 import { FilterBar } from '../../components/FilterBar';
 import { PageHeader } from '../../components/PageHeader';
 import type { RowAction } from '../../components/RowActions';
-import { SearchableSelect } from '../../components/SearchableSelect';
 import { StatusBadge } from '../../components/StatusBadge';
-import { StatusFilter } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { Highlight } from '../../components/Highlight';
 import { useIsMobile } from '../../components/useIsMobile';
-import { color } from '../../theme/tokens';
+import {
+  bulkSummary,
+  MetaLine,
+  INACTIVE_CARD,
+  INACTIVE_ROW,
+  InactiveTag,
+  PriceBlock,
+} from './catalogParts';
+import { PER_PAGE_OPTIONS, useCatalogFilters } from './catalogFilters';
+import { CatalogTabs } from './CatalogTabs';
 import { CodeChip } from './CodeChip';
 import { MarginPreviewDialog } from './MarginPreviewDialog';
 import { formatMoney } from './productFormat';
-import { SupplierSelect, type SupplierChoice } from './SupplierSelect';
+import type { SupplierChoice } from './SupplierSelect';
 import {
-  useAreaOptions,
-  useBrandOptions,
   useBulkProducts,
   useConfirmProductCost,
-  useGroupOptions,
-  useMarginLevelOptions,
   useProducts,
   useSetProductActive,
   type BulkAction,
-  type BulkResult,
 } from './useProducts';
 
 type Product = components['schemas']['Product'];
-const PER_PAGE_OPTIONS = [25, 50, 100];
-const SORTS = [
-  { value: 'name', label: 'Nombre' },
-  { value: 'code', label: 'Código' },
-  { value: 'cost', label: 'Costo, de menor a mayor' },
-  { value: 'cost_review', label: 'Costo revisado hace más tiempo' },
-] as const;
-type Sort = (typeof SORTS)[number]['value'];
-
 /** A change waiting for the person to confirm it (`open` false while the dialog fades out). */
 type Change = 'deactivate' | 'reactivate' | 'review';
 type PendingAction =
   | { kind: 'one'; product: Product; change: Change; open: boolean }
   | { kind: 'many'; change: Change; open: boolean }
   | { kind: 'supplier'; open: boolean };
-const ALL = '';
-/** The width of a filter that is not a plain select, as `FilterBar` gives them. */
-const FILTER_FIELD = { flex: { xs: '1 1 140px', sm: '0 0 200px' } } as const;
-
-/** What a bulk action did, in a sentence: «Se desactivaron 3 productos. 1 ya estaba así.» */
-export function bulkSummary(verb: string, result: BulkResult): string {
-  const plural = (count: number) => (count === 1 ? '1 producto' : `${count} productos`);
-  const parts = [`Se ${verb} ${plural(result.affected)}.`];
-  if (result.unchanged > 0) {
-    parts.push(
-      `${plural(result.unchanged)} ya estaba${result.unchanged === 1 ? '' : 'n'} así o no aplicaba.`,
-    );
-  }
-  if (result.blocked > 0) {
-    parts.push(
-      `${plural(result.blocked)} no se pudo${result.blocked === 1 ? '' : 'ieron'} reactivar porque su proveedor está desactivado.`,
-    );
-  }
-  return parts.join(' ');
-}
 
 /** `/productos`: the catalog with its costs and the prices derived from them. */
 export function ProductsPage() {
   const can = useCan();
   const filters = useListFilters();
-  const [supplier, setSupplier] = useState<SupplierChoice | null>(null);
-  const [areaId, setAreaId] = useState(ALL);
-  const [groupId, setGroupId] = useState(ALL);
-  const [brandId, setBrandId] = useState(ALL);
-  const [staleOnly, setStaleOnly] = useState(false);
-  const [levelId, setLevelId] = useState(ALL);
-  const [sort, setSort] = useState<Sort>('name');
-  const [grouped, setGrouped] = useState(false);
-  const [perPage, setPerPage] = useState(PER_PAGE_OPTIONS[0] ?? 25);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [preview, setPreview] = useState<{ product: Product; open: boolean } | null>(null);
@@ -105,60 +58,17 @@ export function ProductsPage() {
   const [failure, setFailure] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const areas = useAreaOptions();
-  const groups = useGroupOptions();
-  const brands = useBrandOptions();
-  const levels = useMarginLevelOptions();
-  const groupsOfArea = (groups.data?.data ?? []).filter(
-    (group) => areaId === ALL || group.area_id === areaId,
-  );
-
-  const query = {
-    q: filters.query,
-    status: filters.status,
-    page: filters.page + 1,
-    per_page: perPage,
-    sort,
-    ...(grouped ? { grouped: 'true' as const } : {}),
-    ...(supplier ? { supplier_id: supplier.id } : {}),
-    ...(areaId !== ALL ? { area_id: areaId } : {}),
-    ...(groupId !== ALL ? { group_id: groupId } : {}),
-    ...(brandId !== ALL ? { brand_id: brandId } : {}),
-    ...(staleOnly ? { stale: 'true' as const } : {}),
-    ...(levelId !== ALL ? { margin_level_id: levelId } : {}),
-  };
+  const catalog = useCatalogFilters(filters);
+  const { query, supplier } = catalog;
   const products = useProducts(query);
   const setActive = useSetProductActive();
   const confirmCost = useConfirmProductCost();
   const bulk = useBulkProducts();
 
-  // A selection belongs to the rows it was made on: another page or another filter starts over.
-  const rowsKey = JSON.stringify([
-    query.q,
-    query.status,
-    query.page,
-    supplier?.id,
-    areaId,
-    groupId,
-    brandId,
-    staleOnly,
-    sort,
-    grouped,
-    perPage,
-  ]);
-  useEffect(() => setSelected(new Set()), [rowsKey]);
+  useEffect(() => setSelected(new Set()), [catalog.rowsKey]);
 
   const currencyCode = products.data?.meta.currency_code ?? 'GTQ';
-  const levelName =
-    levels.data?.data.find((level) => (levelId === ALL ? level.is_default : level.id === levelId))
-      ?.name ?? null;
-
-  const narrow =
-    <T,>(setter: (value: T) => void) =>
-    (value: T) => {
-      setter(value);
-      filters.resetPage();
-    };
+  const levelName = catalog.levelName;
 
   const run = async (action: BulkAction, verb: string) => {
     setFailure(null);
@@ -232,7 +142,7 @@ export function ProductsPage() {
         onSelect: () => setPending({ kind: 'one', product, change: 'review', open: true }),
       });
     }
-    if ((levels.data?.data.length ?? 0) > 1) {
+    if (catalog.levels.length > 1) {
       actions.push({
         key: 'margin',
         label: 'Ver con otro margen',
@@ -264,86 +174,6 @@ export function ProductsPage() {
   const canSelect = can('products', 'edit') || can('products', 'deactivate');
   const total = products.data?.meta.total;
 
-  const filterFields = (
-    <>
-      <StatusFilter value={filters.status} onChange={filters.setStatus} />
-      <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
-        <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
-      </Box>
-      <Box sx={FILTER_FIELD}>
-        <SearchableSelect
-          label="Área"
-          choices={(areas.data?.data ?? []).map((area) => ({ id: area.id, label: area.name }))}
-          value={areaId}
-          onChange={(next) => {
-            setAreaId(next);
-            setGroupId(ALL);
-            filters.resetPage();
-          }}
-        />
-      </Box>
-      <Box sx={FILTER_FIELD}>
-        <SearchableSelect
-          label="Grupo"
-          choices={groupsOfArea.map((group) => ({ id: group.id, label: group.name }))}
-          value={groupId}
-          onChange={narrow(setGroupId)}
-        />
-      </Box>
-      <Box sx={FILTER_FIELD}>
-        <SearchableSelect
-          label="Marca"
-          choices={(brands.data?.data ?? []).map((brand) => ({ id: brand.id, label: brand.name }))}
-          value={brandId}
-          onChange={narrow(setBrandId)}
-        />
-      </Box>
-      <TextField
-        select
-        label="Margen"
-        value={levelId}
-        onChange={(event) => setLevelId(event.target.value)}
-      >
-        <MenuItem value={ALL}>Por defecto</MenuItem>
-        {(levels.data?.data ?? []).map((level) => (
-          <MenuItem key={level.id} value={level.id}>
-            {level.name}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        select
-        label="Ordenar por"
-        value={sort}
-        onChange={(event) => narrow(setSort)(event.target.value as Sort)}
-      >
-        {SORTS.map((option) => (
-          <MenuItem key={option.value} value={option.value}>
-            {option.label}
-          </MenuItem>
-        ))}
-      </TextField>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={staleOnly}
-            onChange={(event) => narrow(setStaleOnly)(event.target.checked)}
-          />
-        }
-        label="Solo costo desactualizado"
-      />
-      <FormControlLabel
-        control={
-          <Switch
-            checked={grouped}
-            onChange={(event) => narrow(setGrouped)(event.target.checked)}
-          />
-        }
-        label="Agrupar por área y grupo"
-      />
-    </>
-  );
-
   return (
     <>
       <PageHeader
@@ -361,6 +191,7 @@ export function ProductsPage() {
           ) : null
         }
       />
+      <CatalogTabs current="products" />
 
       <FilterBar
         searchLabel="Buscar por nombre o código"
@@ -395,7 +226,7 @@ export function ProductsPage() {
           ) : null
         }
       >
-        {filterFields}
+        {catalog.fields}
       </FilterBar>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -470,7 +301,7 @@ export function ProductsPage() {
       <DataList
         label="Lista de productos"
         noun="productos"
-        columns={columnsFor({ currencyCode, match: filters.query, grouped })}
+        columns={columnsFor({ currencyCode, match: filters.query, grouped: catalog.grouped })}
         rows={products.data?.data}
         error={products.isError ? problemMessage(products.error) : null}
         getRowId={(product) => product.id}
@@ -481,7 +312,7 @@ export function ProductsPage() {
           canSelect && (!isMobile || choosing) ? { selected, onChange: setSelected } : undefined
         }
         groupBy={
-          grouped
+          catalog.grouped
             ? (product) => ({
                 key: `${product.area.id}/${product.group.id}`,
                 title: product.area.name,
@@ -499,14 +330,11 @@ export function ProductsPage() {
         )}
         pagination={{
           page: filters.page,
-          perPage,
+          perPage: catalog.perPage,
           total: total ?? 0,
           onPageChange: filters.setPage,
           perPageOptions: PER_PAGE_OPTIONS,
-          onPerPageChange: (next) => {
-            setPerPage(next);
-            filters.resetPage();
-          },
+          onPerPageChange: catalog.changePerPage,
         }}
       />
 
@@ -518,8 +346,8 @@ export function ProductsPage() {
         onCancel={() => setPending(pending && { ...pending, open: false })}
       />
       <MarginPreviewDialog
-        product={preview?.product ?? null}
-        levels={levels.data?.data ?? []}
+        record={preview?.product ?? null}
+        levels={catalog.levels}
         currencyCode={currencyCode}
         open={preview?.open === true}
         onClose={() => setPreview(preview && { ...preview, open: false })}
@@ -610,51 +438,6 @@ function productSubline(product: Product): string {
   return [product.brand?.name, product.unit.name].filter(Boolean).join(' · ');
 }
 
-/**
- * How an inactive product shows in the list, with three quiet signals so «Todos» still tells them apart: a stripe at
- * the left, a faint wash and grey text (the name keeps its colour), plus the «Inactivo» tag. Amber stays for the stale
- * cost, so the two never read as the same thing.
- */
-const INACTIVE_ROW = {
-  bgcolor: color.inactive.wash,
-  '& > td': { color: 'text.secondary' },
-  '& > td:first-of-type': { boxShadow: `inset 3px 0 0 ${color.inactive.stripe}` },
-  '&.MuiTableRow-hover:hover': { bgcolor: color.inactive.wash },
-} as const;
-
-function InactiveTag() {
-  return (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-block',
-        bgcolor: color.error.tint,
-        color: color.error.main,
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        borderRadius: 999,
-        px: 1,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      Inactivo
-    </Box>
-  );
-}
-
-function PriceBlock({ product, currencyCode }: { product: Product; currencyCode: string }) {
-  return (
-    <Box sx={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-      <Typography component="div" sx={{ fontWeight: 600 }}>
-        {formatMoney(product.price_with_vat, currencyCode)}
-      </Typography>
-      <Typography component="div" variant="body2" color="text.secondary">
-        {formatMoney(product.price_without_vat, currencyCode)} sin IVA
-      </Typography>
-    </Box>
-  );
-}
-
 /** The card of a phone: code, brand and unit with the ⋮ menu on top; the name; supplier and group, and the price. */
 function ProductCard({
   product,
@@ -673,12 +456,7 @@ function ProductCard({
       sx={{
         px: 1.5,
         py: 1,
-        ...(product.is_active
-          ? {}
-          : {
-              bgcolor: color.inactive.wash,
-              borderLeft: `3px solid ${color.inactive.stripe}`,
-            }),
+        ...(product.is_active ? {} : INACTIVE_CARD),
       }}
       data-testid="product-card"
     >
@@ -686,29 +464,31 @@ function ProductCard({
         {slots.select}
         <CodeChip code={product.code} match={match} />
         {product.is_active ? null : <InactiveTag />}
+        {/* The unit is short and stays on top; brand, supplier and group (which can be long) go below the name. */}
         <Typography variant="body2" color="text.secondary" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
-          {productSubline(product)}
+          {product.unit.name}
         </Typography>
         {slots.menu}
       </Stack>
       <Typography sx={{ fontWeight: 600, mt: 0.25 }}>
         <Highlight text={product.name} match={match} />
       </Typography>
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ justifyContent: 'space-between', alignItems: 'flex-end', mt: 0.5 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary">
-            {product.supplier.name} · {product.group.name}
-          </Typography>
-          {product.cost_is_stale ? (
-            <StatusBadge tone="warning" label="Costo desactualizado" />
-          ) : null}
+      <Box sx={{ mt: 0.25 }}>
+        <MetaLine parts={[product.brand?.name, product.supplier.name, product.group.name]} />
+      </Box>
+      {product.cost_is_stale ? (
+        <Box sx={{ mt: 0.5 }}>
+          <StatusBadge tone="warning" label="Costo desactualizado" />
         </Box>
-        <PriceBlock product={product} currencyCode={currencyCode} />
-      </Stack>
+      ) : null}
+      {/* The price has its own row, against the right edge, so it never competes with the text above for width. */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+        <PriceBlock
+          priceWithVat={product.price_with_vat}
+          priceWithoutVat={product.price_without_vat}
+          currencyCode={currencyCode}
+        />
+      </Box>
     </Paper>
   );
 }
@@ -798,7 +578,13 @@ function columnsFor({
       align: 'right',
       mobile: 'hidden',
       nowrap: true,
-      render: (product) => <PriceBlock product={product} currencyCode={currencyCode} />,
+      render: (product) => (
+        <PriceBlock
+          priceWithVat={product.price_with_vat}
+          priceWithoutVat={product.price_without_vat}
+          currencyCode={currencyCode}
+        />
+      ),
     },
   );
   return columns;
