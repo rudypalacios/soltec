@@ -11,8 +11,8 @@ use Soltec\Kernel\Http\Json;
 use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Http\CurrentUserAware;
 use Soltec\Modules\Suppliers\Application\SupplierService;
-use Soltec\Modules\Suppliers\Domain\Identification;
-use Soltec\Modules\Suppliers\Domain\SupplierAddress;
+use Soltec\Kernel\Address;
+use Soltec\Kernel\Identification;
 use Soltec\Modules\Suppliers\Domain\SupplierContact;
 use Soltec\Modules\Suppliers\Domain\SupplierData;
 use Soltec\Modules\Suppliers\Domain\SupplierRecord;
@@ -130,7 +130,7 @@ final class SupplierController
         $name = $input->text('name', 1, 190);
         $legalName = $input->nullableText('legal_name', 190);
         $type = $input->choice('identification_type', Identification::TYPES);
-        $identification = $this->identification($input, (string) $type);
+        $identification = Identification::fromInput($input, (string) $type);
         $creditDays = $input->optionalInteger('credit_days', 0, 65535);
         $creditLimit = $input->optionalDecimal('credit_limit', 12, 2);
 
@@ -141,63 +141,9 @@ final class SupplierController
             $identification,
             $creditDays,
             $creditLimit,
-            $this->addresses($input),
+            Address::listFromInput($input, self::MAX_ITEMS),
             $this->contacts($input),
         );
-    }
-
-    /** The canonical identification: required for a NIT or a CUI, not accepted for `none`. */
-    private function identification(Input $input, string $type): ?string
-    {
-        $typed = $input->nullableText('identification', 30);
-        if ($type === Identification::NONE) {
-            if ($typed !== null) {
-                $input->fail('identification', 'not_applicable');
-            }
-
-            return null;
-        }
-        if ($type === '' || $typed === null) {
-            if ($type !== '') {
-                $input->fail('identification', 'required');
-            }
-
-            return null;
-        }
-
-        $canonical = Identification::canonical($type, $typed);
-        if ($canonical === null) {
-            $input->fail('identification', 'invalid');
-        }
-
-        return $canonical;
-    }
-
-    /** @return list<SupplierAddress> the first one is the primary when none was marked */
-    private function addresses(Input $input): array
-    {
-        $addresses = [];
-        $primaries = 0;
-        foreach ($input->objectList('addresses', self::MAX_ITEMS) as $position => $item) {
-            $row = Input::nested('addresses.' . $position, $item);
-            $label = $row->text('label', 1, 60);
-            $address = $row->text('address', 1, 255);
-            $zone = $row->nullableText('zone', 100);
-            $country = $row->nullableText('country', 100);
-            $primary = $row->optionalBoolean('is_primary');
-            if ($primary && ++$primaries > 1) {
-                $row->fail('is_primary', 'duplicate');
-            }
-            $input->absorb($row);
-            $addresses[] = new SupplierAddress((string) $label, (string) $address, $zone, $country, $primary);
-        }
-
-        if ($addresses !== [] && $primaries === 0) {
-            $first = $addresses[0];
-            $addresses[0] = new SupplierAddress($first->label, $first->address, $first->zone, $first->country, true);
-        }
-
-        return $addresses;
     }
 
     /** @return list<SupplierContact> */

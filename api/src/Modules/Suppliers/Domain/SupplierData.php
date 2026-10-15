@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Soltec\Modules\Suppliers\Domain;
 
+use Soltec\Kernel\Address;
+use Soltec\Kernel\Identification;
+
 /**
  * What a person enters about a supplier. `identification` is canonical (see {@see Identification}) and null for the
  * type `none`; `creditLimit` is a decimal string with at most two decimals.
@@ -11,7 +14,7 @@ namespace Soltec\Modules\Suppliers\Domain;
 final class SupplierData
 {
     /**
-     * @param list<SupplierAddress> $addresses
+     * @param list<Address> $addresses
      * @param list<SupplierContact> $contacts
      */
     public function __construct(
@@ -36,7 +39,7 @@ final class SupplierData
             'identification' => $this->identification,
             'credit_days' => $this->creditDays,
             'credit_limit' => $this->creditLimit,
-            'addresses' => array_map(static fn (SupplierAddress $a): array => $a->toArray(), $this->addresses),
+            'addresses' => array_map(static fn (Address $a): array => $a->toArray(), $this->addresses),
             'contacts' => array_map(static fn (SupplierContact $c): array => $c->toArray(), $this->contacts),
         ];
     }

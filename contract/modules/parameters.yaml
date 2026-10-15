@@ -24,6 +24,106 @@ paths:
           $ref: '#/components/responses/Forbidden'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/client-statuses/options:
+    get:
+      operationId: listClientStatusOptions
+      summary: List the active client statuses to choose from.
+      description:
+        For the selector of the forms that use this list (the status of a client). It returns only the id, the name
+        and the color of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `client_statuses.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/segments/options:
+    get:
+      operationId: listSegmentOptions
+      summary: List the active segments to choose from.
+      description:
+        For the selector of the forms that use this list (the segment of a client). It returns only the id and the
+        name of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `segments.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tax-regimes/options:
+    get:
+      operationId: listTaxRegimeOptions
+      summary: List the active tax regimes to choose from.
+      description:
+        For the selector of the forms that use this list (the billing profile of a client). It returns only the id and the
+        name of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `tax_regimes.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/payment-methods/options:
+    get:
+      operationId: listPaymentMethodOptions
+      summary: List the active payment methods to choose from.
+      description:
+        For the selector of the forms that use this list (the billing profile of a client). It returns only the id and the
+        name of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `payment_methods.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/contact-types:
     get:
       operationId: listContactTypes

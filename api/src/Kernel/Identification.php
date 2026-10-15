@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Soltec\Modules\Suppliers\Domain;
+namespace Soltec\Kernel;
+
+use Soltec\Kernel\Http\Input;
 
 /**
  * Tax identification of a supplier or a client (ADR-0022): a NIT with its check digit, a CUI of 13 digits, or none.
@@ -30,6 +32,36 @@ final class Identification
             self::CUI => preg_match('/^\d{13}$/', $value) === 1 ? $value : null,
             default => null,
         };
+    }
+
+    /**
+     * The canonical identification a body carries for the given type: required for a NIT or a CUI, refused for `none`
+     * (422 `not_applicable`), invalid when it fails its check (422 `invalid`).
+     */
+    public static function fromInput(Input $input, string $type): ?string
+    {
+        $typed = $input->nullableText('identification', 30);
+        if ($type === self::NONE) {
+            if ($typed !== null) {
+                $input->fail('identification', 'not_applicable');
+            }
+
+            return null;
+        }
+        if ($type === '' || $typed === null) {
+            if ($type !== '') {
+                $input->fail('identification', 'required');
+            }
+
+            return null;
+        }
+
+        $canonical = self::canonical($type, $typed);
+        if ($canonical === null) {
+            $input->fail('identification', 'invalid');
+        }
+
+        return $canonical;
     }
 
     /** `66479126` as `6647912-6`; a CUI is shown as stored. */

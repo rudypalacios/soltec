@@ -1033,6 +1033,10 @@ components:
             category_id:
               description: Only for units of measure, the category the unit belongs to.
               $ref: '#/components/schemas/Uuid'
+            color:
+              type: string
+              pattern: '^#[0-9A-Fa-f]{6}$'
+              description: Only for client statuses, the color of the status (`#RRGGBB`).
     ParameterOptions:
       type: object
       required:

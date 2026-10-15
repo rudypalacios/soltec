@@ -30,6 +30,7 @@ final class AuditEntityLabels
         'units_of_measure',
         'contacts',
         'suppliers',
+        'clients',
         'products',
         'bundles',
     ];

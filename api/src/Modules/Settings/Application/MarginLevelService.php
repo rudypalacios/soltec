@@ -159,6 +159,18 @@ final class MarginLevelService
                 );
             }
 
+            $inUse = $this->connection->fetchOne(
+                'SELECT COUNT(*) FROM clients WHERE margin_level_id = UNHEX(:id) AND deleted_at IS NULL',
+                ['id' => Uuid::toHex($id)],
+            );
+            if (is_numeric($inUse) && (int) $inUse > 0) {
+                throw ApiException::conflict(
+                    'margin_level_in_use',
+                    'Active clients use this margin level; change theirs first.',
+                    ['active_client_count' => (int) $inUse],
+                );
+            }
+
             $now = $this->clock->now();
             $this->levels->setDeletedAt($id, $now, $now);
             $this->audit->record($actor, 'deactivate', self::ENTITY, $id, ['is_active' => true], [
