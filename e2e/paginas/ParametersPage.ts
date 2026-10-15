@@ -2,20 +2,19 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * «Configuración › Parámetros» and «Catálogo», which share one screen. A list is a table on a desktop and cards on a phone, and so are its actions (a ⋮ menu
- * or text buttons), so the page object hides the difference. The parameter is chosen from tabs, or from a select on a
- * phone.
+ * or text buttons), so the page object hides the difference. The section is chosen from tabs (`SectionNav`), which
+ * scroll sideways on a phone.
  */
 export class ParametersPage {
   constructor(
     private readonly page: Page,
     private readonly isMobile: boolean,
     private readonly path = '/configuracion/parametros',
-    private readonly selectLabel = 'Parámetro',
   ) {}
 
-  /** The product structure screen: same behavior, other address and select label. */
+  /** The product structure screen: same behavior, other address. */
   static catalog(page: Page, isMobile: boolean): ParametersPage {
-    return new ParametersPage(page, isMobile, '/catalogo', 'Sección');
+    return new ParametersPage(page, isMobile, '/catalogo');
   }
 
   async open(): Promise<void> {
@@ -28,16 +27,9 @@ export class ParametersPage {
    * then disappears with what was typed. (On a slow runner this was the whole window; `E2E_CPU_THROTTLE` reproduces it.)
    */
   async choose(label: string): Promise<void> {
-    if (this.isMobile) {
-      const select = this.page.getByRole('combobox', { name: this.selectLabel });
-      await select.click();
-      await this.page.getByRole('option', { name: label, exact: true }).click();
-      await expect(select).toHaveText(label);
-    } else {
-      const tab = this.page.getByRole('tab', { name: label, exact: true });
-      await tab.click();
-      await expect(tab).toHaveAttribute('aria-selected', 'true');
-    }
+    const tab = this.page.getByRole('tab', { name: label, exact: true });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
   }
 
   list(label: string): Locator {
