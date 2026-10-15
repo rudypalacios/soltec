@@ -7,13 +7,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Link,
   MenuItem,
   Stack,
   TextField,
 } from '@mui/material';
 import { ApiError } from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
@@ -166,8 +167,19 @@ function ParameterList({ view }: { view: ParameterView }) {
     open: boolean;
   } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [parentFilter, setParentFilter] = useState('');
+  // A parent's «3 grupos activos» link arrives here with the parent already chosen in the address.
+  const [searchParams] = useSearchParams();
+  const [parentFilter, setParentFilter] = useState(
+    view.parent ? (searchParams.get(view.parent.field) ?? '') : '',
+  );
   const parents = useParentOptions(view);
+  // The list that hangs under this one (groups under an area), when the person may open it.
+  const childView = ALL_VIEWS.find((candidate) => candidate.parent?.slug === view.slug);
+  const childLink = childView && can(childView.resource, 'view') ? childView : undefined;
+  // New values start under the parent the list is filtered by, if it is still active.
+  const defaultParentId = parents.options?.find(
+    (option) => option.id === parentFilter && option.is_active,
+  )?.id;
 
   const values = useParameterValues(view, {
     q: filters.query,
@@ -240,7 +252,20 @@ function ParameterList({ view }: { view: ParameterView }) {
             id: 'children',
             header: children.header,
             mobile: 'subtitle' as const,
-            render: (value: ParameterValue) => children.label(value[children.countField] ?? 0),
+            render: (value: ParameterValue) => {
+              const text = children.label(value[children.countField] ?? 0);
+              return childLink?.parent ? (
+                <Link
+                  component={RouterLink}
+                  to={`/catalogo?${TAB_PARAM}=${childLink.slug}&${childLink.parent.field}=${value.id}`}
+                  aria-label={`Ver ${text} de ${value.name}`}
+                >
+                  {text}
+                </Link>
+              ) : (
+                text
+              );
+            },
           },
         ]
       : []),
@@ -317,6 +342,7 @@ function ParameterList({ view }: { view: ParameterView }) {
         <ValueDialog
           view={view}
           value={editing === 'new' ? null : editing}
+          defaultParentId={defaultParentId}
           onClose={() => setEditing(null)}
         />
       ) : null}
@@ -343,16 +369,21 @@ function ParameterList({ view }: { view: ParameterView }) {
 function ValueDialog({
   view,
   value,
+  defaultParentId,
   onClose,
 }: {
   view: ParameterView;
   value: ParameterValue | null;
+  /** The parent a new value starts under (the list's filter). */
+  defaultParentId?: string;
   onClose: () => void;
 }) {
   const save = useSaveParameterValue(view);
   const parents = useParentOptions(view);
   const { parent } = view;
-  const [parentId, setParentId] = useState(parent ? (value?.[parent.key]?.id ?? '') : '');
+  const [parentId, setParentId] = useState(
+    parent ? (value ? (value[parent.key]?.id ?? '') : (defaultParentId ?? '')) : '',
+  );
   const [name, setName] = useState(value?.name ?? '');
   const [colorValue, setColorValue] = useState(value?.color ?? statusPalette[0].value);
   const [fieldError, setFieldError] = useState<string | null>(null);
