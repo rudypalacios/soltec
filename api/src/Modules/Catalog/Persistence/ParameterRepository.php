@@ -123,6 +123,9 @@ final class ParameterRepository
     {
         $parentColumn = $parameter->parent?->column;
         $select = 'LOWER(HEX(p.id)) AS id, p.name';
+        if ($parameter->hasColor) {
+            $select .= ', p.color';
+        }
         if ($parentColumn !== null) {
             $select .= ', LOWER(HEX(p.' . $parentColumn . ')) AS parent_id';
         }
@@ -139,6 +142,9 @@ final class ParameterRepository
         $options = [];
         foreach ($rows as $row) {
             $option = ['id' => Uuid::fromHex(Row::string($row, 'id')), 'name' => Row::string($row, 'name')];
+            if ($parameter->hasColor) {
+                $option['color'] = Row::string($row, 'color');
+            }
             if ($parentColumn !== null) {
                 $option[$parentColumn] = Uuid::fromHex(Row::string($row, 'parent_id'));
             }

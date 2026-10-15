@@ -14,10 +14,16 @@ final class ParameterCatalog
     {
         return [
             new ParameterDefinition('contact-types', 'contact_types', 'contactTypeId', offersOptions: true),
-            new ParameterDefinition('client-statuses', 'client_statuses', 'clientStatusId', hasColor: true),
-            new ParameterDefinition('segments', 'segments', 'segmentId'),
-            new ParameterDefinition('tax-regimes', 'tax_regimes', 'taxRegimeId'),
-            new ParameterDefinition('payment-methods', 'payment_methods', 'paymentMethodId'),
+            new ParameterDefinition(
+                'client-statuses',
+                'client_statuses',
+                'clientStatusId',
+                hasColor: true,
+                offersOptions: true,
+            ),
+            new ParameterDefinition('segments', 'segments', 'segmentId', offersOptions: true),
+            new ParameterDefinition('tax-regimes', 'tax_regimes', 'taxRegimeId', offersOptions: true),
+            new ParameterDefinition('payment-methods', 'payment_methods', 'paymentMethodId', offersOptions: true),
             new ParameterDefinition('brands', 'brands', 'brandId', offersOptions: true),
             new ParameterDefinition(
                 'areas',

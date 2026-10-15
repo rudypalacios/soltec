@@ -7,11 +7,11 @@ namespace Soltec\Modules\Suppliers\Persistence;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Soltec\Kernel\Address;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Http\Pagination;
 use Soltec\Kernel\Uuid;
-use Soltec\Modules\Suppliers\Domain\SupplierAddress;
 use Soltec\Modules\Suppliers\Domain\SupplierContact;
 use Soltec\Modules\Suppliers\Domain\SupplierData;
 use Soltec\Modules\Suppliers\Domain\SupplierRecord;
@@ -287,7 +287,7 @@ final class SupplierRepository
         }
     }
 
-    /** @return list<SupplierAddress> */
+    /** @return list<Address> */
     private function addressesOf(string $supplierId): array
     {
         $rows = $this->connection->fetchAllAssociative(
@@ -296,7 +296,7 @@ final class SupplierRepository
             ['id' => Uuid::toHex($supplierId)],
         );
 
-        return array_map(static fn (array $row): SupplierAddress => new SupplierAddress(
+        return array_map(static fn (array $row): Address => new Address(
             Row::string($row, 'label'),
             Row::string($row, 'address'),
             Row::nullableString($row, 'zone'),
@@ -341,7 +341,7 @@ final class SupplierRepository
 
     /**
      * @param array<string, mixed> $row
-     * @param list<SupplierAddress>|null $addresses null for a list, where they are not read
+     * @param list<Address>|null $addresses null for a list, where they are not read
      * @param list<SupplierContact>|null $contacts null for a list, where they are not read
      */
     private function hydrate(array $row, ?array $addresses, ?array $contacts): SupplierRecord

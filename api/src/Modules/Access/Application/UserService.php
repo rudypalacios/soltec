@@ -287,6 +287,7 @@ final class UserService
             if ($target->hasAdminRole()) {
                 $this->adminGuard->assertAnotherAdministratorRemains($target->id);
             }
+            $this->assertNoClientsToHandOver($id);
 
             $now = $this->clock->now();
             $this->users->setDeletedAt($id, $now, $now);
@@ -302,6 +303,28 @@ final class UserService
         });
 
         return $this->get($caller, $id);
+    }
+
+    /**
+     * A user who is the responsible adviser of active clients is not deactivated: their portfolio is reassigned first
+     * (ADR-0023). The table is read directly, as the departments are, so `Access` imports nothing from `Clients`.
+     *
+     * @throws ApiException 409 `user_has_clients` with `active_client_count`
+     */
+    private function assertNoClientsToHandOver(string $userId): void
+    {
+        $count = $this->connection->fetchOne(
+            'SELECT COUNT(*) FROM client_sellers s JOIN clients c ON c.id = s.client_id '
+            . 'WHERE s.user_id = UNHEX(:id) AND s.is_responsible = 1 AND c.deleted_at IS NULL',
+            ['id' => Uuid::toHex($userId)],
+        );
+        if (is_numeric($count) && (int) $count > 0) {
+            throw ApiException::conflict(
+                'user_has_clients',
+                'The user is the responsible adviser of active clients; reassign them first.',
+                ['active_client_count' => (int) $count],
+            );
+        }
     }
 
     /** Idempotent. The user has to sign in again: their sessions were revoked when they were deactivated. */

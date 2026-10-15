@@ -23,6 +23,9 @@ use Soltec\Modules\Access\Http\SecuritySettingsController;
 use Soltec\Modules\Access\Http\UserController;
 use Soltec\Modules\Catalog\Domain\ParameterCatalog;
 use Soltec\Modules\Catalog\Http\ParameterController;
+use Soltec\Modules\Clients\Http\ClientContactController;
+use Soltec\Modules\Clients\Http\ClientController;
+use Soltec\Modules\Clients\Http\ClientSellerController;
 use Soltec\Modules\Contacts\Http\ContactController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Products\Http\BundleController;
@@ -152,6 +155,39 @@ return static function (App $app): void {
             ->setArgument('permission', 'suppliers.deactivate');
         $group->post('/suppliers/{supplierId}/reactivate', [SupplierController::class, 'reactivate'])
             ->setArgument('permission', 'suppliers.deactivate');
+
+        // Clients: the data scope follows their advisers (ADR-0025). The static paths come before `{clientId}`.
+        $group->get('/clients/similar', [ClientController::class, 'similar'])
+            ->setArgument('permission', 'clients.create|clients.edit');
+        $group->get('/clients/seller-options', [ClientSellerController::class, 'options'])
+            ->setArgument('permission', 'internal');
+        $group->post('/clients/reassign', [ClientSellerController::class, 'reassignPortfolio'])
+            ->setArgument('permission', 'clients.edit');
+        $group->get('/clients', [ClientController::class, 'list'])->setArgument('permission', 'clients.view');
+        $group->post('/clients', [ClientController::class, 'create'])->setArgument('permission', 'clients.create');
+        $group->get('/clients/{clientId}', [ClientController::class, 'show'])
+            ->setArgument('permission', 'clients.view');
+        $group->patch('/clients/{clientId}', [ClientController::class, 'update'])
+            ->setArgument('permission', 'clients.edit');
+        $group->post('/clients/{clientId}/convert', [ClientController::class, 'convert'])
+            ->setArgument('permission', 'clients.edit');
+        $group->post('/clients/{clientId}/deactivate', [ClientController::class, 'deactivate'])
+            ->setArgument('permission', 'clients.deactivate');
+        $group->post('/clients/{clientId}/reactivate', [ClientController::class, 'reactivate'])
+            ->setArgument('permission', 'clients.deactivate');
+        $group->post('/clients/{clientId}/sellers', [ClientSellerController::class, 'add'])
+            ->setArgument('permission', 'clients.edit');
+        $group->delete('/clients/{clientId}/sellers/{userId}', [ClientSellerController::class, 'remove'])
+            ->setArgument('permission', 'clients.edit');
+        $group->post('/clients/{clientId}/responsible', [ClientSellerController::class, 'makeResponsible'])
+            ->setArgument('permission', 'clients.edit');
+        $group->post('/clients/{clientId}/reassign', [ClientSellerController::class, 'reassign'])
+            ->setArgument('permission', 'clients.edit');
+        $group->put('/clients/{clientId}/contacts/{contactId}', [ClientContactController::class, 'setRoles'])
+            ->setArgument('permission', 'clients.edit');
+        $group->delete('/clients/{clientId}/contacts/{contactId}', [ClientContactController::class, 'unlink'])
+            ->setArgument('permission', 'clients.edit');
+        $group->get('/me/client', [ClientController::class, 'mine'])->setArgument('permission', 'client_profile.view');
 
         // Products have no data scope. The fixed paths come before `{productId}`.
         $group->get('/products', [ProductController::class, 'list'])->setArgument('permission', 'products.view');

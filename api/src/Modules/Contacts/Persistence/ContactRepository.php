@@ -152,6 +152,28 @@ final class ContactRepository
         );
     }
 
+    /**
+     * Hands contacts to another owner (a client handed over takes its people with it).
+     *
+     * @param list<string> $ids
+     */
+    public function transferOwnership(array $ids, string $newOwnerId, DateTimeImmutable $now): void
+    {
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $placeholders = [];
+            $params = ['owner' => Uuid::toHex($newOwnerId), 'now' => Timestamps::toDb($now)];
+            foreach ($chunk as $index => $id) {
+                $placeholders[] = sprintf('UNHEX(:id_%d)', $index);
+                $params['id_' . $index] = Uuid::toHex($id);
+            }
+            $this->connection->executeStatement(
+                'UPDATE contacts SET owner_id = UNHEX(:owner), updated_at = :now, version = version + 1 '
+                . sprintf('WHERE id IN (%s)', implode(', ', $placeholders)),
+                $params,
+            );
+        }
+    }
+
     /** Whether the user can own contacts: an active internal user. Takes a shared lock so they stay one meanwhile. */
     public function ownerCanOwn(string $userId): bool
     {

@@ -186,11 +186,11 @@ Nace como prospecto y pasa a cliente de venta (conversión manual hasta el Hito 
 Índices: `uq_clients_code`, `uq_clients_active_identification`, `idx_clients_status`, `idx_clients_segment`, `idx_clients_name`, `idx_clients_updated`.
 
 ### `client_billing_profiles` (1 a 1)
-Solo existe para clientes de venta; la crea la conversión.
+Solo existe para clientes de venta; la crea la conversión. Sin campos comunes: editar el cliente lo reemplaza y queda en la auditoría del cliente.
 
 | Columna | Tipo | Nulo | Notas |
 |---|---|---|---|
-| `client_id` | `BINARY(16)` | no | FK `clients`; índice único |
+| `client_id` | `BINARY(16)` | no | PK y FK `clients` |
 | `legal_name` | `VARCHAR(190)` | no | Nombre fiscal |
 | `tax_regime_id` | `BINARY(16)` | no | FK `tax_regimes` |
 | `payment_method_id` | `BINARY(16)` | sí | FK `payment_methods` |
@@ -206,6 +206,12 @@ Los asesores de un cliente (ADR-0025).
 | `responsible_marker` | generada | `IF(is_responsible = 1, client_id, NULL)`; índice único: a lo sumo un responsable por cliente |
 
 «Exactamente uno» y «un prospecto tiene un solo asesor» son reglas del código.
+
+### `client_contacts` (unión)
+PK (`client_id`, `contact_id`, `contact_type_id`): una persona puede tener varios roles con un mismo cliente. Se fija el conjunto de roles de una persona con `PUT /v1/clients/{id}/contacts/{contactId}`; quitar el vínculo borra las filas de esa persona y queda en la auditoría del cliente.
+
+### `client_addresses`
+Igual que `supplier_addresses` (una principal por cliente); se reemplazan como conjunto al editar.
 
 ### Llaves que el Hito 1 dejó pendientes
 `users.contact_id → contacts` (rebanada 2.3a) y `users.client_id → clients` (2.5), con `ON DELETE RESTRICT`.
@@ -225,7 +231,7 @@ Cada sección es su recurso, con los permisos `view`, `create`, `edit` y `deacti
 | 2.3a | `contacts` (alcance `own`, `team`, `all` por `owner_id`) |
 | 2.3b | `suppliers` |
 | 2.4a / 2.4b | `products` / `bundles` |
-| 2.5 | `clients` (alcance `own`, `team`, `all` por `client_sellers`) y `client_profile` (único recurso asignable a roles externos) |
+| 2.5 | `clients` (alcance `own`, `team`, `all` por `client_sellers`) y `client_profile` (único recurso asignable a roles externos; `resources.audience = 'external'`, no aparece en la matriz de los perfiles internos) |
 
 ## Reglas que el esquema no puede garantizar (van en el código y en tests)
 - Identificación: NIT con dígito verificador (módulo 11) y CUI de 13 dígitos; la misma identificación no se repite entre activos (la base lo respalda con el índice único).

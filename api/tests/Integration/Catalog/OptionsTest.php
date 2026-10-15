@@ -131,9 +131,40 @@ final class OptionsTest extends AccessTestCase
         self::assertSame(401, $this->api('GET', '/margin-levels/options')->getStatusCode());
     }
 
-    public function testAListNobodyConsumesYetHasNoOptionsRoute(): void
+    public function testTheStatusesOfAClientCarryTheirColor(): void
     {
-        // It is read as the id of a segment and no such segment exists.
-        self::assertSame(404, $this->api('GET', '/segments/options', $this->adminToken)->getStatusCode());
+        $options = $this->json($this->api('GET', '/client-statuses/options', $this->adminToken));
+
+        self::assertSame(
+            ['#0B6BB0', '#00796B', '#1E7A4C', '#9A5800', '#7C8996', '#B3261E'],
+            $this->colorsInSeedOrder($this->rowsAt($options, 'data')),
+        );
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<string> the colors, in the order the statuses are seeded
+     */
+    private function colorsInSeedOrder(array $rows): array
+    {
+        $order = [
+            'Prospecto aprobado / por activar', 'Activo (nuevo)', 'Activo (recurrente)',
+            'En riesgo / inactivo temporal', 'Inactivo / dormido', 'Perdido',
+        ];
+        $colors = [];
+        foreach ($rows as $row) {
+            $colors[$this->text($row, 'name')] = $this->text($row, 'color');
+        }
+
+        return array_map(static fn (string $name): string => $colors[$name] ?? '', $order);
+    }
+
+    public function testTheOtherCatalogsOfAClientOfferOptionsToo(): void
+    {
+        foreach (['segments', 'tax-regimes', 'payment-methods'] as $slug) {
+            self::assertSame(200, $this->api('GET', '/' . $slug . '/options', $this->adminToken)->getStatusCode());
+        }
+        $segments = $this->json($this->api('GET', '/segments/options', $this->adminToken));
+        self::assertContains('Retail', $this->columnAt($segments, 'name', 'data'));
     }
 }

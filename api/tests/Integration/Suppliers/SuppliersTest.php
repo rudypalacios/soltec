@@ -508,7 +508,7 @@ final class SuppliersTest extends AccessTestCase
     {
         $this->applyMigrationAgain('20261014000001');
 
-        self::assertSame(81, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM resources WHERE code = 'suppliers' AND scoped = 0"));
     }
 }

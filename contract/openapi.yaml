@@ -58,6 +58,8 @@ tags:
     description: Products with their cost; the price is derived from it and never stored.
   - name: Bundles
     description: Bundles of products with a quantity each; their cost and price are derived from the components and never stored.
+  - name: Clients
+    description: Prospects and customers with their advisers, billing profile and linked people, scoped by adviser.
   - name: Suppliers
     description: Suppliers with their addresses and their own people, shared by everyone who may see the section.
   - name: Settings
@@ -136,7 +138,9 @@ components:
     Conflict:
       description:
         A stale version (`conflict`) or a rule that blocks the change (`last_admin`, `invitation_not_pending`, `system_role_immutable`,
-        `department_in_use`, `default_margin_level`, `area_in_use`, `unit_category_in_use`).
+        `department_in_use`, `default_margin_level`, `area_in_use`, `unit_category_in_use`,
+        `identification_taken`, `identification_inactive`, `user_has_clients`, `margin_level_in_use`, `prospect_single_seller`,
+        `responsible_required`, `already_customer`, `client_inactive`).
       content:
         application/problem+json:
           schema:

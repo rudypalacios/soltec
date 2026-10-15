@@ -25,6 +25,13 @@ Una empresa cliente puede tener varias personas con las que hablan asesores dist
 - El responsable se puede quedar sin acceso si se le quita de la lista: la regla del código lo impide (siempre hay uno).
 - Cuando exista el flujo de solicitud (Hito 3 o posterior), un asesor podrá pedir acceso a un registro existente sin cambiar este modelo.
 
+## Enmienda (2026-10-15): cómo quedó el alcance `client` y el perfil externo (rebanada 2.5)
+- **Alcance `client`:** no abre ninguna lista. Un usuario externo llega a su cliente solo por `GET /v1/me/client`, que lee `users.client_id` de la cuenta firmada; en `ScopedQuery` el alcance `client` no encuentra nada, de modo que un alcance guardado nunca abre más datos de los previstos. El aislamiento entre clientes no depende de un filtro que alguien pueda olvidar: la ruta no tiene id.
+- **`resources.audience`** (`internal` o `external`): la matriz de los perfiles internos ofrece solo los recursos internos, así que `client_profile` no puede llegar a un perfil interno. Un perfil externo con ese recurso lo crea el portal (Hito 9); hasta entonces las pruebas lo insertan directo.
+- **Perfil externo:** devuelve también el nombre fiscal (`legal_name`) del perfil de facturación, que es un dato del propio cliente. Un cliente desactivado no tiene perfil (404).
+- **Quién administra los asesores:** el responsable y quien alcance al cliente con `team` o `all`; el nuevo asesor puede ser cualquier usuario interno activo (no se exige que sea del equipo de quien lo agrega, porque el responsable de un cliente con alcance `own` no tiene equipo que mirar).
+- **Traspaso con contactos:** pasan al nuevo asesor los contactos del saliente vinculados únicamente a los clientes que se entregan; los vinculados además a otro cliente que se queda conservan su dueño y se informan como `contacts_kept`.
+
 ## Enmienda (2026-10-14): contactos de proveedor aparte
 Al construir los proveedores (rebanada 2.3b) el modelo original los vinculaba con la misma tabla `contacts` que usan los asesores. Eso arrastraba el dueño y el alcance a los proveedores, que no los tienen: un proveedor le vende a la empresa, no es una cartera de un asesor, y cualquiera que lo vea debe ver sus contactos.
 - Los contactos de proveedor viven en `supplier_contacts`, dentro del proveedor, con los mismos datos que un contacto más el cargo y el tipo de contacto. No tienen dueño, alcance ni permiso propio.
