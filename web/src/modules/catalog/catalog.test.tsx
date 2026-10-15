@@ -87,6 +87,50 @@ describe('catalog structure', () => {
     expect(within(table).getAllByText('0 grupos activos')).toHaveLength(2);
   });
 
+  it('opens the groups of an area from its count, and a new group starts under that area', async () => {
+    const calls: Call[] = [];
+    const created: Call[] = [];
+    const { session } = createTestSession(
+      {
+        'GET /v1/product-groups': (call) => {
+          calls.push(call);
+          return Response.json(page([GROUP]));
+        },
+        'POST /v1/product-groups': (call) => {
+          created.push(call);
+          return Response.json({ ...GROUP, name: 'Cables' }, { status: 201 });
+        },
+        ...areasHandler,
+      },
+      withAccess(RESOURCES),
+    );
+    renderApp(session, '/catalogo?parametro=areas');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('link', { name: 'Ver 2 grupos activos de Cableado' }));
+
+    expect(await screen.findByRole('table', { name: 'Lista de grupos de producto' })).toBeVisible();
+    await waitFor(() => expect(calls.at(-1)?.query.get('area_id')).toBe(WIRING.id));
+    expect(screen.getByRole('combobox', { name: 'Área' })).toHaveTextContent('Cableado');
+
+    await user.click(screen.getByRole('button', { name: 'Nuevo grupo de producto' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo grupo de producto' });
+    await user.type(within(dialog).getByLabelText(/Nombre/), 'Cables');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]?.body).toEqual({ name: 'Cables', area_id: WIRING.id });
+  });
+
+  it('shows the group count as plain text to someone who cannot view groups', async () => {
+    const { session } = createTestSession(areasHandler, withAccess(['areas'], ['view']));
+    renderApp(session, '/catalogo');
+
+    const table = await screen.findByRole('table', { name: 'Lista de áreas' });
+    expect(within(table).getByText('2 grupos activos')).toBeVisible();
+    expect(within(table).queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it('shows the area of each group and filters by it', async () => {
     const calls: Call[] = [];
     const { session } = createTestSession(
