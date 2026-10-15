@@ -742,29 +742,36 @@ describe('bundle form', () => {
     });
   });
 
-  it('summarises the cost as a payment form does: rows of label and value, and numbered notes at the bottom', async () => {
+  it('closes with a numbered footer: the price, the oldest cost and what the figures are, in that order', async () => {
     const { session } = createTestSession(editHandlers(), meWith({ bundles: ALL }));
     renderApp(session, `/paquetes/${POINT.id}/editar`);
 
     const notes = await screen.findByRole('list', { name: 'Notas' });
     const items = within(notes).getAllByRole('listitem');
     expect(items).toHaveLength(3);
-    expect(items[0]).toHaveTextContent(/^1Vista previa con los costos actuales/);
-    expect(items[1]).toHaveTextContent(/^2Con «Margen 33 %»\. Se calcula desde el costo cada vez/);
-    expect(items[2]).toHaveTextContent(
-      /^3Es la fecha del componente cuyo costo se revisó hace más tiempo/,
-    );
-    // Each row carries the mark of its note, and the value is beside the label.
-    const price = screen.getByText('Precio con IVA');
-    expect(price.querySelector('sup')).toHaveTextContent('2');
-    expect(price.nextElementSibling).toHaveTextContent(/^Q\s?636\.27$/);
-    const oldest = screen.getByText('Costo más antiguo revisado');
-    expect(oldest.querySelector('sup')).toHaveTextContent('3');
-    expect(screen.getByText('Costo del paquete').querySelector('sup')).toHaveTextContent('1');
-    expect(screen.getByText('Costo desactualizado')).toBeVisible();
+    expect(items[0]).toHaveTextContent(/^Precio con IVA: Q\s?636\.27 con «Margen 33 %»\.$/);
+    expect(items[1]).toHaveTextContent(/^Costo más antiguo revisado el /);
+    expect(items[2]).toHaveTextContent(/^El costo es una vista previa con los costos actuales\./);
+    // That a cost is stale belongs to the component that has it, not to the footer.
+    expect(within(notes).queryByText(/desactualizado/i)).not.toBeInTheDocument();
   });
 
-  it('has only the note of the preview while the bundle is not saved, and no rows', async () => {
+  it('marks the component whose cost is stale in its own row, as an inactive one is', async () => {
+    const { session } = createTestSession(editHandlers(), meWith({ bundles: ALL }));
+    renderApp(session, `/paquetes/${POINT.id}/editar`);
+
+    const table = await screen.findByRole('table', { name: 'Componentes del paquete' });
+    const rows = within(table).getAllByRole('row');
+    // Cable UTP has a stale cost; Jack RJ45 is inactive and has none.
+    expect(within(rows[1] as HTMLElement).getByText('Costo desactualizado')).toBeVisible();
+    expect(
+      within(rows[2] as HTMLElement).queryByText('Costo desactualizado'),
+    ).not.toBeInTheDocument();
+    expect(within(rows[2] as HTMLElement).getByText('Inactivo')).toBeVisible();
+    expect(screen.getAllByText('Costo desactualizado')).toHaveLength(1);
+  });
+
+  it('has only the note of the preview, as a plain line, while the bundle is not saved', async () => {
     const { session } = createTestSession(
       formHandlers({ 'GET /v1/bundles/candidates': candidatesHandler() }),
       meWith({ bundles: ALL }),
@@ -775,9 +782,9 @@ describe('bundle form', () => {
     await user.click(await screen.findByRole('combobox', { name: /Agregar componente/ }));
     await user.click(await screen.findByRole('option', { name: /Cable UTP/ }));
 
-    const notes = await screen.findByRole('list', { name: 'Notas' });
-    expect(within(notes).getAllByRole('listitem')).toHaveLength(1);
-    expect(screen.queryByText('Precio con IVA')).not.toBeInTheDocument();
+    expect(await screen.findByText(/^El costo es una vista previa/)).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Notas' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Precio con IVA/)).not.toBeInTheDocument();
   });
 
   it('says the cost is computed, not previewed, to whoever only reads the bundle', async () => {
@@ -785,8 +792,8 @@ describe('bundle form', () => {
     renderApp(session, `/paquetes/${POINT.id}`);
 
     const notes = await screen.findByRole('list', { name: 'Notas' });
-    expect(within(notes).getAllByRole('listitem')[0]).toHaveTextContent(
-      /^1Se calcula con los costos actuales de los componentes; no se guarda\./,
+    expect(within(notes).getAllByRole('listitem')[2]).toHaveTextContent(
+      /^Se calcula con los costos actuales de los componentes; no se guarda\./,
     );
   });
 

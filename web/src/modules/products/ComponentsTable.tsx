@@ -15,10 +15,15 @@ import {
   Typography,
 } from '@mui/material';
 import { lineCostPreview } from '@soltec/shared';
-import type { ReactNode } from 'react';
-import { StatusBadge } from '../../components/StatusBadge';
 import { useIsMobile } from '../../components/useIsMobile';
-import { INACTIVE_ROW, InactiveTag } from './catalogParts';
+import {
+  INACTIVE_MARK,
+  INACTIVE_ROW,
+  InactiveTag,
+  STALE_MARK,
+  STALE_ROW,
+  StaleTag,
+} from './catalogParts';
 import { CodeChip } from './CodeChip';
 import { formatMoney } from './productFormat';
 
@@ -55,8 +60,6 @@ interface Props {
   readOnly: boolean;
   /** The total shown under the lines: a preview while editing, the server's figure when only reading. */
   total: string | null;
-  /** What the total is called; the form adds the mark of its footnote. */
-  totalLabel?: ReactNode;
   /** The message under the quantity of the line at this position, if any. */
   errorAt: (position: number) => string | undefined;
   onQuantity: (productId: string, quantity: string) => void;
@@ -141,16 +144,11 @@ function RemoveButton({ line, onRemove }: { line: Line; onRemove: () => void }) 
   );
 }
 
-function Stale({ line }: { line: Line }) {
-  return line.costIsStale ? <StatusBadge tone="warning" label="Desactualizado" /> : null;
-}
-
 function DesktopTable({
   lines,
   currencyCode,
   readOnly,
   total,
-  totalLabel = 'Costo del paquete',
   errorAt,
   onQuantity,
   onRemove,
@@ -177,7 +175,10 @@ function DesktopTable({
         </TableHead>
         <TableBody>
           {lines.map((line, position) => (
-            <TableRow key={line.productId} sx={line.isActive ? undefined : INACTIVE_ROW}>
+            <TableRow
+              key={line.productId}
+              sx={line.isActive ? (line.costIsStale ? STALE_ROW : undefined) : INACTIVE_ROW}
+            >
               <TableCell sx={{ whiteSpace: 'nowrap' }}>
                 <CodeChip code={line.code} />
               </TableCell>
@@ -186,6 +187,7 @@ function DesktopTable({
                   {line.name}
                 </Typography>{' '}
                 {line.isActive ? null : <InactiveTag />}
+                {line.costIsStale ? <StaleTag /> : null}
               </TableCell>
               <TableCell align="right" sx={{ verticalAlign: 'top' }}>
                 <QuantityField
@@ -196,10 +198,7 @@ function DesktopTable({
                 />
               </TableCell>
               <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                <Stack spacing={0.25} sx={{ alignItems: 'flex-end' }}>
-                  <span>{money(line.cost)}</span>
-                  <Stale line={line} />
-                </Stack>
+                {money(line.cost)}
               </TableCell>
               <TableCell
                 align="right"
@@ -218,7 +217,7 @@ function DesktopTable({
         <TableFooter>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell colSpan={4} sx={{ fontWeight: 600 }}>
-              {totalLabel}
+              Costo del paquete
             </TableCell>
             <TableCell
               align="right"
@@ -239,7 +238,6 @@ function CompactList({
   currencyCode,
   readOnly,
   total,
-  totalLabel = 'Costo del paquete',
   errorAt,
   onQuantity,
   onRemove,
@@ -263,12 +261,7 @@ function CompactList({
               py: 1.25,
               borderBottom: 1,
               borderColor: 'divider',
-              ...(line.isActive
-                ? {}
-                : {
-                    bgcolor: INACTIVE_ROW.bgcolor,
-                    boxShadow: INACTIVE_ROW['& > td:first-of-type'].boxShadow,
-                  }),
+              ...(line.isActive ? (line.costIsStale ? STALE_MARK : {}) : INACTIVE_MARK),
             }}
           >
             {/*
@@ -292,9 +285,7 @@ function CompactList({
             >
               <CodeChip code={line.code} />
               {line.isActive ? null : <InactiveTag />}
-              {line.costIsStale ? (
-                <StatusBadge tone="warning" label="Costo desactualizado" />
-              ) : null}
+              {line.costIsStale ? <StaleTag /> : null}
             </Stack>
             {/* The box on the left, alone; the cost of a unit over the subtotal on the right, both against the edge. */}
             <Box
@@ -341,7 +332,7 @@ function CompactList({
         direction="row"
         sx={{ justifyContent: 'space-between', alignItems: 'baseline', pt: 1.5 }}
       >
-        <Typography sx={{ fontWeight: 600 }}>{totalLabel}</Typography>
+        <Typography sx={{ fontWeight: 600 }}>Costo del paquete</Typography>
         <Typography sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
           {money(total)}
         </Typography>

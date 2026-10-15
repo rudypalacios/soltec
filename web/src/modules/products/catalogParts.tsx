@@ -14,6 +14,23 @@ export const INACTIVE_ROW = {
   '&.MuiTableRow-hover:hover': { bgcolor: color.inactive.wash },
 } as const;
 
+/** The same signals for a record whose cost is stale, in amber. An inactive record shows the red ones instead. */
+export const STALE_ROW = {
+  bgcolor: color.stale.wash,
+  '& > td:first-of-type': { boxShadow: `inset 3px 0 0 ${color.stale.stripe}` },
+  '&.MuiTableRow-hover:hover': { bgcolor: color.stale.wash },
+} as const;
+
+/** The stripe and the wash alone, for a row that is not a table row (the compact list of a phone). */
+export const INACTIVE_MARK = {
+  bgcolor: color.inactive.wash,
+  boxShadow: `inset 3px 0 0 ${color.inactive.stripe}`,
+} as const;
+export const STALE_MARK = {
+  bgcolor: color.stale.wash,
+  boxShadow: `inset 3px 0 0 ${color.stale.stripe}`,
+} as const;
+
 /** The same signals on the card of a phone. */
 export const INACTIVE_CARD = {
   bgcolor: color.inactive.wash,
@@ -36,6 +53,26 @@ export function InactiveTag() {
       }}
     >
       Inactivo
+    </Box>
+  );
+}
+
+export function StaleTag() {
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        bgcolor: color.warning.tint,
+        color: color.warning.main,
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        borderRadius: 999,
+        px: 1,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Costo desactualizado
     </Box>
   );
 }

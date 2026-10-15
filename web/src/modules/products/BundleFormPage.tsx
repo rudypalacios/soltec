@@ -8,7 +8,7 @@ import { SearchableSelect } from '../../components/SearchableSelect';
 import { fieldMessage, fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ComponentsTable, type Line } from './ComponentsTable';
-import { CostSummary, FootnoteMark } from './CostSummary';
+import { CostNotes } from './CostNotes';
 import { ComponentSearch, type Candidate } from './ComponentSearch';
 import { useBundle, useBundleCurrency, useCreateBundle, useUpdateBundle } from './useBundles';
 import { useAreaOptions, useBrandOptions, useGroupOptions } from './useProducts';
@@ -287,12 +287,6 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
             currencyCode={currencyCode}
             readOnly={readOnly}
             total={readOnly && bundle ? bundle.cost : preview}
-            totalLabel={
-              <>
-                Costo del paquete
-                <FootnoteMark n={1} />
-              </>
-            }
             errorAt={(position) =>
               fieldErrors[`items.${position}.quantity`] ??
               fieldErrors[`items.${position}.product_id`] ??
@@ -306,7 +300,7 @@ function BundleForm({ bundle, readOnly }: { bundle: Bundle | null; readOnly: boo
         )}
       </Stack>
 
-      <CostSummary bundle={bundle} currencyCode={currencyCode} readOnly={readOnly} />
+      <CostNotes bundle={bundle} currencyCode={currencyCode} readOnly={readOnly} />
 
       <FormActions>
         <Button component={RouterLink} to="/paquetes" variant="outlined" color="inherit">
