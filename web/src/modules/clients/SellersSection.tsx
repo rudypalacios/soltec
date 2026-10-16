@@ -90,8 +90,13 @@ export function SellersSection({
           <Typography variant="h6" component="h2">
             Asesores
           </Typography>
-          {mayAdminister && customer ? (
-            <Button onClick={() => setAdding(true)}>Agregar</Button>
+          {mayAdminister ? (
+            <Stack direction="row" sx={{ gap: 0.5 }}>
+              {customer ? <Button onClick={() => setAdding(true)}>Agregar</Button> : null}
+              <Button aria-label="Reasignar a otro asesor" onClick={() => setReassigning(true)}>
+                Reasignar
+              </Button>
+            </Stack>
           ) : null}
         </Stack>
         {!customer ? (
@@ -132,11 +137,6 @@ export function SellersSection({
             );
           })}
         </Box>
-        {mayAdminister ? (
-          <Box>
-            <Button onClick={() => setReassigning(true)}>Reasignar a otro asesor</Button>
-          </Box>
-        ) : null}
       </Stack>
       <AddSellerDialog
         client={client}

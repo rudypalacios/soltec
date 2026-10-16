@@ -222,7 +222,8 @@ describe('clients list', () => {
     const { session } = createTestSession(
       {
         ...OPTIONS,
-        'GET /v1/clients': () => Response.json(page([SOL])),
+        'GET /v1/clients': (call) =>
+          Response.json(call.query.has('seller_id') ? page([SOL], 14) : page([SOL])),
         'POST /v1/clients/reassign': (call) => {
           calls.push(call);
           return Response.json({ clients_reassigned: 14, contacts_moved: 9, contacts_kept: 3 });
@@ -235,14 +236,20 @@ describe('clients list', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Reasignar cartera' }));
     const dialog = await screen.findByRole('dialog', { name: 'Reasignar cartera' });
-    const deliver = within(dialog).getByRole('button', { name: 'Entregar cartera' });
-    expect(deliver).toBeDisabled();
+    const next = within(dialog).getByRole('button', { name: 'Continuar' });
+    expect(next).toBeDisabled();
     await user.click(within(dialog).getByRole('combobox', { name: /Entregar la cartera de/ }));
     await user.click(await screen.findByRole('option', { name: 'Ana Pérez' }));
     await user.click(within(dialog).getByRole('combobox', { name: /^A/ }));
     await user.click(await screen.findByRole('option', { name: 'Luis Gómez' }));
+    await user.click(next);
+
+    // The second step says what is about to move, and nothing has been sent yet.
+    expect(
+      await screen.findByText(/Se reasignarán 14 clientes de Ana Pérez a Luis Gómez/),
+    ).toBeVisible();
     expect(calls).toHaveLength(0);
-    await user.click(deliver);
+    await user.click(within(dialog).getByRole('button', { name: 'Sí, reasignar' }));
 
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]?.body).toEqual({
