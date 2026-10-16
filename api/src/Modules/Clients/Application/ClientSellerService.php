@@ -41,13 +41,15 @@ final class ClientSellerService
     }
 
     /**
-     * Who can be made an adviser: the active internal users, by name.
+     * Who the caller can make an adviser: the same people the other operations accept, so a picker built from this
+     * list never offers someone the server would then refuse. Active internal users; with scope `all` any of them,
+     * with `team` the team, and with `own` only the caller (nobody else to hand a client to).
      *
      * @return list<array{id: string, name: string}>
      */
-    public function options(?string $text, int $limit): array
+    public function options(CurrentUser $caller, ?string $text, int $limit): array
     {
-        return $this->contacts->ownerCandidates(null, $text, $limit);
+        return $this->contacts->ownerCandidates($this->reachableIds($caller), $text, $limit);
     }
 
     /**
@@ -58,14 +60,14 @@ final class ClientSellerService
      */
     public function add(CurrentUser $caller, ActorContext $actor, string $clientId, string $userId): ClientRecord
     {
-        $this->inTheClient($caller, $clientId, function (ClientRecord $client) use ($actor, $userId): void {
+        $this->inTheClient($caller, $clientId, function (ClientRecord $client) use ($caller, $actor, $userId): void {
             if (!$client->isCustomer()) {
                 throw ApiException::conflict(
                     'prospect_single_seller',
                     'A prospect has a single adviser; convert it to a customer to share it.',
                 );
             }
-            $this->requireAssignable($userId, 'user_id');
+            $this->requireAssignable($caller, $userId, 'user_id');
             if ($this->sellers->isSeller($client->id, $userId)) {
                 return;
             }
@@ -157,8 +159,15 @@ final class ClientSellerService
         $this->inTheClient(
             $caller,
             $clientId,
-            function (ClientRecord $client) use ($actor, $fromUserId, $toUserId, $moveContacts, &$totals): void {
-                $this->requireAssignable($toUserId, 'to_user_id');
+            function (ClientRecord $client) use (
+                $caller,
+                $actor,
+                $fromUserId,
+                $toUserId,
+                $moveContacts,
+                &$totals,
+            ): void {
+                $this->requireAssignable($caller, $toUserId, 'to_user_id');
                 $this->handOver($actor, [$client->id], $fromUserId, $toUserId, $moveContacts, $totals);
             },
         );
@@ -194,7 +203,7 @@ final class ClientSellerService
         $count = 0;
         $this->connection->transactional(
             function () use ($caller, $actor, $fromUserId, $toUserId, $moveContacts, &$totals, &$count): void {
-                $this->requireAssignable($toUserId, 'to_user_id');
+                $this->requireAssignable($caller, $toUserId, 'to_user_id');
                 $ids = $this->sellers->clientIdsOf($caller, $fromUserId);
                 foreach ($ids as $id) {
                     $this->clients->lock($id);
@@ -301,12 +310,38 @@ final class ClientSellerService
         return $scope === DataScope::All || $scope === DataScope::Team;
     }
 
-    /** @throws ValidationException 422 `not_found` when the user is not an active internal user */
-    private function requireAssignable(string $userId, string $field): void
+    /**
+     * @throws ValidationException 422 `not_found` when the user is not an active internal user, `out_of_scope` when
+     *         they are outside the people the caller's scope reaches
+     */
+    private function requireAssignable(CurrentUser $caller, string $userId, string $field): void
     {
         if (!$this->contacts->ownerCanOwn($userId)) {
             throw ValidationException::field($field, 'not_found');
         }
+        $reachable = $this->reachableIds($caller);
+        if ($reachable !== null && !in_array($userId, $reachable, true)) {
+            throw ValidationException::field($field, 'out_of_scope');
+        }
+    }
+
+    /**
+     * The people the caller can hand a client to: anyone with scope `all` (null), the team with `team` and only the
+     * caller with `own`. A user built without the team reaches themselves.
+     *
+     * @return list<string>|null
+     */
+    private function reachableIds(CurrentUser $caller): ?array
+    {
+        $scope = $caller->scopeFor(ClientRepository::RESOURCE);
+        if ($scope === DataScope::All) {
+            return null;
+        }
+        if ($scope === DataScope::Team && $caller->teamIds !== []) {
+            return $caller->teamIds;
+        }
+
+        return [$caller->id];
     }
 
     /** @throws ValidationException 422 `same_user` */

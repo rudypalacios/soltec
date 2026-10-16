@@ -38,8 +38,9 @@ paths:
       operationId: listSellerOptions
       summary: List the users that can be made advisers of a client.
       description: >-
-        For the selector of advisers, the active internal users sorted by name; `q` searches name and email. Any
-        internal session may read it (ADR-0024).
+        For the selector of advisers, the active internal users sorted by name that the caller can hand a client to:
+        anybody with a `clients` scope of `all`, the team with `team`, and only the caller with `own`; `q` searches
+        name and email. Any internal session may read it (ADR-0024).
       tags:
         - Clients
       x-permission: internal
@@ -79,7 +80,8 @@ paths:
         spread beyond the caller's scope is handed over in part. With `move_contacts` (the default) the people of the
         leaving adviser that are linked to the clients handed over, and to no other client, go with them; the rest
         stay and are counted in `contacts_kept`. This is what is needed before deactivating an adviser
-        (`user_has_clients`, ADR-0023).
+        (`user_has_clients`, ADR-0023). `to_user_id` must be inside the people the caller's scope reaches (422
+        `out_of_scope`).
       tags:
         - Clients
       x-permission: clients.edit
@@ -368,7 +370,8 @@ paths:
       summary: Add an adviser to a customer.
       description: >-
         Idempotent. Only a customer is shared, because a prospect has a single adviser (409 `prospect_single_seller`). The user
-        must be an active internal user (422 `not_found`). The advisers are administered by the responsible adviser and
+        must be an active internal user (422 `not_found`) inside the people the caller's scope reaches (422
+        `out_of_scope`: with `own` nobody else, with `team` the team, with `all` anybody). The advisers are administered by the responsible adviser and
         by whoever reaches the client with a `team` or `all` scope; any other adviser answers 403, so one adviser
         cannot remove or add another (ADR-0025).
       tags:
@@ -472,8 +475,9 @@ paths:
       operationId: reassignClient
       summary: Replace one adviser of a client with another user.
       description: >-
-        `from_user_id` must be an adviser of the client and `to_user_id` an active internal user (422 `not_found`),
-        and they must differ (422 `same_user`). The second takes the place of the first and is the responsible adviser
+        `from_user_id` must be an adviser of the client and `to_user_id` an active internal user (422 `not_found`)
+        inside the people the caller's scope reaches (422 `out_of_scope`: with `own` nobody else, with `team` the
+        team, with `all` anybody), and they must differ (422 `same_user`). The second takes the place of the first and is the responsible adviser
         if the first was; if the second was already an adviser the first is simply removed. With `move_contacts` (the
         default) the people of the first that are linked to this client and to no other go with the client; the
         rest stay with their owner and are counted in `contacts_kept`. Same who-may rule as adding.

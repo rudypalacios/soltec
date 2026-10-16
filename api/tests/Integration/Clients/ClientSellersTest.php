@@ -24,7 +24,7 @@ final class ClientSellersTest extends ClientsTestCase
 
     public function testTheResponsibleAdviserSharesTheCustomerAndTheSharedAdviserSeesIt(): void
     {
-        $owner = $this->seller('dueno@example.com', create: true, edit: true);
+        $owner = $this->seller('dueno@example.com', create: true, edit: true, scope: 'all');
         $ana = $this->seller('ana@example.com');
         $id = $this->text($this->customer('Compartido', [], $owner['token']), 'id');
         self::assertSame([], $this->clientNames($ana['token']));
@@ -48,7 +48,7 @@ final class ClientSellersTest extends ClientsTestCase
 
     public function testAnAdviserThatIsNotResponsibleCannotChangeTheAdvisers(): void
     {
-        $owner = $this->seller('dueno@example.com', create: true, edit: true);
+        $owner = $this->seller('dueno@example.com', create: true, edit: true, scope: 'all');
         $ana = $this->seller('ana@example.com', edit: true);
         $luis = $this->seller('luis@example.com');
         $id = $this->text($this->customer('Compartido', [], $owner['token']), 'id');
@@ -228,6 +228,7 @@ final class ClientSellersTest extends ClientsTestCase
         $department = $this->createDepartment('Ventas');
         $this->placeUser($boss['id'], $department);
         $this->placeUser($ana['id'], $department);
+        $this->placeUser($luis['id'], $department);
         $handedOver = $this->text($this->createClient('Se entrega', [], $ana['token']), 'id');
         $otherSeller = $this->seller('otra@example.com', create: true);
         $stays = $this->text($this->createClient('Se queda', [], $otherSeller['token']), 'id');
@@ -312,7 +313,7 @@ final class ClientSellersTest extends ClientsTestCase
 
     public function testLinksAPersonWithRolesAndOnlyTheirOwnerSeesThemOnTheClient(): void
     {
-        $ana = $this->seller('ana@example.com', create: true, edit: true);
+        $ana = $this->seller('ana@example.com', create: true, edit: true, scope: 'all');
         $luis = $this->seller('luis@example.com');
         $id = $this->text($this->customer('Compartido', [], $ana['token']), 'id');
         $this->api('POST', '/clients/' . $id . '/sellers', $ana['token'], ['user_id' => $luis['id']]);
@@ -414,17 +415,67 @@ final class ClientSellersTest extends ClientsTestCase
         );
     }
 
-    public function testTheSellerOptionsListActiveInternalUsersToAnyInternalSession(): void
+    public function testTheSellerOptionsListTheActiveInternalUsersTheScopeReaches(): void
     {
         $viewer = $this->seller('lector@example.com');
+        $boss = $this->seller('jefe@example.com', scope: 'team');
+        $member = $this->seller('miembro@example.com');
+        $all = $this->seller('todo@example.com', scope: 'all');
         $this->seller('baja@example.com');
         $this->connection->executeStatement("UPDATE users SET deleted_at = NOW(3) WHERE email = 'baja@example.com'");
+        $department = $this->createDepartment('Ventas');
+        $this->placeUser($boss['id'], $department);
+        $this->placeUser($member['id'], $department);
         $client = $this->text($this->createClient('X'), 'id');
         $this->externalUser('portal@example.com', $client);
+        /** @param array{id: string, token: string} $user */
+        $names = fn (array $user): array => $this->columnAt(
+            $this->json($this->api('GET', '/clients/seller-options?limit=100', $user['token'])),
+            'name',
+            'data',
+        );
 
-        $options = $this->json($this->api('GET', '/clients/seller-options?limit=100', $viewer['token']));
+        // Active internal users only, and only the people the caller can hand a client to: nobody else with `own`,
+        // the team with `team` and everybody with `all`.
+        self::assertSame(['Lector'], $names($viewer));
+        self::assertSame(['Jefe', 'Miembro'], $names($boss));
+        self::assertSame(['Admin', 'Jefe', 'Lector', 'Miembro', 'Todo'], $names($all));
+    }
 
-        self::assertSame(['Admin', 'Lector'], $this->columnAt($options, 'name', 'data'));
+    public function testAClientCannotBeHandedToSomeoneOutsideTheScopeOfWhoHandsItOver(): void
+    {
+        $owner = $this->seller('dueno@example.com', create: true, edit: true);
+        $boss = $this->seller('jefe@example.com', create: true, edit: true, scope: 'team');
+        $member = $this->seller('miembro@example.com');
+        $outsider = $this->seller('fuera@example.com');
+        $department = $this->createDepartment('Ventas');
+        $this->placeUser($boss['id'], $department);
+        $this->placeUser($member['id'], $department);
+        $own = $this->text($this->createClient('Del dueño', [], $owner['token']), 'id');
+        $team = $this->text($this->createClient('Del equipo', [], $boss['token']), 'id');
+
+        // With scope `own` there is nobody to hand the client to, so a seller asks their boss.
+        $refused = $this->api('POST', '/clients/' . $own . '/reassign', $owner['token'], [
+            'from_user_id' => $owner['id'], 'to_user_id' => $outsider['id'],
+        ]);
+        // With `team`, a member of the team is fine and an outsider is not.
+        $inside = $this->api('POST', '/clients/' . $team . '/reassign', $boss['token'], [
+            'from_user_id' => $boss['id'], 'to_user_id' => $member['id'],
+        ]);
+        $outside = $this->api('POST', '/clients/' . $team . '/reassign', $boss['token'], [
+            'from_user_id' => $member['id'], 'to_user_id' => $outsider['id'],
+        ]);
+
+        self::assertSame(422, $refused->getStatusCode());
+        self::assertSame(['to_user_id' => 'out_of_scope'], $this->errorCodes($refused));
+        self::assertSame(200, $inside->getStatusCode());
+        self::assertSame(422, $outside->getStatusCode());
+        self::assertSame(['to_user_id' => 'out_of_scope'], $this->errorCodes($outside));
+        // The administrator reaches everybody.
+        $byAdmin = $this->api('POST', '/clients/' . $own . '/reassign', $this->adminToken, [
+            'from_user_id' => $owner['id'], 'to_user_id' => $outsider['id'],
+        ]);
+        self::assertSame(200, $byAdmin->getStatusCode());
     }
 
     /**

@@ -501,6 +501,7 @@ describe('client screen', () => {
           return Response.json(MUNDO_DETAIL);
         },
       },
+      meWith({ clients: ALL, contacts: ['view', 'create'] }, { clients: 'team' }),
     );
     renderApp(session, `/clientes/${MUNDO.id}`);
     const user = userEvent.setup();
@@ -528,6 +529,19 @@ describe('client screen', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Acciones de (Luis|Ana)/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no way to choose another adviser to a seller whose scope is their own clients', async () => {
+    // The server offers and accepts nobody else with `own`, so the buttons are not there; the responsible adviser
+    // can still manage the advisers the client already has.
+    const { session } = open({ ...MUNDO_DETAIL, responsible: ANA });
+    renderApp(session, `/clientes/${MUNDO.id}`);
+
+    await screen.findByRole('heading', { name: LONG });
+    expect(screen.queryByRole('button', { name: 'Agregar' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Reasignar a otro asesor' }),
     ).not.toBeInTheDocument();
   });
 
@@ -580,6 +594,7 @@ describe('client screen', () => {
           return Response.json({ client: MUNDO_DETAIL, contacts_moved: 1, contacts_kept: 2 });
         },
       },
+      meWith({ clients: ALL, contacts: ['view', 'create'] }, { clients: 'team' }),
     );
     renderApp(session, `/clientes/${MUNDO.id}`);
     const user = userEvent.setup();
