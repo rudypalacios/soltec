@@ -428,18 +428,14 @@ final class ClientSellersTest extends ClientsTestCase
         $this->placeUser($member['id'], $department);
         $client = $this->text($this->createClient('X'), 'id');
         $this->externalUser('portal@example.com', $client);
-        /** @param array{id: string, token: string} $user */
-        $names = fn (array $user): array => $this->columnAt(
-            $this->json($this->api('GET', '/clients/seller-options?limit=100', $user['token'])),
-            'name',
-            'data',
-        );
-
         // Active internal users only, and only the people the caller can hand a client to: nobody else with `own`,
         // the team with `team` and everybody with `all`.
-        self::assertSame(['Lector'], $names($viewer));
-        self::assertSame(['Jefe', 'Miembro'], $names($boss));
-        self::assertSame(['Admin', 'Jefe', 'Lector', 'Miembro', 'Todo'], $names($all));
+        self::assertSame(['Lector'], $this->sellerOptionNames($viewer['token']));
+        self::assertSame(['Jefe', 'Miembro'], $this->sellerOptionNames($boss['token']));
+        self::assertSame(
+            ['Admin', 'Jefe', 'Lector', 'Miembro', 'Todo'],
+            $this->sellerOptionNames($all['token']),
+        );
     }
 
     public function testAClientCannotBeHandedToSomeoneOutsideTheScopeOfWhoHandsItOver(): void
@@ -476,6 +472,16 @@ final class ClientSellersTest extends ClientsTestCase
             'from_user_id' => $owner['id'], 'to_user_id' => $outsider['id'],
         ]);
         self::assertSame(200, $byAdmin->getStatusCode());
+    }
+
+    /** @return list<string> the names `seller-options` offers to this session */
+    private function sellerOptionNames(string $token): array
+    {
+        return $this->columnAt(
+            $this->json($this->api('GET', '/clients/seller-options?limit=100', $token)),
+            'name',
+            'data',
+        );
     }
 
     /**
