@@ -157,10 +157,19 @@ describe('clients list', () => {
 
     await user.type(await screen.findByLabelText(/Buscar por nombre/), 'sol');
     await waitFor(() => expect(calls.at(-1)?.query.get('q')).toBe('sol'));
-    await user.click(screen.getByRole('combobox', { name: 'Tipo' }));
+    // The filters are behind the «Filtros» button; an active one shows as a chip that clears it.
+    expect(screen.queryByRole('combobox', { name: 'Tipo' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
+    await user.click(await screen.findByRole('combobox', { name: 'Tipo' }));
     await user.click(await screen.findByRole('option', { name: 'Clientes' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('type')).toBe('customer'));
     expect(calls.at(-1)?.query.get('status')).toBe('active');
+    expect(screen.getByText('Tipo: Clientes')).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Filtros/ })).toHaveTextContent('1');
+
+    await user.click(screen.getByLabelText('Quitar el filtro Tipo'));
+    await waitFor(() => expect(calls.at(-1)?.query.has('type')).toBe(false));
+    expect(screen.queryByText('Tipo: Clientes')).not.toBeInTheDocument();
   });
 
   it('offers each action only with its own permission', async () => {
