@@ -447,6 +447,27 @@ describe('client screen', () => {
     expect(screen.queryByRole('button', { name: 'Agregar' })).not.toBeInTheDocument();
   });
 
+  it('leads with the main action and keeps the rest behind the menu of the header', async () => {
+    const { session } = createTestSession(
+      { ...OPTIONS, [`GET /v1/clients/${SOL.id}`]: () => Response.json(SOL_DETAIL) },
+      meWith({ clients: ALL, audit_logs: ['view'] }),
+    );
+    renderApp(session, `/clientes/${SOL.id}`);
+    const user = userEvent.setup();
+
+    // A prospect leads to converting it; editing, deactivating and the history are in the menu.
+    expect(await screen.findByRole('button', { name: 'Convertir en cliente' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Desactivar' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Volver a clientes' })).toHaveAttribute(
+      'href',
+      '/clientes',
+    );
+    await user.click(screen.getByRole('button', { name: /^Acciones de / }));
+    expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'Desactivar' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'Ver historial' })).toBeVisible();
+  });
+
   it('converts a prospect only after asking for the identification and the billing profile', async () => {
     const calls: Call[] = [];
     const { session } = open(SOL_DETAIL, {

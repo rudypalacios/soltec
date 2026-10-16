@@ -1,11 +1,23 @@
-import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useState, type ReactNode } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
+import { ACTION_ICONS } from '../../components/actionIcons';
 import { CodeChip } from '../../components/CodeChip';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { IDENTIFICATION_LABELS } from '../../components/identification';
 import { InactiveTag } from '../../components/inactiveMarks';
+import { ActionMenu, type RowAction } from '../../components/RowActions';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ClientStatusBadge, TypeTag } from './clientParts';
@@ -89,6 +101,45 @@ function LoadedClient({ client }: { client: Client }) {
     }
   };
 
+  // The one action the screen leads to stays in view; the rest, and the history, are behind the ⋮ button.
+  const mayEdit = can('clients', 'edit');
+  const converts = mayEdit && client.type === 'prospect' && client.is_active;
+  const primary = converts ? (
+    <Button variant="contained" onClick={() => setConverting(true)}>
+      Convertir en cliente
+    </Button>
+  ) : mayEdit ? (
+    <Button component={RouterLink} to={`/clientes/${client.id}/editar`} variant="outlined">
+      Editar
+    </Button>
+  ) : null;
+  const menu: RowAction[] = [];
+  if (converts) {
+    menu.push({
+      key: 'edit',
+      label: 'Editar',
+      icon: ACTION_ICONS.edit,
+      to: `/clientes/${client.id}/editar`,
+    });
+  }
+  if (can('clients', 'deactivate')) {
+    menu.push({
+      key: 'toggle',
+      label: client.is_active ? 'Desactivar' : 'Reactivar',
+      icon: client.is_active ? ACTION_ICONS.deactivate : ACTION_ICONS.reactivate,
+      tone: client.is_active ? 'danger' : undefined,
+      onSelect: () => setToggling({ open: true }),
+    });
+  }
+  if (can('audit_logs', 'view')) {
+    menu.push({
+      key: 'history',
+      label: 'Ver historial',
+      icon: ACTION_ICONS.history,
+      to: `/auditoria?tipo=clients&registro=${client.id}`,
+    });
+  }
+
   const billing = client.billing_profile;
   const primaryFirst = [...client.addresses].sort(
     (a, b) => Number(b.is_primary === true) - Number(a.is_primary === true),
@@ -96,55 +147,39 @@ function LoadedClient({ client }: { client: Client }) {
 
   return (
     <>
-      <Button
-        component={RouterLink}
-        to="/clientes"
-        size="small"
-        color="inherit"
-        sx={{ mb: 1, minHeight: 44 }}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3, alignItems: { sm: 'flex-start' }, justifyContent: 'space-between' }}
       >
-        ← Clientes
-      </Button>
-      <Stack spacing={2} sx={{ mb: 3 }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <CodeChip code={client.code} />
-          <TypeTag type={client.type} />
-          {client.is_active ? null : <InactiveTag />}
-          <ClientStatusBadge status={client.status} />
-        </Stack>
-        <Typography variant="h5" component="h1" sx={{ overflowWrap: 'anywhere' }}>
-          {client.name}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {can('clients', 'edit') ? (
-            <Button component={RouterLink} to={`/clientes/${client.id}/editar`} variant="outlined">
-              Editar
-            </Button>
-          ) : null}
-          {can('clients', 'edit') && client.type === 'prospect' && client.is_active ? (
-            <Button variant="contained" onClick={() => setConverting(true)}>
-              Convertir en cliente
-            </Button>
-          ) : null}
-          {can('clients', 'deactivate') ? (
-            <Button
-              variant="outlined"
-              color={client.is_active ? 'error' : 'primary'}
-              onClick={() => setToggling({ open: true })}
-            >
-              {client.is_active ? 'Desactivar' : 'Reactivar'}
-            </Button>
-          ) : null}
-          {can('audit_logs', 'view') ? (
-            <Button
-              component={RouterLink}
-              to={`/auditoria?tipo=clients&registro=${client.id}`}
-              color="inherit"
-            >
-              Ver historial
-            </Button>
-          ) : null}
+        <Box sx={{ display: 'flex', gap: 1, minWidth: 0, alignItems: 'flex-start' }}>
+          <IconButton
+            component={RouterLink}
+            to="/clientes"
+            aria-label="Volver a clientes"
+            edge="start"
+            sx={{ mt: -0.5 }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Stack spacing={1} sx={{ minWidth: 0 }}>
+            <Typography variant="h5" component="h1" sx={{ overflowWrap: 'anywhere' }}>
+              {client.name}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+              <CodeChip code={client.code} />
+              <TypeTag type={client.type} />
+              {client.is_active ? null : <InactiveTag />}
+              <ClientStatusBadge status={client.status} />
+            </Stack>
+          </Stack>
         </Box>
+        {primary || menu.length > 0 ? (
+          <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, alignItems: 'center' }}>
+            {primary}
+            {menu.length > 0 ? <ActionMenu actions={menu} rowName={client.name} /> : null}
+          </Box>
+        ) : null}
       </Stack>
 
       {failure ? (

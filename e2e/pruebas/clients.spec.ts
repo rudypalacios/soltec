@@ -56,12 +56,16 @@ test(
     await expect(page.getByText(`«${name}» ahora es un cliente de venta.`)).toBeVisible();
     await expect(page.getByText(`${name}, S. A.`)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Desactivar' }).click();
+    // Deactivating lives behind the ⋮ button of the header, with the history, and asks first.
+    await page.getByRole('button', { name: `Acciones de ${name}` }).click();
+    await page.getByRole('menuitem', { name: 'Desactivar' }).click();
     await page
       .getByRole('dialog', { name: 'Desactivar cliente' })
       .getByRole('button', { name: 'Desactivar' })
       .click();
-    await expect(page.getByRole('button', { name: 'Reactivar' })).toBeVisible();
+    await page.getByRole('button', { name: `Acciones de ${name}` }).click();
+    await expect(page.getByRole('menuitem', { name: 'Reactivar' })).toBeVisible();
+    await page.keyboard.press('Escape');
 
     // A deactivated client keeps its NIT: to register it again the existing one is reactivated.
     await page.goto('/clientes/nuevo');
