@@ -18,7 +18,7 @@ import { lineCostPreview } from '@soltec/shared';
 import { useIsMobile } from '../../components/useIsMobile';
 import { INACTIVE_MARK, INACTIVE_ROW, InactiveTag } from '../../components/inactiveMarks';
 import { STALE_MARK, STALE_ROW, StaleTag } from './catalogParts';
-import { CodeChip } from './CodeChip';
+import { CodeChip } from '../../components/CodeChip';
 import { formatMoney } from './productFormat';
 
 /** A component as the form keeps it: what the person edits (the quantity) and what it shows of the product. */

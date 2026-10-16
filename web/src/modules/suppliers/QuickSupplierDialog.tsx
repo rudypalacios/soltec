@@ -12,7 +12,7 @@ import {
 import { ApiError } from '@soltec/shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import { fieldMessages, problemMessage } from '../access/messages';
-import { IDENTIFICATION_LABELS, type IdentificationType } from './identification';
+import { IDENTIFICATION_LABELS, type IdentificationType } from '../../components/identification';
 import { useCreateSupplier } from './useSuppliers';
 
 const FIELD_MESSAGES = {

@@ -1,17 +1,9 @@
 import type { components } from '@soltec/shared';
-import type { IdentificationType } from './identification';
+import { addressBodies, addressDraftsOf, type AddressDraft } from '../../components/addressDrafts';
+import { newKey, orNull, textOf as text } from '../../components/drafts';
+import type { IdentificationType } from '../../components/identification';
 
 type Supplier = components['schemas']['Supplier'];
-
-/** An address as the form edits it: every field is text, `key` keeps the row stable while rows come and go. */
-export interface AddressDraft {
-  key: string;
-  label: string;
-  address: string;
-  zone: string;
-  country: string;
-  isPrimary: boolean;
-}
 
 export interface ContactDraft {
   key: string;
@@ -38,21 +30,6 @@ export interface SupplierDraft {
   contacts: ContactDraft[];
 }
 
-let nextKey = 0;
-const newKey = () => `row-${(nextKey += 1)}`;
-const text = (value: string | null | undefined) => value ?? '';
-/** What the API receives for an optional field: nothing when it is empty. */
-export const orNull = (value: string) => value.trim() || null;
-
-export const emptyAddress = (isPrimary = false): AddressDraft => ({
-  key: newKey(),
-  label: '',
-  address: '',
-  zone: '',
-  country: '',
-  isPrimary,
-});
-
 export const emptyContact = (): ContactDraft => ({
   key: newKey(),
   name: '',
@@ -74,14 +51,7 @@ export function draftOf(supplier: Supplier | null): SupplierDraft {
     identification: text(supplier?.identification),
     creditDays: supplier?.credit_days == null ? '' : String(supplier.credit_days),
     creditLimit: text(supplier?.credit_limit),
-    addresses: (supplier?.addresses ?? []).map((address) => ({
-      key: newKey(),
-      label: address.label,
-      address: address.address,
-      zone: text(address.zone),
-      country: text(address.country),
-      isPrimary: address.is_primary === true,
-    })),
+    addresses: addressDraftsOf(supplier?.addresses),
     contacts: (supplier?.contacts ?? []).map((contact) => ({
       key: newKey(),
       name: contact.name,
@@ -106,13 +76,7 @@ export function bodyOf(draft: SupplierDraft): components['schemas']['SupplierCre
     identification: draft.identificationType === 'none' ? null : orNull(draft.identification),
     credit_days: draft.creditDays.trim() === '' ? null : Number(draft.creditDays),
     credit_limit: orNull(draft.creditLimit),
-    addresses: draft.addresses.map((address) => ({
-      label: address.label.trim(),
-      address: address.address.trim(),
-      zone: orNull(address.zone),
-      country: orNull(address.country),
-      is_primary: address.isPrimary,
-    })),
+    addresses: addressBodies(draft.addresses),
     contacts: draft.contacts.map((contact) => ({
       name: contact.name.trim(),
       job_title: orNull(contact.jobTitle),

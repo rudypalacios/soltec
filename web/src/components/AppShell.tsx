@@ -5,6 +5,7 @@ import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleOutline from '@mui/icons-material/PeopleOutline';
 import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
+import BusinessOutlined from '@mui/icons-material/BusinessOutlined';
 import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
 import ContactsOutlined from '@mui/icons-material/ContactsOutlined';
 import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined';
@@ -72,6 +73,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/departamentos',
     icon: <AccountTreeOutlined />,
     permissions: [{ resource: 'departments', action: 'view' }],
+  },
+  {
+    label: 'Clientes',
+    path: '/clientes',
+    icon: <BusinessOutlined />,
+    permissions: [{ resource: 'clients', action: 'view' }],
   },
   {
     label: 'Contactos',

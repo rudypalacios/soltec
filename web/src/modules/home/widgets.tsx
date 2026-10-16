@@ -3,6 +3,7 @@ import type { components } from '@soltec/shared';
 import type { ComponentType } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useCan } from '../access/SessionContext';
+import { QuickCreateClientWidget } from '../clients/QuickCreateClientWidget';
 import { HealthStatus } from '../system/HealthStatus';
 
 type WidgetCode = components['schemas']['WidgetCode'];
@@ -75,5 +76,6 @@ function ServiceStatusWidget() {
  */
 export const WIDGETS: Record<WidgetCode, ComponentType> = {
   quick_links: QuickLinksWidget,
+  quick_create_client: QuickCreateClientWidget,
   service_status: ServiceStatusWidget,
 };

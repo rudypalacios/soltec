@@ -47,7 +47,11 @@ final class DashboardTest extends AccessTestCase
 
     public function testTheAdministratorSeesEveryWidgetAndTheSeedKeepsTheOldHomeScreen(): void
     {
-        self::assertSame(['quick_links', 'service_status'], $this->dashboardOf($this->adminToken));
+        // The old two keep their places; the widget that registers a prospect goes after them (slice 2.5).
+        self::assertSame(
+            ['quick_links', 'service_status', 'quick_create_client'],
+            $this->dashboardOf($this->adminToken),
+        );
     }
 
     public function testAUserSeesTheWidgetsOfTheirRoleInOrder(): void
@@ -114,7 +118,10 @@ final class DashboardTest extends AccessTestCase
     {
         $catalog = $this->json($this->api('GET', '/widgets', $this->adminToken));
 
-        self::assertSame(['quick_links', 'service_status'], $this->columnAt($catalog, 'code', 'data'));
+        self::assertSame(
+            ['quick_links', 'quick_create_client', 'service_status'],
+            $this->columnAt($catalog, 'code', 'data'),
+        );
         self::assertSame(['code', 'description', 'name'], $this->sortedKeys($this->rowsAt($catalog, 'data')[0]));
 
         $nobody = $this->tokenFor($this->createUser('ana@example.com')['id']);
