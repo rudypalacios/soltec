@@ -22,6 +22,14 @@ const PROBLEM_MESSAGES: Record<string, string> = {
     'Ya existe un registro activo con esta identificación. Consulta con tu jefe directo o con administración.',
   identification_inactive:
     'Ya existe un registro inactivo con esta identificación. Pide a administración que lo reactive en lugar de registrarlo de nuevo.',
+  margin_level_in_use:
+    'No se puede desactivar: hay clientes activos que lo usan como su nivel habitual. Cámbiales el nivel primero.',
+  prospect_single_seller:
+    'Un prospecto tiene un solo asesor. Conviértelo en cliente de venta para compartirlo.',
+  responsible_required:
+    'Todo cliente tiene un asesor responsable. Haz responsable a otro asesor antes de quitar a este.',
+  already_customer: 'Este cliente ya es un cliente de venta.',
+  client_inactive: 'Un cliente desactivado no se puede convertir. Reactívalo primero.',
   product_inactive: 'Un producto desactivado no tiene un costo que confirmar. Reactívalo primero.',
   link_invalid:
     'Este enlace ya no sirve: ya se usó o se envió uno más reciente. Pide que te lo envíen de nuevo.',
@@ -52,6 +60,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   parent_inactive: 'Está desactivado. Reactívalo primero.',
   too_many: 'Son demasiados.',
   cycle: 'Esa persona depende de este usuario: no puede ser su jefe.',
+  same_user: 'Elige a otra persona.',
 };
 
 /**

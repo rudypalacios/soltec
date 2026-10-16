@@ -373,4 +373,5 @@ components:
       description: A widget of the home screen. The web app has a component for each one.
       enum:
         - quick_links
+        - quick_create_client
         - service_status

@@ -177,6 +177,20 @@ describe('deactivating and reactivating', () => {
     await waitFor(() => expect(reactivated).toBe(true));
   });
 
+  it('says how many clients a user must hand over before being deactivated', async () => {
+    const { session } = createTestSession({
+      ...list(OTHER),
+      [`POST /v1/users/${OTHER.id}/deactivate`]: () =>
+        problem(409, 'user_has_clients', undefined, { active_client_count: 2 }),
+    });
+    renderApp(session, '/usuarios');
+
+    const user = await openAction('Desactivar', 'Acciones de Luis Gómez');
+    await user.click(await screen.findByRole('button', { name: 'Desactivar' }));
+
+    expect(await screen.findByText(/es el asesor responsable de 2 clientes activos/)).toBeVisible();
+  });
+
   it('explains why the server refused', async () => {
     const { session } = createTestSession({
       ...list(OTHER),

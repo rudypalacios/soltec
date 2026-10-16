@@ -20,6 +20,10 @@ final class WidgetCatalog
             'name' => 'Accesos rápidos',
             'description' => 'Atajos a las pantallas que la persona puede abrir.',
         ],
+        'quick_create_client' => [
+            'name' => 'Registrar un prospecto',
+            'description' => 'Un formulario corto para registrar un prospecto sin salir del inicio.',
+        ],
         'service_status' => [
             'name' => 'Estado del servicio',
             'description' => 'Si el servicio y su base de datos responden.',
