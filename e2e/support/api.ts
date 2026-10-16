@@ -95,6 +95,46 @@ export class AdminApi {
     });
   }
 
+  /** A client (a prospect), created through the API; `fields` are the ones of the creation body. */
+  async createClient(
+    fields: Record<string, unknown>,
+  ): Promise<{ id: string; name: string; version: number }> {
+    return call<{ id: string; name: string; version: number }>('/clients', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify(fields),
+    });
+  }
+
+  /** Turns a prospect into a customer with the smallest billing profile there is. */
+  async convertClient(id: string, version: number): Promise<{ id: string; version: number }> {
+    const regimes = await call<{ data: { id: string }[] }>('/tax-regimes/options', {
+      token: this.token,
+    });
+    const regime = regimes.data[0];
+    if (!regime) {
+      throw new Error('There is no tax regime.');
+    }
+    return call<{ id: string; version: number }>(`/clients/${id}/convert`, {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify({
+        version,
+        identification_type: 'none',
+        billing_profile: { legal_name: `E2E fiscal ${uniqueSuffix()}`, tax_regime_id: regime.id },
+      }),
+    });
+  }
+
+  /** Shares a customer with one more adviser. */
+  async addClientSeller(id: string, userId: string): Promise<void> {
+    await call(`/clients/${id}/sellers`, {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify({ user_id: userId }),
+    });
+  }
+
   /** A product group under the first area, named uniquely; the area name is what the form shows before it. */
   async createProductGroup(
     prefix = 'e2e-grupo',

@@ -1,8 +1,8 @@
 import { Box } from '@mui/material';
-import { Highlight } from '../../components/Highlight';
-import { color } from '../../theme/tokens';
+import { Highlight } from './Highlight';
+import { color } from '../theme/tokens';
 
-/** A product code as a tag of its own, easy to find while scrolling a long list. */
+/** A record code (a product, a client) as a tag of its own, easy to find while scrolling a long list. */
 export function CodeChip({ code, match }: { code: string; match?: string }) {
   return (
     <Box

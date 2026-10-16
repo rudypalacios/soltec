@@ -32,6 +32,9 @@ import {
   SupplierEditPage,
   SupplierViewPage,
 } from '../modules/suppliers/SupplierFormPage';
+import { ClientDetailPage } from '../modules/clients/ClientDetailPage';
+import { ClientCreatePage, ClientEditPage } from '../modules/clients/ClientFormPage';
+import { ClientsPage } from '../modules/clients/ClientsPage';
 import {
   ProductCreatePage,
   ProductEditPage,
@@ -219,6 +222,38 @@ export function App() {
           element={
             <RequirePermission resource="bundles" action="edit">
               <BundleEditPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="clientes"
+          element={
+            <RequirePermission resource="clients" action="view">
+              <ClientsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="clientes/nuevo"
+          element={
+            <RequirePermission resource="clients" action="create">
+              <ClientCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="clientes/:clientId"
+          element={
+            <RequirePermission resource="clients" action="view">
+              <ClientDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="clientes/:clientId/editar"
+          element={
+            <RequirePermission resource="clients" action="edit">
+              <ClientEditPage />
             </RequirePermission>
           }
         />

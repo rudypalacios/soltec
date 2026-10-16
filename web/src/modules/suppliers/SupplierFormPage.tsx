@@ -15,8 +15,9 @@ import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessage, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { IDENTIFICATION_LABELS, type IdentificationType } from './identification';
-import { AddressesEditor, ContactsEditor } from './SupplierRows';
+import { IDENTIFICATION_LABELS, type IdentificationType } from '../../components/identification';
+import { AddressesEditor } from '../../components/AddressesEditor';
+import { ContactsEditor } from './SupplierRows';
 import { bodyOf, draftOf, type SupplierDraft } from './supplierDrafts';
 import {
   useCreateSupplier,

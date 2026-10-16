@@ -14,20 +14,11 @@ import { StatusFilter } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
-import { IDENTIFICATION_LABELS } from './identification';
+import { identificationText } from '../../components/identification';
 import { useSetSupplierActive, useSuppliers } from './useSuppliers';
 
 type Supplier = components['schemas']['SupplierSummary'];
 const PER_PAGE = 25;
-
-/** What the list shows in the identification column: «NIT 6647912-6», or a dash for none. */
-export function identificationText(
-  supplier: Pick<Supplier, 'identification_type' | 'identification'>,
-) {
-  return supplier.identification
-    ? `${IDENTIFICATION_LABELS[supplier.identification_type]} ${supplier.identification}`
-    : '—';
-}
 
 /** `/proveedores`: every supplier, for whoever may view the section (they have no owner or data scope). */
 export function SuppliersPage() {

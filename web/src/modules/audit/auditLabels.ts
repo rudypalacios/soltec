@@ -19,6 +19,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   product_groups: 'Grupos de producto',
   unit_categories: 'Categorías de unidad',
   units_of_measure: 'Unidades de medida',
+  clients: 'Clientes',
   contacts: 'Contactos',
   suppliers: 'Proveedores',
   products: 'Productos',
@@ -31,6 +32,13 @@ export const ACTION_LABELS: Record<string, string> = {
   deactivate: 'Desactivación',
   reactivate: 'Reactivación',
   cost_review: 'Costo revisado',
+  convert: 'Conversión a cliente de venta',
+  seller_add: 'Asesor agregado',
+  seller_remove: 'Asesor quitado',
+  responsible_change: 'Cambio de responsable',
+  reassign: 'Reasignación',
+  contact_link: 'Contacto vinculado',
+  contact_unlink: 'Contacto desvinculado',
   login: 'Inicio de sesión',
   logout: 'Cierre de sesión',
   lockout: 'Bloqueo de cuenta',
@@ -63,6 +71,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   product_groups: 'Grupo de producto',
   unit_categories: 'Categoría de unidad',
   units_of_measure: 'Unidad de medida',
+  clients: 'Cliente',
   contacts: 'Contacto',
   suppliers: 'Proveedor',
   products: 'Producto',
@@ -89,6 +98,9 @@ export function recordPath(
   }
   if (entityType === 'contacts' && can('contacts', 'edit')) {
     return `/contactos/${entityId}/editar`;
+  }
+  if (entityType === 'clients' && can('clients', 'view')) {
+    return `/clientes/${entityId}`;
   }
   if (entityType === 'suppliers' && can('suppliers', 'edit')) {
     return `/proveedores/${entityId}/editar`;

@@ -1,6 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
 import { Alert, Box, Button, Chip, MenuItem, TextField, Typography } from '@mui/material';
-import type { components } from '@soltec/shared';
+import { ApiError, type components } from '@soltec/shared';
 import { useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { ACTION_ICONS } from '../../components/actionIcons';
@@ -26,6 +26,21 @@ const ACTIVE_CONFLICTS = {
   forbidden:
     'No tienes permiso para cambiar a este usuario (por ejemplo, a un administrador, o a ti mismo).',
 };
+
+/** Why a user with clients cannot be deactivated, with the count the API sends back. */
+function clientsToHandOver(error: unknown): string | null {
+  if (!(error instanceof ApiError) || error.code !== 'user_has_clients') {
+    return null;
+  }
+  const count = error.details.active_client_count;
+  const clients =
+    typeof count === 'number'
+      ? count === 1
+        ? '1 cliente activo'
+        : `${count} clientes activos`
+      : 'clientes activos';
+  return `No se puede desactivar: es el asesor responsable de ${clients}. Reasigna su cartera en Clientes primero.`;
+}
 
 export function UsersPage() {
   const can = useCan();
@@ -124,7 +139,7 @@ export function UsersPage() {
     try {
       await setActive.mutateAsync({ userId: pending.user.id, active: pending.activate });
     } catch (error) {
-      setActionError(problemMessage(error, ACTIVE_CONFLICTS));
+      setActionError(clientsToHandOver(error) ?? problemMessage(error, ACTIVE_CONFLICTS));
     } finally {
       setPending(null);
     }
