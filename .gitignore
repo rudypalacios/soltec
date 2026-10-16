@@ -54,6 +54,9 @@ shared/src/api/generated/
 # ---------------------------------------------------------------------------
 # State file that FTP-Deploy-Action keeps next to the files it uploads
 .ftp-deploy-sync-state.json
+# Settings and upload state of deploy/deploy-manual.sh: they hold passwords and hashes of what is on the server
+/.deploy
+/.deploy-state/
 
 # ---------------------------------------------------------------------------
 # Editors, operating systems and local tool settings

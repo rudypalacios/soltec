@@ -1,0 +1,26 @@
+# Settings of deploy/deploy-manual.sh. Copy this file to `.deploy` in the root of the repository, fill it in and make
+# it private (chmod 600 .deploy). `.deploy` is ignored by git; never commit it nor paste it anywhere.
+# The values are the ones of the GitHub Environment of the same name (docs/despliegue.md, section 2.2).
+# Format: KEY=value, one per line. Quotes are optional and nothing in the file is executed.
+
+# staging or production. Production is deployed only from main, with a clean checkout.
+DEPLOY_NAME=staging
+
+# The FTP account of the instance (secrets FTP_SERVER, FTP_USERNAME, FTP_PASSWORD).
+FTP_SERVER=ftp.example.com
+FTP_USERNAME=
+FTP_PASSWORD=
+
+# The folder the account opens in, which holds public/, api/ and db/ (secret FTP_SERVER_DIR). Usually "/".
+FTP_SERVER_DIR=/
+
+# ftps (explicit FTPS, the default and the one the workflow uses), ftps-legacy (implicit) or ftp (not encrypted).
+#FTP_PROTOCOL=ftps
+# Only when the host's certificate does not match the name of FTP_SERVER; every other case should stay "true".
+#FTP_VERIFY_CERT=true
+# Only if the host does not use the default port (21, or 990 for ftps-legacy).
+#FTP_PORT=
+
+# The site, without a trailing slash (variable APP_URL), and the token of the server's .env (secret DEPLOY_TOKEN).
+APP_URL=https://test.example.com
+DEPLOY_TOKEN=

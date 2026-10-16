@@ -181,3 +181,26 @@ Es la verificación previa tipo instalador: revisa PHP y sus extensiones, el `.e
 | Inicio de sesión: `503 auth_not_configured` | Falta `JWT_SECRET` en el `.env` o tiene menos de 32 caracteres (2.5) |
 | Smoke: `degraded` | La API responde pero la base de datos no: revisa `DB_*` en el `.env` |
 | Smoke: 404 en `/api/v1/health` | Falta `.htaccess` o `mod_rewrite` |
+
+## 6. Despliegue manual (sin GitHub Actions)
+
+`deploy/deploy-manual.sh` hace desde Ubuntu lo mismo que el workflow Deploy: compila, sube por FTPS, aplica migraciones, revisa requisitos y corre el smoke. Úsalo cuando los minutos de Actions se agoten.
+
+**Requisitos:** `git php composer node npm curl jq rsync lftp sha256sum` (Node ≥ 22, PHP ≥ 8.3).
+
+**Configuración:** copia `deploy/deploy.example` a `.deploy` en la raíz del checkout y ponle `chmod 600 .deploy` (el script se niega si otros pueden leerlo). Son los mismos valores que los secretos de la sección 2.2. `.deploy` está en `.gitignore`.
+
+**Uso**, dentro del checkout de la rama a desplegar:
+
+```bash
+deploy/deploy-manual.sh --dry-run   # muestra qué subiría, sin tocar el servidor
+deploy/deploy-manual.sh             # despliega
+```
+
+Opciones: `--config ARCHIVO`, `--full` (sube todo, ignora el manifiesto), `--upload-only` (sin migraciones ni smoke), `--skip-build`, `--tests`, `--yes`. Producción solo sale de `main` con el árbol limpio y pide confirmación escrita.
+
+**Cómo es incremental:** guarda un manifiesto SHA-256 local en `.deploy-state/` y sube solo lo que cambió. Solo borra en el servidor lo que él mismo subió antes; nunca toca `.env`, `storage/` ni `public/.htaccess`. Al terminar elimina los archivos de estado de la Action.
+
+**Si despliegas también con GitHub:** el manifiesto local queda desactualizado; corre una vez con `--full`.
+
+`FTP_VERIFY_CERT=false` solo es para certificados cuyo nombre no coincide con el host.
