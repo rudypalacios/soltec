@@ -1,0 +1,399 @@
+paths:
+  /v1/workflows/{workflow}/states:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+    get:
+      operationId: listWorkflowStates
+      summary: List the states of a flow.
+      description:
+        The states in the order of the flow, each with the active states it may move to. Not paginated, because a flow has a
+        handful of states. `status` defaults to `all`, because the administration screen shows the inactive ones too.
+        An unknown flow answers 404.
+      tags:
+        - Workflows
+      x-permission: workflow_states.view
+      parameters:
+        - $ref: '#/components/parameters/WorkflowStatusFilter'
+      responses:
+        '200':
+          description: The states of the flow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowStateList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createWorkflowState
+      summary: Create a state.
+      description:
+        The state goes at the end of the flow and has no transitions, so link it with `setWorkflowTransitions`. The name must be
+        unique among the active states of the flow (422 `taken`); the color must be `#RRGGBB` (422 `invalid`). A new state
+        is never initial; use `updateWorkflowState` for that.
+      tags:
+        - Workflows
+      x-permission: workflow_states.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowStateCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/states/order:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+    put:
+      operationId: reorderWorkflowStates
+      summary: Set the order of the active states.
+      description: The list `ids` must name every active state of the flow exactly once (422 `invalid`). Inactive states keep their place.
+      tags:
+        - Workflows
+      x-permission: workflow_states.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowStateOrder'
+      responses:
+        '200':
+          description: Every state of the flow, in the new order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowStateList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/states/{stateId}:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+      - $ref: '#/components/parameters/WorkflowStateId'
+    get:
+      operationId: getWorkflowState
+      summary: Get a state by id.
+      description: Returns the state, active or not.
+      tags:
+        - Workflows
+      x-permission: workflow_states.view
+      responses:
+        '200':
+          description: The state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateWorkflowState
+      summary: Edit a state.
+      description:
+        Replaces name, color and the terminal flag; Sending `is_initial` as true makes this the initial state and takes the flag from the
+        current one. The initial flag cannot be taken away without giving it to another state. A stale version answers 409
+        `conflict`; the flow keeping no terminal state, 409 `last_terminal_state`. Validation errors (422) are `taken` for the name, `inactive_state`
+        (an inactive state cannot be initial) and `initial_cannot_be_terminal`.
+      tags:
+        - Workflows
+      x-permission: workflow_states.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowStateUpdate'
+      responses:
+        '200':
+          description: The updated state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/states/{stateId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+      - $ref: '#/components/parameters/WorkflowStateId'
+    post:
+      operationId: deactivateWorkflowState
+      summary: Deactivate a state.
+      description:
+        Logical deactivation. Records already in the state keep it; it stops being a destination. Refused for the initial
+        state (409 `state_is_initial`) and for the last terminal state (409 `last_terminal_state`). Idempotent.
+      tags:
+        - Workflows
+      x-permission: workflow_states.deactivate
+      responses:
+        '200':
+          description: The deactivated state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/states/{stateId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+      - $ref: '#/components/parameters/WorkflowStateId'
+    post:
+      operationId: reactivateWorkflowState
+      summary: Reactivate a state.
+      description:
+        Its transitions come back with it. Fails with 422 `taken` if an active state of the flow now has the same name.
+        Idempotent.
+      tags:
+        - Workflows
+      x-permission: workflow_states.deactivate
+      responses:
+        '200':
+          description: The reactivated state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+    put:
+      operationId: setWorkflowTransitions
+      summary: Replace the transitions of a flow.
+      description:
+        Sets which state may follow which. Every state in the list must be an active state of the flow (422 `not_found`),
+        a state cannot lead to itself and a pair cannot repeat (422 `invalid`). Links that touch an inactive state are
+        left alone.
+      tags:
+        - Workflows
+      x-permission: workflow_states.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowTransitionsUpdate'
+      responses:
+        '200':
+          description: Every state of the flow with its new transitions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowStateList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    WorkflowStatusFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - active
+          - inactive
+          - all
+        default: all
+    Workflow:
+      name: workflow
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/WorkflowCode'
+    WorkflowStateId:
+      name: stateId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    WorkflowCode:
+      type: string
+      enum:
+        - task
+        - ticket
+      description: The flow a state belongs to. A new flow arrives with the milestone that needs it.
+    WorkflowState:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - workflow
+            - name
+            - color
+            - sort_order
+            - is_initial
+            - is_terminal
+            - transitions_to
+            - is_active
+          properties:
+            workflow:
+              $ref: '#/components/schemas/WorkflowCode'
+            name:
+              type: string
+            color:
+              $ref: '#/components/schemas/HexColor'
+            sort_order:
+              type: integer
+              minimum: 1
+              description: Position in the flow. The list is already sorted by it.
+            is_initial:
+              type: boolean
+              description: The state a new record starts in. Exactly one active state of the flow has it.
+            is_terminal:
+              type: boolean
+              description: Reaching it closes the record. A flow keeps at least one active terminal state.
+            transitions_to:
+              type: array
+              items:
+                $ref: '#/components/schemas/Uuid'
+              description: Ids of the active states a record in this state may move to, in the order of the flow.
+            is_active:
+              type: boolean
+    WorkflowStateList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowState'
+    WorkflowStateCreate:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        color:
+          $ref: '#/components/schemas/HexColor'
+        is_terminal:
+          type: boolean
+          default: false
+    WorkflowStateUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+            - color
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+            color:
+              $ref: '#/components/schemas/HexColor'
+            is_terminal:
+              type: boolean
+              default: false
+            is_initial:
+              type: boolean
+              default: false
+              description: True makes this the initial state. False leaves the initial flag as it is.
+    WorkflowStateOrder:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Uuid'
+    WorkflowTransitionsUpdate:
+      type: object
+      required:
+        - transitions
+      properties:
+        transitions:
+          type: array
+          maxItems: 400
+          items:
+            type: object
+            required:
+              - from_id
+              - to_id
+            properties:
+              from_id:
+                $ref: '#/components/schemas/Uuid'
+              to_id:
+                $ref: '#/components/schemas/Uuid'

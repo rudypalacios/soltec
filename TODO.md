@@ -17,7 +17,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Correo: remitente `noreply@musicos-catolicos.com`; P24 (dominio de la organización) sigue abierta hasta antes de producción
   - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
   - [x] Production: sin *Required reviewers* (decisión del usuario: único revisor, repo privado)
-  - [ ] Subir `upload_max_filesize` y `post_max_size` (hoy 2M y 8M) antes del Hito 3 (fotos)
+  - [x] Subir `upload_max_filesize` y `post_max_size` (eran 2M y 8M) antes del Hito 3 (fotos): el usuario los cambió el 2026-10-30; falta volver a leerlos en `/api/system/requirements` al construir 3.2
   - [x] Acceso de red de la sesión a los subdominios: verificado (2026-10-12), la sesión alcanza `staging`. El QA usa las variables del environment `QA_BASE_URL`, `QA_EMAIL` y `QA_PASSWORD` (cuenta de administrador de `staging`)
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
@@ -176,12 +176,17 @@ Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal
   - 2.5 (por construir): lo mismo para clientes, sin nombrar el registro; y el acceso a un cliente que ya tiene otro asesor
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
-- [ ] Motor de estados
-- [ ] Hilo de actividad
-- [ ] Notificaciones y endpoint de actualizaciones (polling)
-- [ ] Archivos y fotos
-- [ ] Tareas y tickets mínimos
-- [ ] Importación del legacy, prueba paralela y apagado
+**Se construye por rebanadas verticales** (como el Hito 2), con ficha de arranque antes de cada una. Sin el volcado del legacy (el usuario no lo tiene, 2026-10-30): la importación, la prueba paralela y el apagado quedan pendientes y el resto sigue. Modelo: `docs/arquitectura/erd/04-tareas-y-tickets.md`. Decisión: ADR-0026.
+- [ ] **3.1 Motor de estados** (ficha aprobada el 2026-10-30; un solo PR con `pre-deploy`)
+  - **Hecho:** tablas `workflow_states` y `workflow_transitions`, siembra de los flujos de tareas (Asignada, Aceptada, En ejecución, Completada, Cerrada, Rechazada) y tickets (Abierto, En atención, Resuelto, Cerrado), `WorkflowEngine` (estado inicial y si se puede pasar de A a B), rutas `/v1/workflows/{task|ticket}/states` y `/transitions`, pantalla «Flujos de estado» en Configuración (crear, editar, siguientes estados, ordenar, desactivar y reactivar), recurso de permisos `workflow_states`
+  - **Acordado:** «un estado nuevo aplica solo a registros futuros» = agregarlo no cambia el estado de registros existentes; llegan a él solo por una transición permitida. Los estados de tareas y tickets son flujos separados, con permiso de perfil. Ordenar y elegir siguientes estados se guardan con un botón en un diálogo (no un clic suelto por fila)
+  - **Fuera:** aplicar los estados a tareas y tickets (3.5 y 3.6), notificaciones por transición (3.4), permisos por transición según el perfil, pasar los estados de cliente al motor (atado a P3)
+- [ ] **3.2 Archivos y fotos** (ADR-0009)
+- [ ] **3.3 Hilo de actividad**
+- [ ] **3.4 Notificaciones y endpoint de actualizaciones (polling)** (medir los límites de envío del SMTP del hosting)
+- [ ] **3.5 Tareas**
+- [ ] **3.6 Tickets mínimos**
+- [ ] **Importación del legacy, prueba paralela y apagado** (pendiente del volcado; P7, P20 y P23 sin respuesta)
 - **Fuera:** campos extendidos del ticket (equipo, contrato, SLA, prioridad), chat libre, offline.
 
 ## Hito 4 — Cotizador
