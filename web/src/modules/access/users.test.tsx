@@ -363,7 +363,7 @@ describe('creating a user', () => {
 describe('locked users', () => {
   const LOCKED = { ...OTHER, locked_until: '2026-10-09T18:30:00.000Z' };
 
-  it('marks who is locked and unlocks them without asking', async () => {
+  it('marks who is locked and unlocks them after confirming', async () => {
     let unlocked = false;
     const { session } = createTestSession({
       ...list(LOCKED),
@@ -379,11 +379,35 @@ describe('locked users', () => {
     expect(screen.getByText(/^hasta /)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Acciones de Luis Gómez' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+    await user.click(await screen.findByRole('button', { name: 'Desbloquear' }));
 
     await waitFor(() => expect(unlocked).toBe(true));
     expect(
       await screen.findByText('Luis Gómez ya puede iniciar sesión de nuevo.'),
     ).toBeInTheDocument();
+  });
+
+  it('asks before unlocking and changes nothing if the person backs out', async () => {
+    let unlocked = false;
+    const { session } = createTestSession({
+      ...list(LOCKED),
+      [`POST /v1/users/${LOCKED.id}/unlock`]: () => {
+        unlocked = true;
+        return Response.json({ ...LOCKED, locked_until: null });
+      },
+    });
+    renderApp(session, '/usuarios');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Luis Gómez podrá iniciar sesión');
+    expect(unlocked).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(unlocked).toBe(false);
   });
 
   it('offers to unlock only a user who is locked', async () => {
@@ -419,6 +443,7 @@ describe('locked users', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+    await user.click(await screen.findByRole('button', { name: 'Desbloquear' }));
 
     expect(await screen.findByText('No tienes permiso para hacer esto.')).toBeInTheDocument();
   });
@@ -438,6 +463,7 @@ describe('locked users', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Acciones de Luis Gómez' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Desbloquear' }));
+    await user.click(await screen.findByRole('button', { name: 'Desbloquear' }));
 
     await waitFor(() => expect(unlocked).toBe(true));
   });

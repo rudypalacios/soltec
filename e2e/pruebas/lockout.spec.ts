@@ -31,6 +31,10 @@ test('an administrator unlocks an account that failed to sign in too many times'
   await users.search(user.email);
   await expect(users.table.row(new RegExp(user.name))).toContainText('Bloqueado');
   await users.table.choose('Desbloquear', user.name);
+  await staff
+    .getByRole('dialog', { name: 'Desbloquear usuario' })
+    .getByRole('button', { name: 'Desbloquear' })
+    .click();
   await expect(staff.getByRole('alert')).toContainText(
     `${user.name} ya puede iniciar sesión de nuevo.`,
   );
