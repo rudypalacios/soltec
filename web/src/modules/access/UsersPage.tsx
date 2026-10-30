@@ -52,6 +52,7 @@ export function UsersPage() {
   const departmentChoices = useDepartmentChoices();
   const [pending, setPending] = useState<{ user: User; activate: boolean } | null>(null);
   const [pendingResend, setPendingResend] = useState<User | null>(null);
+  const [pendingUnlock, setPendingUnlock] = useState<User | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -82,14 +83,19 @@ export function UsersPage() {
     }
   };
 
-  const unlockUser = async (user: User) => {
+  const unlockUser = async () => {
+    if (!pendingUnlock) {
+      return;
+    }
     setActionError(null);
     setNotice(null);
     try {
-      await unlock.mutateAsync(user.id);
-      setNotice(`${user.name} ya puede iniciar sesión de nuevo.`);
+      await unlock.mutateAsync(pendingUnlock.id);
+      setNotice(`${pendingUnlock.name} ya puede iniciar sesión de nuevo.`);
     } catch (error) {
       setActionError(problemMessage(error));
+    } finally {
+      setPendingUnlock(null);
     }
   };
 
@@ -107,7 +113,7 @@ export function UsersPage() {
           key: 'unlock',
           label: 'Desbloquear',
           icon: ACTION_ICONS.unlock,
-          onSelect: () => void unlockUser(user),
+          onSelect: () => setPendingUnlock(user),
         });
       }
       if (user.invitation_pending) {
@@ -236,6 +242,15 @@ export function UsersPage() {
         busy={setActive.isPending}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
+      />
+      <ConfirmDialog
+        open={pendingUnlock !== null}
+        title="Desbloquear usuario"
+        message={`${pendingUnlock?.name ?? ''} podrá iniciar sesión de nuevo sin esperar a que termine el bloqueo.`}
+        confirmLabel="Desbloquear"
+        busy={unlock.isPending}
+        onConfirm={() => void unlockUser()}
+        onCancel={() => setPendingUnlock(null)}
       />
       <ConfirmDialog
         open={pendingResend !== null}
