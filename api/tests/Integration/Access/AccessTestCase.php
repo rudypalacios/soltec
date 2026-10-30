@@ -384,7 +384,7 @@ abstract class AccessTestCase extends IntegrationTestCase
                 'Educación', 'Servicios', 'Retail',
             ],
             'tax_regimes' => ['Pequeño contribuyente', 'General'],
-            'payment_methods' => [],
+            'payment_methods' => ['Efectivo', 'Tarjeta', 'Cheque', 'Transferencia bancaria', 'Depósito bancario'],
             'brands' => [],
             'areas' => ['Aire Acondicionado', 'Electricidad', 'Cableado', 'Equipo', 'Otros'],
             'unit_categories' => ['Cantidad', 'Longitud', 'Peso', 'Volumen', 'Superficie'],

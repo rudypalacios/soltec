@@ -157,7 +157,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - El QA en `staging` no prueba alcances (crear usuarios envía correos reales): los alcances se cubren con integración y E2E
 - **Criterio de cierre del Hito 2:** las rebanadas en `develop` y desplegadas en `staging`; el E2E de cada una en verde; ERD y `TODO.md` al día; P3 anotada como provisional; pendientes de abajo registrados
 - **Pendientes anotados (no bloquean el hito):**
-  - Formas de pago: sin siembra hasta que el usuario las defina
+  - Formas de pago: sembradas el 2026-10-30 (efectivo, tarjeta, cheque, transferencia y depósito bancario). Falta decidir cómo se manejan los plazos de crédito («a N días»): no son una forma de pago; se resuelve con el Cotizador o la facturación (Hitos 4 y 6)
   - Flujo de solicitud de acceso a un registro existente (por ejemplo, un NIT repetido): Hito 3 o posterior; ver «Solicitudes internas y avisos» abajo
   - Volcado de estructura del legacy: el usuario lo entregará; se revisa antes del Hito 3
   - Regla completa del CUI (dígito verificador y municipio) si hiciera falta
