@@ -167,6 +167,7 @@ describe('products list', () => {
     await user.type(await screen.findByLabelText(/Buscar por nombre/), 'rj');
     await waitFor(() => expect(calls.at(-1)?.query.get('q')).toBe('rj'));
 
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
     await user.click(screen.getByRole('combobox', { name: 'Área' }));
     await user.click(await screen.findByRole('option', { name: 'Aire Acondicionado' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('area_id')).toBe(AREA.id));
@@ -293,6 +294,7 @@ describe('products list: reading', () => {
 
     const table = await screen.findByRole('table', { name: 'Lista de productos' });
     expect(within(table).queryByRole('columnheader', { name: 'Grupo' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
     await user.click(screen.getByRole('checkbox', { name: 'Agrupar por área y grupo' }));
     // Both products share one block: one header, and the group column is not repeated in the rows.
     await waitFor(() =>
@@ -322,6 +324,7 @@ describe('products list: reading', () => {
     // One tag, on the inactive product only; the line under its name no longer carries the word.
     expect(within(table).getAllByText('Inactivo')).toHaveLength(1);
 
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
     await user.type(screen.getByRole('combobox', { name: 'Marca' }), 'pan');
     await user.click(await screen.findByRole('option', { name: 'Panduit' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('brand_id')).toBe(BRAND.id));
@@ -481,6 +484,7 @@ describe('products list: several at once', () => {
     expect(
       screen.queryByRole('button', { name: /Reactivar los desactivados/ }),
     ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
     await user.click(screen.getByRole('combobox', { name: 'Proveedor' }));
     await user.click(await screen.findByRole('option', { name: 'Cables del Sur' }));
     // Only meaningful where inactive products are listed.

@@ -36,14 +36,10 @@ export class ProductsPage {
     await filtered;
   }
 
-  /** On a phone the filters are behind a button; on a desktop they are always there. */
+  /** The filters are behind the «Filtros» button, which carries the number of active ones. */
   async openFilters(): Promise<void> {
-    const toggle = this.page.getByRole('button', { name: 'Filtros', exact: true });
-    if (
-      this.isMobile &&
-      (await toggle.count()) > 0 &&
-      (await toggle.getAttribute('aria-expanded')) !== 'true'
-    ) {
+    const toggle = this.page.getByRole('button', { name: /^Filtros/ });
+    if ((await toggle.count()) > 0 && (await toggle.getAttribute('aria-expanded')) !== 'true') {
       await toggle.click();
     }
   }

@@ -41,7 +41,6 @@ export function BundlesPage() {
   const list = useListFilters();
   const catalog = useCatalogFilters(list);
   const isMobile = useIsMobile();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [preview, setPreview] = useState<{ bundle: Bundle; open: boolean } | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -150,32 +149,20 @@ export function BundlesPage() {
         searchLabel="Buscar por nombre, código o componente"
         search={list.text}
         onSearchChange={list.setText}
-        collapsed={isMobile && !filtersOpen}
+        panel={{ active: catalog.active, onClearAll: catalog.clearAll }}
         beside={
-          isMobile ? (
-            <>
-              <Button
-                variant={filtersOpen ? 'contained' : 'outlined'}
-                aria-expanded={filtersOpen}
-                onClick={() => setFiltersOpen(!filtersOpen)}
-                sx={{ minHeight: 48 }}
-              >
-                Filtros
-              </Button>
-              {canSelect ? (
-                <Button
-                  variant={choosing ? 'contained' : 'outlined'}
-                  aria-pressed={choosing}
-                  onClick={() => {
-                    setChoosing(!choosing);
-                    setSelected(new Set());
-                  }}
-                  sx={{ minHeight: 48 }}
-                >
-                  Elegir
-                </Button>
-              ) : null}
-            </>
+          isMobile && canSelect ? (
+            <Button
+              variant={choosing ? 'contained' : 'outlined'}
+              aria-pressed={choosing}
+              onClick={() => {
+                setChoosing(!choosing);
+                setSelected(new Set());
+              }}
+              sx={{ minHeight: 48 }}
+            >
+              Elegir
+            </Button>
           ) : null
         }
       >

@@ -29,7 +29,9 @@ final class ClientSellerController
         $limit = $query->limit(50, 100);
         $query->done();
 
-        return Json::write($response, ['data' => $this->sellers->options($text, $limit)]);
+        $options = $this->sellers->options($this->caller($request), $text, $limit);
+
+        return Json::write($response, ['data' => $options]);
     }
 
     /** @param array<string, string> $args */

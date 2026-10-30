@@ -3,6 +3,7 @@ import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import ForwardToInboxOutlined from '@mui/icons-material/ForwardToInboxOutlined';
 import FactCheckOutlined from '@mui/icons-material/FactCheckOutlined';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined';
 import PercentOutlined from '@mui/icons-material/PercentOutlined';
 import RestoreOutlined from '@mui/icons-material/RestoreOutlined';
@@ -23,5 +24,6 @@ export const ACTION_ICONS = {
   setDefault: <StarOutline />,
   unlock: <LockOpenOutlined />,
   review: <FactCheckOutlined />,
+  history: <HistoryOutlined />,
   margin: <PercentOutlined />,
 } as const;

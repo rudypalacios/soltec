@@ -230,6 +230,7 @@ describe('bundles list', () => {
     await user.type(screen.getByLabelText(/Buscar por nombre/), 'jack');
     await waitFor(() => expect(calls.at(-1)?.query.get('q')).toBe('jack'));
 
+    await user.click(screen.getByRole('button', { name: /^Filtros/ }));
     await user.click(screen.getByRole('combobox', { name: 'Proveedor' }));
     await user.click(await screen.findByRole('option', { name: 'Cables del Sur' }));
     await waitFor(() => expect(calls.at(-1)?.query.get('supplier_id')).toBe(SUPPLIER.id));

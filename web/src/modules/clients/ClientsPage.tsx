@@ -7,7 +7,7 @@ import { ACTION_ICONS } from '../../components/actionIcons';
 import { CodeChip } from '../../components/CodeChip';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
-import { FilterBar } from '../../components/FilterBar';
+import { FilterBar, type ActiveFilter } from '../../components/FilterBar';
 import { Highlight } from '../../components/Highlight';
 import { identificationText } from '../../components/identification';
 import { INACTIVE_CARD, InactiveTag } from '../../components/inactiveMarks';
@@ -16,8 +16,7 @@ import { PageHeader } from '../../components/PageHeader';
 import type { RowAction } from '../../components/RowActions';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { ActiveBadge } from '../../components/StatusBadge';
-import { StatusFilter } from '../../components/StatusFilter';
-import { useIsMobile } from '../../components/useIsMobile';
+import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
 import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan, useCurrentUser } from '../access/SessionContext';
@@ -36,16 +35,18 @@ type ClientType = components['schemas']['ClientType'];
 const PER_PAGE = 25;
 const ALL = '';
 
-/** The width of a filter that is not a plain select, as `FilterBar` gives them. */
-const FILTER_FIELD = { flex: { xs: '1 1 140px', sm: '0 0 200px' } } as const;
+const STATUS_LABELS: Record<StatusValue, string> = {
+  active: 'Activos',
+  inactive: 'Inactivos',
+  all: 'Todos',
+};
+const TYPE_LABELS: Record<ClientType, string> = { prospect: 'Prospectos', customer: 'Clientes' };
 
 /** `/clientes`: prospects and customers inside the data scope of the person, in one list. */
 export function ClientsPage() {
   const can = useCan();
   const me = useCurrentUser();
-  const isMobile = useIsMobile();
   const filters = useListFilters();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [type, setType] = useState<ClientType | typeof ALL>(ALL);
   const [statusId, setStatusId] = useState(ALL);
   const [segmentId, setSegmentId] = useState(ALL);
@@ -80,6 +81,49 @@ export function ClientsPage() {
       setter(value);
       filters.resetPage();
     };
+
+  // The filters that are not at their default, as chips under the bar.
+  const nameIn = (list: { id: string; name: string }[] | undefined, id: string) =>
+    list?.find((item) => item.id === id)?.name ?? '…';
+  const activeFilters: ActiveFilter[] = [
+    type !== ALL && {
+      id: 'type',
+      label: 'Tipo',
+      value: TYPE_LABELS[type],
+      onClear: () => narrow(setType)(ALL),
+    },
+    statusId !== ALL && {
+      id: 'status',
+      label: 'Estado del cliente',
+      value: nameIn(statuses.data?.data, statusId),
+      onClear: () => narrow(setStatusId)(ALL),
+    },
+    segmentId !== ALL && {
+      id: 'segment',
+      label: 'Segmento',
+      value: nameIn(segments.data?.data, segmentId),
+      onClear: () => narrow(setSegmentId)(ALL),
+    },
+    sellerId !== ALL && {
+      id: 'seller',
+      label: 'Asesor',
+      value: nameIn(people.data?.data, sellerId),
+      onClear: () => narrow(setSellerId)(ALL),
+    },
+    filters.status !== 'active' && {
+      id: 'activity',
+      label: 'Estado',
+      value: STATUS_LABELS[filters.status],
+      onClear: () => filters.setStatus('active'),
+    },
+  ].filter((filter): filter is ActiveFilter => filter !== false);
+  const clearFilters = () => {
+    setType(ALL);
+    setStatusId(ALL);
+    setSegmentId(ALL);
+    setSellerId(ALL);
+    filters.setStatus('active');
+  };
 
   // Handing over a portfolio needs a scope that reaches other people's clients; the server enforces it too.
   const mayHandOver =
@@ -138,19 +182,7 @@ export function ClientsPage() {
         searchLabel="Buscar por nombre, código o identificación"
         search={filters.text}
         onSearchChange={filters.setText}
-        collapsed={isMobile && !filtersOpen}
-        beside={
-          isMobile ? (
-            <Button
-              variant={filtersOpen ? 'contained' : 'outlined'}
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen(!filtersOpen)}
-              sx={{ minHeight: 48 }}
-            >
-              Filtros
-            </Button>
-          ) : null
-        }
+        panel={{ active: activeFilters, onClearAll: clearFilters }}
         action={
           can('clients', 'create') || mayHandOver ? (
             <Stack direction="row" spacing={1}>
@@ -198,28 +230,24 @@ export function ClientsPage() {
             </MenuItem>
           ))}
         </TextField>
-        <Box sx={FILTER_FIELD}>
-          <SearchableSelect
-            label="Segmento"
-            choices={(segments.data?.data ?? []).map((segment) => ({
-              id: segment.id,
-              label: segment.name,
-            }))}
-            value={segmentId}
-            onChange={narrow(setSegmentId)}
-          />
-        </Box>
-        <Box sx={FILTER_FIELD}>
-          <SearchableSelect
-            label="Asesor"
-            choices={(people.data?.data ?? []).map((person) => ({
-              id: person.id,
-              label: person.name,
-            }))}
-            value={sellerId}
-            onChange={narrow(setSellerId)}
-          />
-        </Box>
+        <SearchableSelect
+          label="Segmento"
+          choices={(segments.data?.data ?? []).map((segment) => ({
+            id: segment.id,
+            label: segment.name,
+          }))}
+          value={segmentId}
+          onChange={narrow(setSegmentId)}
+        />
+        <SearchableSelect
+          label="Asesor"
+          choices={(people.data?.data ?? []).map((person) => ({
+            id: person.id,
+            label: person.name,
+          }))}
+          value={sellerId}
+          onChange={narrow(setSellerId)}
+        />
         <StatusFilter value={filters.status} onChange={filters.setStatus} />
       </FilterBar>
 

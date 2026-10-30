@@ -16,7 +16,8 @@ type Pending = { kind: 'remove' | 'responsible'; seller: Seller; open: boolean }
 
 /**
  * The advisers of the client. The responsible adviser and whoever reaches the client with a `team` or `all` scope
- * administer them; any other adviser only sees them (the server decides too, ADR-0025).
+ * administer them; any other adviser only sees them. Adding or handing over to someone needs a `team` or `all` scope:
+ * with `own` there is nobody else to choose (the server decides too, ADR-0025).
  */
 export function SellersSection({
   client,
@@ -39,6 +40,9 @@ export function SellersSection({
   const mayAdminister =
     can('clients', 'edit') &&
     (scope === 'team' || scope === 'all' || client.responsible?.id === me?.id);
+  // Choosing someone else needs a scope that reaches other people: with `own` there is nobody to choose (the server
+  // offers and accepts only the team with `team` and nobody else with `own`), so a seller asks their boss.
+  const mayChoosePeople = mayAdminister && (scope === 'team' || scope === 'all');
   const customer = client.type === 'customer';
 
   const confirm = async () => {
@@ -90,8 +94,13 @@ export function SellersSection({
           <Typography variant="h6" component="h2">
             Asesores
           </Typography>
-          {mayAdminister && customer ? (
-            <Button onClick={() => setAdding(true)}>Agregar</Button>
+          {mayChoosePeople ? (
+            <Stack direction="row" sx={{ gap: 0.5 }}>
+              {customer ? <Button onClick={() => setAdding(true)}>Agregar</Button> : null}
+              <Button aria-label="Reasignar a otro asesor" onClick={() => setReassigning(true)}>
+                Reasignar
+              </Button>
+            </Stack>
           ) : null}
         </Stack>
         {!customer ? (
@@ -132,11 +141,6 @@ export function SellersSection({
             );
           })}
         </Box>
-        {mayAdminister ? (
-          <Box>
-            <Button onClick={() => setReassigning(true)}>Reasignar a otro asesor</Button>
-          </Box>
-        ) : null}
       </Stack>
       <AddSellerDialog
         client={client}

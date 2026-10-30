@@ -21,5 +21,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
+    // jsdom computes styles slowly once a file has mounted many MUI screens (every distinct `sx` adds rules to the
+    // document); the default 5 s left the slowest screens a few hundred ms from failing on a busy runner.
+    testTimeout: 15_000,
   },
 });

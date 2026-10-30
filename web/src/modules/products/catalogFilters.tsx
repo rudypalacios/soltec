@@ -1,7 +1,8 @@
-import { Box, FormControlLabel, MenuItem, Switch, TextField } from '@mui/material';
+import { FormControlLabel, MenuItem, Switch, TextField } from '@mui/material';
 import { useState } from 'react';
+import type { ActiveFilter } from '../../components/FilterBar';
 import { SearchableSelect } from '../../components/SearchableSelect';
-import { StatusFilter } from '../../components/StatusFilter';
+import { StatusFilter, type StatusValue } from '../../components/StatusFilter';
 import type { useListFilters } from '../../components/useListFilters';
 import { SupplierSelect, type SupplierChoice } from './SupplierSelect';
 import {
@@ -21,8 +22,11 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]['value'];
 
-/** The width of a filter that is not a plain select, as `FilterBar` gives them. */
-const FILTER_FIELD = { flex: { xs: '1 1 140px', sm: '0 0 200px' } } as const;
+const STATUS_LABELS: Record<StatusValue, string> = {
+  active: 'Activos',
+  inactive: 'Inactivos',
+  all: 'Todos',
+};
 
 /**
  * The filters products and bundles share: supplier, area, group, brand, margin level, order, stale cost and grouping.
@@ -67,9 +71,86 @@ export function useCatalogFilters(list: ReturnType<typeof useListFilters>) {
     ...(levelId !== ALL ? { margin_level_id: levelId } : {}),
   };
 
+  const nameIn = (list: { id: string; name: string }[] | undefined, id: string) =>
+    list?.find((item) => item.id === id)?.name ?? '…';
+  // What is not at its default, as chips under the bar. The order and the margin are views of the list rather than
+  // narrowing filters, but they are hidden in the panel too, so they show up the same way.
+  const active: ActiveFilter[] = [
+    list.status !== 'active' && {
+      id: 'status',
+      label: 'Estado',
+      value: STATUS_LABELS[list.status],
+      onClear: () => list.setStatus('active'),
+    },
+    supplier !== null && {
+      id: 'supplier',
+      label: 'Proveedor',
+      value: supplier.name,
+      onClear: () => narrow(setSupplier)(null),
+    },
+    areaId !== ALL && {
+      id: 'area',
+      label: 'Área',
+      value: nameIn(areas.data?.data, areaId),
+      onClear: () => {
+        setAreaId(ALL);
+        setGroupId(ALL);
+        list.resetPage();
+      },
+    },
+    groupId !== ALL && {
+      id: 'group',
+      label: 'Grupo',
+      value: nameIn(groups.data?.data, groupId),
+      onClear: () => narrow(setGroupId)(ALL),
+    },
+    brandId !== ALL && {
+      id: 'brand',
+      label: 'Marca',
+      value: nameIn(brands.data?.data, brandId),
+      onClear: () => narrow(setBrandId)(ALL),
+    },
+    levelId !== ALL && {
+      id: 'margin',
+      label: 'Margen',
+      value: nameIn(levels.data?.data, levelId),
+      onClear: () => setLevelId(ALL),
+    },
+    sort !== 'name' && {
+      id: 'sort',
+      label: 'Orden',
+      value: SORTS.find((option) => option.value === sort)?.label ?? sort,
+      onClear: () => narrow(setSort)('name'),
+    },
+    staleOnly && {
+      id: 'stale',
+      label: 'Costo',
+      value: 'desactualizado',
+      onClear: () => narrow(setStaleOnly)(false),
+    },
+    grouped && {
+      id: 'grouped',
+      label: 'Vista',
+      value: 'agrupada por área y grupo',
+      onClear: () => narrow(setGrouped)(false),
+    },
+  ].filter((filter): filter is ActiveFilter => filter !== false);
+
   return {
     query,
     supplier,
+    active,
+    clearAll: () => {
+      list.setStatus('active');
+      setSupplier(null);
+      setAreaId(ALL);
+      setGroupId(ALL);
+      setBrandId(ALL);
+      setLevelId(ALL);
+      setSort('name');
+      setStaleOnly(false);
+      setGrouped(false);
+    },
     grouped,
     perPage,
     levels: levels.data?.data ?? [],
@@ -97,42 +178,34 @@ export function useCatalogFilters(list: ReturnType<typeof useListFilters>) {
     fields: (
       <>
         <StatusFilter value={list.status} onChange={list.setStatus} />
-        <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
-          <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
-        </Box>
-        <Box sx={FILTER_FIELD}>
-          <SearchableSelect
-            label="Área"
-            choices={(areas.data?.data ?? []).map((area) => ({ id: area.id, label: area.name }))}
-            value={areaId}
-            onChange={(next) => {
-              setAreaId(next);
-              setGroupId(ALL);
-              list.resetPage();
-            }}
-          />
-        </Box>
-        <Box sx={FILTER_FIELD}>
-          <SearchableSelect
-            label="Grupo"
-            choices={(groups.data?.data ?? [])
-              .filter((group) => areaId === ALL || group.area_id === areaId)
-              .map((group) => ({ id: group.id, label: group.name }))}
-            value={groupId}
-            onChange={narrow(setGroupId)}
-          />
-        </Box>
-        <Box sx={FILTER_FIELD}>
-          <SearchableSelect
-            label="Marca"
-            choices={(brands.data?.data ?? []).map((brand) => ({
-              id: brand.id,
-              label: brand.name,
-            }))}
-            value={brandId}
-            onChange={narrow(setBrandId)}
-          />
-        </Box>
+        <SupplierSelect value={supplier} onChange={narrow(setSupplier)} />
+        <SearchableSelect
+          label="Área"
+          choices={(areas.data?.data ?? []).map((area) => ({ id: area.id, label: area.name }))}
+          value={areaId}
+          onChange={(next) => {
+            setAreaId(next);
+            setGroupId(ALL);
+            list.resetPage();
+          }}
+        />
+        <SearchableSelect
+          label="Grupo"
+          choices={(groups.data?.data ?? [])
+            .filter((group) => areaId === ALL || group.area_id === areaId)
+            .map((group) => ({ id: group.id, label: group.name }))}
+          value={groupId}
+          onChange={narrow(setGroupId)}
+        />
+        <SearchableSelect
+          label="Marca"
+          choices={(brands.data?.data ?? []).map((brand) => ({
+            id: brand.id,
+            label: brand.name,
+          }))}
+          value={brandId}
+          onChange={narrow(setBrandId)}
+        />
         <TextField
           select
           label="Margen"
