@@ -453,7 +453,7 @@ final class ClientsTest extends ClientsTestCase
     {
         $this->applyMigrationAgain('20261015000001');
 
-        self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(self::SEEDED_PERMISSION_ROWS, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(11, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM resources WHERE code = 'client_profile'"));
         self::assertSame(

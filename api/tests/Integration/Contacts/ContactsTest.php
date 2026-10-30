@@ -456,7 +456,7 @@ final class ContactsTest extends AccessTestCase
         $this->applyMigrationAgain('20261013000004');
 
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM sequences WHERE code = 'contact'"));
-        self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(self::SEEDED_PERMISSION_ROWS, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM resources WHERE code = 'contacts' AND scoped = 1"));
     }
 

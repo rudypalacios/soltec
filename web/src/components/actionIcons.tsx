@@ -1,3 +1,4 @@
+import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';
 import DriveFileRenameOutline from '@mui/icons-material/DriveFileRenameOutline';
 import EditOutlined from '@mui/icons-material/EditOutlined';
@@ -26,4 +27,5 @@ export const ACTION_ICONS = {
   review: <FactCheckOutlined />,
   history: <HistoryOutlined />,
   margin: <PercentOutlined />,
+  transitions: <AccountTreeOutlined />,
 } as const;
