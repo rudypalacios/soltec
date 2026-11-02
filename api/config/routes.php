@@ -37,6 +37,7 @@ use Soltec\Modules\Settings\Http\FinancialSettingsController;
 use Soltec\Modules\Settings\Http\MarginLevelController;
 use Soltec\Modules\Settings\Http\PriceController;
 use Soltec\Modules\Settings\Http\SequenceController;
+use Soltec\Modules\Workflow\Http\WorkflowStateController;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
 // Every /v1 route declares its access rule in the "permission" argument: `public`, `authenticated` or
@@ -102,6 +103,29 @@ return static function (App $app): void {
             ->setArgument('permission', 'departments.deactivate');
         $group->post('/departments/{departmentId}/reactivate', [DepartmentController::class, 'reactivate'])
             ->setArgument('permission', 'departments.deactivate');
+
+        // Flows of states (tasks, tickets): the lists are short, so they are not paginated. The fixed `order` path
+        // comes before `{stateId}`.
+        $group->get('/workflows/{workflow}/states', [WorkflowStateController::class, 'list'])
+            ->setArgument('permission', 'workflow_states.view');
+        $group->post('/workflows/{workflow}/states', [WorkflowStateController::class, 'create'])
+            ->setArgument('permission', 'workflow_states.create');
+        $group->put('/workflows/{workflow}/states/order', [WorkflowStateController::class, 'reorder'])
+            ->setArgument('permission', 'workflow_states.edit');
+        $group->get('/workflows/{workflow}/states/{stateId}', [WorkflowStateController::class, 'show'])
+            ->setArgument('permission', 'workflow_states.view');
+        $group->patch('/workflows/{workflow}/states/{stateId}', [WorkflowStateController::class, 'update'])
+            ->setArgument('permission', 'workflow_states.edit');
+        $group->post(
+            '/workflows/{workflow}/states/{stateId}/deactivate',
+            [WorkflowStateController::class, 'deactivate'],
+        )->setArgument('permission', 'workflow_states.deactivate');
+        $group->post(
+            '/workflows/{workflow}/states/{stateId}/reactivate',
+            [WorkflowStateController::class, 'reactivate'],
+        )->setArgument('permission', 'workflow_states.deactivate');
+        $group->put('/workflows/{workflow}/transitions', [WorkflowStateController::class, 'setTransitions'])
+            ->setArgument('permission', 'workflow_states.edit');
 
         // Catalog parameters: five tables served by one controller; the route says which one in `parameter`.
         foreach (ParameterCatalog::all() as $parameter) {

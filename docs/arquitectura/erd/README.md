@@ -1,6 +1,6 @@
 # ERD — convenciones y mapa
 
-**Entregable 4 del Hito 0** · Estado: hitos 1 y 2 detallados; hitos 3 a 9 esbozados · Fecha: 2026-10-12
+**Entregable 4 del Hito 0** · Estado: hitos 1 y 2 detallados; hito 3 en curso; hitos 4 a 9 esbozados · Fecha: 2026-10-12
 
 El modelo se detalla **hito por hito**: los hitos 1 y 2 ya están detallados; de los hitos 3 a 9 hay un esbozo de entidades y relaciones, y las columnas de cada uno se definen al planearlo.
 
@@ -8,6 +8,7 @@ El modelo se detalla **hito por hito**: los hitos 1 y 2 ya están detallados; de
 |---|---|---|
 | [`01-fundaciones.md`](01-fundaciones.md) | Hito 1: acceso, organización, configuración, márgenes, auditoría, dashboard | Detallado |
 | [`03-catalogo-y-clientes.md`](03-catalogo-y-clientes.md) | Hito 2: parámetros, catálogo, contactos, proveedores, productos, paquetes y clientes | Detallado |
+| [`04-tareas-y-tickets.md`](04-tareas-y-tickets.md) | Hito 3: se detalla por rebanada; hoy el motor de estados | En curso |
 | [`02-esbozo-hitos-2-a-9.md`](02-esbozo-hitos-2-a-9.md) | Hitos 3 a 9: entidades, relaciones y las decisiones ya tomadas | Esbozo |
 
 Decisiones que sustentan el modelo: [ADR-0015](../../adr/0015-identificadores-uuid.md) (identificadores), [ADR-0016](../../adr/0016-catalogos-y-configuracion-tipados.md) (catálogos y configuración) y, para el Hito 2, los ADR 0022 a 0025. Autenticación y permisos: [ADR-0012](../../adr/0012-autenticacion-y-autorizacion.md).

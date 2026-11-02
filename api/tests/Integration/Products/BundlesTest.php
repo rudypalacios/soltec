@@ -447,7 +447,7 @@ final class BundlesTest extends ProductsTestCase
     {
         $this->applyMigrationAgain('20261014000003');
 
-        self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+        self::assertSame(self::SEEDED_PERMISSION_ROWS, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM sequences WHERE code = 'bundle'"));
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM resources WHERE code = 'bundles' AND scoped = 0"));
     }

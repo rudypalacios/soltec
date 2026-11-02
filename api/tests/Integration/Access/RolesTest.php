@@ -358,7 +358,7 @@ final class RolesTest extends AccessTestCase
                 'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'products',
                 'roles',
                 'security_settings', 'segments', 'sequences', 'suppliers', 'tax_regimes', 'unit_categories',
-                'units_of_measure', 'users',
+                'units_of_measure', 'users', 'workflow_states',
             ],
             $this->columnAt($resources, 'code', 'data'),
         );

@@ -24,6 +24,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   suppliers: 'Proveedores',
   products: 'Productos',
   bundles: 'Paquetes',
+  workflow_states: 'Flujos de estado',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -76,6 +77,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   suppliers: 'Proveedor',
   products: 'Producto',
   bundles: 'Paquete',
+  workflow_states: 'Estado de flujo',
 };
 
 /**

@@ -24,7 +24,14 @@ const SECTIONS: readonly SectionDefinition[] = [
   {
     id: 'settings',
     label: 'Configuración',
-    resources: ['company', 'financial_settings', 'margin_levels', 'sequences', 'security_settings'],
+    resources: [
+      'company',
+      'financial_settings',
+      'margin_levels',
+      'workflow_states',
+      'sequences',
+      'security_settings',
+    ],
   },
   {
     id: 'parameters',

@@ -6,6 +6,7 @@ export const SETTINGS_SECTIONS = [
   { label: 'Empresa', path: '/configuracion/empresa', resources: ['company'] },
   { label: 'Finanzas', path: '/configuracion/finanzas', resources: ['financial_settings'] },
   { label: 'Márgenes', path: '/configuracion/margenes', resources: ['margin_levels'] },
+  { label: 'Flujos de estado', path: '/configuracion/flujos', resources: ['workflow_states'] },
   { label: 'Numeración', path: '/configuracion/numeracion', resources: ['sequences'] },
   {
     label: 'Parámetros',

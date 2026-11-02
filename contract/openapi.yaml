@@ -66,6 +66,8 @@ tags:
     description: Company data and logo, tax rates, and the numbering of documents.
   - name: Margin levels
     description: Margin levels (MC) and the catalog price function computed from them.
+  - name: Workflows
+    description: The states of the task and ticket flows and the transitions between them.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
 components:

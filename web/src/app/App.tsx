@@ -52,6 +52,7 @@ import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
+import { WorkflowsPage } from '../modules/workflows/WorkflowsPage';
 import { useBranding } from '../modules/settings/useSettings';
 import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
 import { RequirementsPage } from '../modules/system/RequirementsPage';
@@ -320,6 +321,14 @@ export function App() {
             element={
               <RequirePermission resource="margin_levels" action="view">
                 <MarginLevelsPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="flujos"
+            element={
+              <RequirePermission resource="workflow_states" action="view">
+                <WorkflowsPage />
               </RequirePermission>
             }
           />
