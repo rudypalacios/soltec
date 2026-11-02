@@ -49,7 +49,7 @@ Cinco tablas con la misma forma (ADR-0016): una tabla por parámetro y un solo c
 | `client_statuses` | PM2 | `color CHAR(7)` (`#RRGGBB`; la web ofrece 8 colores fijos, la API acepta cualquiera) | Prospecto aprobado / por activar, Activo (nuevo), Activo (recurrente), En riesgo / inactivo temporal, Inactivo / dormido, Perdido: Azul, Turquesa, Verde, Ámbar, Gris y Rojo (paleta en `TODO.md`) |
 | `segments` | PM5 | — | Restaurantes, Industria Manufacturera, Departamentos/Interiorismo, Construcción, Finanzas, Educación, Servicios, Retail |
 | `tax_regimes` | PM6 | — | Pequeño contribuyente, General |
-| `payment_methods` | PM7 | — | (vacía; pendiente) |
+| `payment_methods` | PM7 | — | Efectivo, Tarjeta, Cheque, Transferencia bancaria, Depósito bancario (migración `20261030000001`; «Crédito» se queda fuera: es un plazo, no una forma de pago) |
 
 Todas llevan `name VARCHAR(100)` y `active_name` generada con índice único (`uq_<tabla>_active_name`). Se listan por nombre. Los estados de cliente no tienen transiciones (P3, motor del Hito 3).
 

@@ -90,8 +90,9 @@ test(
     await expect(regimes.getByText('Pequeño contribuyente', { exact: true })).toBeVisible();
     await expect(regimes.getByText('General', { exact: true })).toBeVisible();
 
-    // Payment methods start empty: the list says so instead of showing a blank.
     await parameters.choose('Formas de pago');
-    await expect(page.getByText('No hay formas de pago con esos filtros.')).toBeVisible();
+    const methods = parameters.list('Lista de formas de pago');
+    await expect(methods.getByText('Transferencia bancaria', { exact: true })).toBeVisible();
+    await expect(methods.getByText('Efectivo', { exact: true })).toBeVisible();
   },
 );

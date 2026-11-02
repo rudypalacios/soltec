@@ -51,7 +51,10 @@ final class ParametersTest extends AccessTestCase
         );
         self::assertCount(8, $names('segments'));
         self::assertSame(['General', 'Pequeño contribuyente'], $names('tax-regimes'));
-        self::assertSame([], $names('payment-methods'));
+        self::assertSame(
+            ['Cheque', 'Depósito bancario', 'Efectivo', 'Tarjeta', 'Transferencia bancaria'],
+            $names('payment-methods'),
+        );
     }
 
     public function testTheSeededStatusesCarryTheirColor(): void
@@ -278,6 +281,13 @@ final class ParametersTest extends AccessTestCase
         self::assertSame(8, $this->countRows('SELECT COUNT(*) FROM segments'));
         self::assertSame(6, $this->countRows('SELECT COUNT(*) FROM client_statuses'));
         self::assertSame(85, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
+    }
+
+    public function testThePaymentMethodsMigrationCanBeRepeatedWithoutDuplicatingTheSeed(): void
+    {
+        $this->applyMigrationAgain('20261030000001');
+
+        self::assertSame(5, $this->countRows('SELECT COUNT(*) FROM payment_methods'));
     }
 
     /** @return array<string, string> */
