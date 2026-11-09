@@ -6,22 +6,21 @@ namespace Soltec\Modules\Thread\Domain;
 
 use DateTimeImmutable;
 use Soltec\Kernel\Db\Timestamps;
-use Soltec\Kernel\Uuid;
 
 /**
- * Where the previous page of a thread ended: the moment and id of its last entry. The thread is read newest first, so a
- * page is «everything older than this entry», which stays right while new entries arrive. It is opaque to clients; one
- * that is altered or invented is rejected, not guessed at.
+ * Where the previous page of a thread ended: the moment and sequence number of its last entry. The thread is read
+ * newest first, so a page is «everything older than this entry», which stays right while new entries arrive. It is
+ * opaque to clients; one that is altered or invented is rejected, not guessed at.
  */
 final class ThreadCursor
 {
-    public function __construct(public readonly DateTimeImmutable $createdAt, public readonly string $id)
+    public function __construct(public readonly DateTimeImmutable $createdAt, public readonly int $seq)
     {
     }
 
     public function encode(): string
     {
-        $json = json_encode(['t' => Timestamps::toDb($this->createdAt), 'i' => $this->id], JSON_THROW_ON_ERROR);
+        $json = json_encode(['t' => Timestamps::toDb($this->createdAt), 's' => $this->seq], JSON_THROW_ON_ERROR);
 
         return rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
     }
@@ -30,14 +29,14 @@ final class ThreadCursor
     {
         $json = base64_decode(strtr($token, '-_', '+/'), true);
         $data = $json === false ? null : json_decode($json, true);
-        if (!is_array($data) || !is_string($data['t'] ?? null) || !is_string($data['i'] ?? null)) {
+        if (!is_array($data) || !is_string($data['t'] ?? null) || !is_int($data['s'] ?? null)) {
             return null;
         }
         $shapeOfMoment = '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/';
-        if (preg_match($shapeOfMoment, $data['t']) !== 1 || !Uuid::isValid($data['i'])) {
+        if (preg_match($shapeOfMoment, $data['t']) !== 1 || $data['s'] < 1) {
             return null;
         }
 
-        return new self(Timestamps::fromDb($data['t']), $data['i']);
+        return new self(Timestamps::fromDb($data['t']), $data['s']);
     }
 }

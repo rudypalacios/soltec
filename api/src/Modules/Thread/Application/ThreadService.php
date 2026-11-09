@@ -176,6 +176,9 @@ final class ThreadService
             }
             $entry = $this->entries->find($entryId) ?? throw ApiException::notFound();
             $this->assertCanSee($caller, $entry->subjectType, $entry->subjectId);
+            if (!$entry->isComment()) {
+                throw ApiException::notFound();
+            }
             $this->assertAuthor($caller, $entry);
             if (!$entry->isActive()) {
                 return;

@@ -22,6 +22,14 @@ export type { Price, PriceErrorCode, PriceInput } from './domain/price';
 export { percentToRate, rateToPercent } from './domain/rates';
 export { fitWithin, PHOTO_MAX_SIDE, photoMetadataFrom } from './domain/photo';
 export type { ExifReading, PhotoMetadata } from './domain/photo';
+export {
+  fromWireBody,
+  insertMention,
+  mentionQueryAt,
+  splitMentions,
+  toWireBody,
+} from './domain/mentions';
+export type { BodySegment, Mentioned } from './domain/mentions';
 export { newUuidV7 } from './domain/uuid';
 export type { RandomBytes } from './domain/uuid';
 export type { DeviceIdStore } from './ports/deviceIdStore';

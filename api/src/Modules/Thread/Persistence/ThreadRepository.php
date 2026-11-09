@@ -21,7 +21,8 @@ use Soltec\Modules\Thread\Domain\ThreadEntryRecord;
  */
 final class ThreadRepository
 {
-    private const COLUMNS = 'LOWER(HEX(e.id)) AS id, e.subject_type, LOWER(HEX(e.subject_id)) AS subject_id, e.kind, '
+    private const COLUMNS = 'LOWER(HEX(e.id)) AS id, e.seq, e.subject_type, '
+        . 'LOWER(HEX(e.subject_id)) AS subject_id, e.kind, '
         . 'LOWER(HEX(e.author_id)) AS author_id, u.name AS author_name, e.body, e.event_type, e.event_data, '
         . 'e.visibility, e.edited_at, e.created_at, e.updated_at, e.version, e.deleted_at';
 
@@ -60,11 +61,11 @@ final class ThreadRepository
             . 'WHERE e.subject_type = :type AND e.subject_id = UNHEX(:subject) AND e.deleted_at IS NULL';
         $params = ['type' => $type, 'subject' => Uuid::toHex($subjectId), 'limit' => $limit + 1];
         if ($after !== null) {
-            $sql .= ' AND (e.created_at < :at OR (e.created_at = :at AND e.id < UNHEX(:after_id)))';
+            $sql .= ' AND (e.created_at < :at OR (e.created_at = :at AND e.seq < :after_seq))';
             $params['at'] = Timestamps::toDb($after->createdAt);
-            $params['after_id'] = Uuid::toHex($after->id);
+            $params['after_seq'] = $after->seq;
         }
-        $sql .= ' ORDER BY e.created_at DESC, e.id DESC LIMIT :limit';
+        $sql .= ' ORDER BY e.created_at DESC, e.seq DESC LIMIT :limit';
 
         $rows = $this->connection->fetchAllAssociative(
             $sql,
@@ -77,7 +78,7 @@ final class ThreadRepository
 
         return [
             'entries' => $entries,
-            'next' => $more && $last !== null ? new ThreadCursor($last->createdAt, $last->id) : null,
+            'next' => $more && $last !== null ? new ThreadCursor($last->createdAt, $last->seq) : null,
         ];
     }
 
@@ -228,6 +229,7 @@ final class ThreadRepository
         return array_map(
             fn (array $row): ThreadEntryRecord => new ThreadEntryRecord(
                 Uuid::fromHex(Row::string($row, 'id')),
+                Row::int($row, 'seq'),
                 Row::string($row, 'subject_type'),
                 Uuid::fromHex(Row::string($row, 'subject_id')),
                 Row::string($row, 'kind'),

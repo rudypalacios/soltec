@@ -50,6 +50,7 @@ export interface ParameterView {
     | 'segments'
     | 'tax-regimes'
     | 'payment-methods'
+    | 'task-types'
     | 'brands'
     | 'areas'
     | 'product-groups'
@@ -132,6 +133,18 @@ export const PARAMETER_VIEWS: readonly ParameterView[] = [
     newLabel: 'Nueva forma de pago',
     editTitle: 'Editar forma de pago',
     takenMessage: 'Ya hay una forma de pago activa con ese nombre.',
+    hasColor: false,
+    nameMax: 100,
+  },
+  {
+    slug: 'task-types',
+    resource: 'task_types',
+    idParam: 'taskTypeId',
+    label: 'Tipos de tarea',
+    noun: 'tipos de tarea',
+    newLabel: 'Nuevo tipo de tarea',
+    editTitle: 'Editar tipo de tarea',
+    takenMessage: 'Ya hay un tipo de tarea activo con ese nombre.',
     hasColor: false,
     nameMax: 100,
   },

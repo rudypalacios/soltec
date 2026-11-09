@@ -23,6 +23,7 @@ final class ThreadEntryRecord
      */
     public function __construct(
         public readonly string $id,
+        public readonly int $seq,
         public readonly string $subjectType,
         public readonly string $subjectId,
         public readonly string $kind,

@@ -13,6 +13,7 @@ import LocalShippingOutlined from '@mui/icons-material/LocalShippingOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import {
   AppBar,
   Box,
@@ -73,6 +74,12 @@ const NAV_ITEMS: NavItem[] = [
     path: '/departamentos',
     icon: <AccountTreeOutlined />,
     permissions: [{ resource: 'departments', action: 'view' }],
+  },
+  {
+    label: 'Tareas',
+    path: '/tareas',
+    icon: <TaskAltOutlined />,
+    permissions: [{ resource: 'tasks', action: 'view' }],
   },
   {
     label: 'Clientes',

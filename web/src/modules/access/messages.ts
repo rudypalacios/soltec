@@ -12,6 +12,8 @@ const PROBLEM_MESSAGES: Record<string, string> = {
   not_found: 'No se encontró el registro.',
   validation_failed: 'Revisa los campos marcados.',
   conflict: 'Otra persona cambió este registro. Recarga la página e inténtalo de nuevo.',
+  task_closed: 'La tarea ya está cerrada y no se puede cambiar.',
+  task_inactive: 'La tarea está desactivada. Reactívala primero.',
   last_admin: 'Debe quedar al menos un administrador activo.',
   system_role_immutable: 'Los perfiles de sistema no se pueden modificar.',
   department_in_use:

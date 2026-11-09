@@ -21,6 +21,7 @@ const SECTIONS: readonly SectionDefinition[] = [
   { id: 'contacts', label: 'Contactos', resources: ['contacts'] },
   { id: 'suppliers', label: 'Proveedores', resources: ['suppliers'] },
   { id: 'products', label: 'Productos', resources: ['products', 'bundles'] },
+  { id: 'tasks', label: 'Tareas', resources: ['tasks', 'thread_entries'] },
   { id: 'files', label: 'Archivos', resources: ['files'] },
   {
     id: 'settings',
@@ -37,7 +38,14 @@ const SECTIONS: readonly SectionDefinition[] = [
   {
     id: 'parameters',
     label: 'Parámetros',
-    resources: ['contact_types', 'client_statuses', 'segments', 'tax_regimes', 'payment_methods'],
+    resources: [
+      'contact_types',
+      'client_statuses',
+      'segments',
+      'tax_regimes',
+      'payment_methods',
+      'task_types',
+    ],
   },
 ];
 

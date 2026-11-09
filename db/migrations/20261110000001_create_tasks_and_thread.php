@@ -84,10 +84,12 @@ final class CreateTasksAndThread extends AbstractMigration
 
         // `subject_type`/`subject_id` point at the record the thread belongs to; there is no foreign key because the
         // subject can be a task today and a ticket tomorrow. `kind` is `comment` (a person wrote it) or `event` (the
-        // system wrote it: `event_type` and `event_data` say what happened).
+        // system wrote it: `event_type` and `event_data` say what happened). `seq` orders entries written in the same
+        // millisecond, which the time-ordered id does not.
         $this->execute(
             'CREATE TABLE IF NOT EXISTS thread_entries ('
             . 'id BINARY(16) NOT NULL, '
+            . 'seq BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, '
             . 'subject_type VARCHAR(30) NOT NULL, '
             . 'subject_id BINARY(16) NOT NULL, '
             . 'kind VARCHAR(10) NOT NULL, '
@@ -102,7 +104,8 @@ final class CreateTasksAndThread extends AbstractMigration
             . 'version INT UNSIGNED NOT NULL DEFAULT 1, '
             . 'deleted_at DATETIME(3) NULL, '
             . 'PRIMARY KEY (id), '
-            . 'KEY idx_thread_subject (subject_type, subject_id, created_at, id), '
+            . 'UNIQUE KEY uq_thread_seq (seq), '
+            . 'KEY idx_thread_subject (subject_type, subject_id, created_at, seq), '
             . 'KEY idx_thread_author (author_id), '
             . 'KEY idx_thread_updated (updated_at), '
             . 'CONSTRAINT fk_thread_author FOREIGN KEY (author_id) REFERENCES users (id) '

@@ -33,7 +33,7 @@ final class TaskController
         $taskTypeId = $query->nullableUuid('task_type_id');
         $assigneeId = $query->nullableUuid('assignee_id');
         $dueBefore = $query->date('due_before', false);
-        $openOnly = $query->optionalBoolean('open_only');
+        $openOnly = $query->choice('open_only', ['true', 'false'], 'false') === 'true';
         $page = $query->pagination();
         $query->done();
 
