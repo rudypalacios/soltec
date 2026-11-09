@@ -177,19 +177,26 @@ Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal
 
 ## Hito 3 — Tareas, tickets y cierre del legacy
 **Se construye por rebanadas verticales** (como el Hito 2), con ficha de arranque antes de cada una. Sin el volcado del legacy (el usuario no lo tiene, 2026-10-30): la importación, la prueba paralela y el apagado quedan pendientes y el resto sigue. Modelo: `docs/arquitectura/erd/04-tareas-y-tickets.md`. Decisión: ADR-0026.
-- [ ] **3.1 Motor de estados** (ficha aprobada el 2026-10-30; un solo PR con `pre-deploy`)
+- [x] **3.1 Motor de estados** (ficha aprobada el 2026-10-30; fusionado en #79)
   - **Hecho:** tablas `workflow_states` y `workflow_transitions`, siembra de los flujos de tareas (Asignada, Aceptada, En ejecución, Completada, Cerrada, Rechazada) y tickets (Abierto, En atención, Resuelto, Cerrado), `WorkflowEngine` (estado inicial y si se puede pasar de A a B), rutas `/v1/workflows/{task|ticket}/states` y `/transitions`, pantalla «Flujos de estado» en Configuración (crear, editar, siguientes estados, ordenar, desactivar y reactivar), recurso de permisos `workflow_states`
   - **Acordado:** «un estado nuevo aplica solo a registros futuros» = agregarlo no cambia el estado de registros existentes; llegan a él solo por una transición permitida. Los estados de tareas y tickets son flujos separados, con permiso de perfil. Ordenar y elegir siguientes estados se guardan con un botón en un diálogo (no un clic suelto por fila)
-  - **Fuera:** aplicar los estados a tareas y tickets (3.5 y 3.6), notificaciones por transición (3.4), permisos por transición según el perfil, pasar los estados de cliente al motor (atado a P3)
-- [ ] **3.2 Archivos y fotos** (ficha aprobada el 2026-11-09; un solo PR; ADR-0009 y ADR-0027)
+  - **Fuera:** aplicar los estados a tareas y tickets (3.3 y 3.5), notificaciones por transición (3.4), permisos por transición según el perfil, pasar los estados de cliente al motor (atado a P3)
+- [x] **3.2 Archivos y fotos** (ficha aprobada el 2026-11-09; fusionado en #80, con QA en `staging` por API; ADR-0009 y ADR-0027)
   - **Hecho:** tabla `files` y recurso de permisos `files` con alcance (el dueño es quien sube), `POST /v1/files` (multipart: foto, `id` del cliente y `metadata`), `GET /v1/files/{id}`, `/content?size=normal|thumbnail` con `ETag` y `POST /v1/files/{id}/deactivate`; dos WebP (1600 y 320 px) a `storage/files/`; `WebpImage` en el `Kernel` (el logo lo usa también); en `shared/` el puerto `PhotoPreparer`, `newUuidV7`, `fitWithin` y `photoMetadataFrom`; en la web `PhotoUploader`, `useUploadPhoto` y `useFileImage`, con el adaptador del navegador (canvas y `exifr`)
-  - **Acordado:** solo fotos por ahora (documentos y PDF cuando un módulo los necesite); permiso propio `files`; sin pantalla hasta que tareas y tickets (3.5 y 3.6) adopten fotos, así que el QA en `staging` es por API
-  - **Pendiente:** que el registro que adopte fotos (3.5, 3.6) las haga visibles a quien ve el registro (ADR-0027); limpiar fotos subidas que nadie adoptó; ubicación del dispositivo cuando la foto no trae GPS (P6, Hito 8); esconder el GPS al usuario externo (Hito 9)
+  - **Acordado:** solo fotos por ahora (documentos y PDF cuando un módulo los necesite); permiso propio `files`; sin pantalla hasta que las tareas y los tickets (3.3 y 3.5) adopten fotos, así que el QA en `staging` es por API
+  - **Pendiente:** que el registro que adopte fotos (3.3, 3.5) las haga visibles a quien ve el registro (ADR-0027); limpiar fotos subidas que nadie adoptó; ubicación del dispositivo cuando la foto no trae GPS (P6, Hito 8); esconder el GPS al usuario externo (Hito 9)
   - **Fuera:** adjuntar a registros, documentos, rotar por EXIF fuera del navegador
-- [ ] **3.3 Hilo de actividad**
-- [ ] **3.4 Notificaciones y endpoint de actualizaciones (polling)** (medir los límites de envío del SMTP del hosting)
-- [ ] **3.5 Tareas**
-- [ ] **3.6 Tickets mínimos**
+- [ ] **3.3 Tareas con hilo de actividad** (antes 3.3 «Hilo» y 3.5 «Tareas»; **la ficha de arranque está pendiente**)
+  - **Por qué juntas (decisión del usuario, 2026-11-09):** el hilo necesita un registro donde vivir y hoy no hay tareas ni tickets; sin uno no tiene pantalla ni se puede probar en `staging`. No se usa Clientes como anfitrión: un hilo de clientes no está en los requerimientos. La dependencia que el mapa de módulos pone entre tareas y notificaciones es de avisos, y se conecta en 3.4 sin rehacer nada.
+  - **Propuesta de diseño del hilo, a confirmar en la ficha** (el usuario respondió solo la pregunta de orden; faltan las otras dos):
+    - Tabla `thread_entries`: registro al que pertenece (tipo e id), autor, texto, bandera interno/externo (hoy todos internos; el portal del Hito 9 solo verá los externos), fotos adjuntas y dos clases de entrada: comentario de una persona, y evento que escribe el sistema (por ejemplo el cambio de estado, con estado anterior y nuevo). Los eventos no se editan.
+    - Un puerto `ThreadSubject`: cada tipo de registro dice si alguien puede verlo (tareas primero, tickets después). Ver el hilo exige ver el registro; comentar exige además el permiso `thread_entries.create`; un registro fuera del alcance responde 404.
+    - **A confirmar:** editar y desactivar un comentario solo lo hace su **autor**, sin moderación de un administrador por ahora (última escritura gana); y las **menciones** se eligen de una lista de personas (no escribiendo `@`), guardadas para que 3.4 las notifique.
+    - **Fotos en un comentario:** se adjuntan las que subió quien comenta, y desde ese momento quien puede ver el registro ve las fotos aunque no las haya subido: el puerto de acceso que dejó pendiente el ADR-0027 (`FileAccessGrant`, que implementa el módulo del hilo). Lectura por cursor, las más recientes primero; la pantalla refresca sola cada 30 s (ADR-0005).
+    - Recurso de permisos `thread_entries` (ver, crear, editar, desactivar) y, en la web, las fotos usan `PhotoUploader` (ya hecho en 3.2).
+  - **Tareas** (requerimientos 2.4 y CU004): tipos (ventas, compras, administrativa, mantenimiento, emergencia, proyecto, cobro, pago, servicios), dueño distinto del asignado, flujo Asignada → Aceptada → En ejecución → Completada → Cerrada (con Rechazada, que pide otro vencimiento), vencimiento y estado del motor de 3.1. Los tipos y qué más lleva una tarea se confirman en la ficha.
+- [ ] **3.4 Notificaciones y endpoint de actualizaciones (polling)** (medir los límites de envío del SMTP del hosting; conecta los avisos de asignación y de menciones de 3.3)
+- [ ] **3.5 Tickets mínimos** (antes 3.6; cliente, asignado, estado, descripción e hilo, reutilizando el hilo de 3.3)
 - [ ] **Importación del legacy, prueba paralela y apagado** (pendiente del volcado; P7, P20 y P23 sin respuesta)
 - **Fuera:** campos extendidos del ticket (equipo, contrato, SLA, prioridad), chat libre, offline.
 
