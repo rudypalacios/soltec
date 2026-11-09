@@ -7,9 +7,9 @@ Todo PR iba a `main` con squash y cada fusión desplegaba a producción. No hab�
 
 ## Decisión
 - **`main` = producción; `develop` = integración** y rama por defecto de GitHub.
-- **PR de trabajo:** salen de `develop`, van a `develop` con *squash and merge*. Corren las pruebas, el E2E de lo nuevo, y con `pre-deploy` despliegan a `staging` para el QA **antes** de fusionar.
+- **PR de trabajo:** salen de `develop`, van a `develop` con *squash and merge*. *(Desde el 2026-11-09, ADR-0028: las pruebas se corren en la sesión y un PR no despliega nada; `staging` se despliega a mano con *Run workflow* sobre la rama, si se quiere probar allí antes de fusionar.)*
 - **Release:** PR `develop → main` con **commit de fusión**, nunca squash ni rebase. Al caer en `main` despliega a producción, como hoy.
-- Fusionar en `develop` no despliega: corre el E2E completo.
+- Fusionar en `develop` no despliega ni corre nada.
 
 ## Alternativas descartadas
 - **Squash también en el release:** `main` quedaría con un commit nuevo que `develop` no contiene; los historiales divergen y el siguiente release da conflictos en lo ya publicado.

@@ -8,13 +8,13 @@ El workflow **Deploy** se dispara solo:
 
 | Evento | Qué hace |
 |---|---|
-| Cualquier PR (al abrirlo y con cada push) | Corre las pruebas. **No despliega.** Los PR de trabajo van contra `develop` ([ADR-0021](adr/0021-flujo-de-ramas-con-develop.md)); en ellos también corre el E2E ([ADR-0020](adr/0020-pruebas-e2e.md)). |
-| PR con la etiqueta `pre-deploy` | Corre las pruebas y despliega en `staging` (`test.musicos-catolicos.com`), con cada push mientras la tenga. Al ponerle la etiqueta despliega en el acto. |
-| `main` (el PR de release `develop → main`, con commit de fusión) | Corre las pruebas y despliega en `production` (`soltec.musicos-catolicos.com`). |
+| Un PR (al abrirlo, con cada push o con una etiqueta) | **No corre nada.** Las pruebas se corren en la sesión antes del PR ([ADR-0028](adr/0028-pruebas-en-la-sesion-no-en-github.md)). |
+| Fusionar un PR en `develop` | **No despliega ni corre nada.** |
+| `main` (el PR de release `develop → main`, con commit de fusión) | Despliega en `production` (`soltec.musicos-catolicos.com`). Es lo único que corre solo. |
 
-La etiqueta la pone quien revisa, así decide qué se prueba en `staging`: un cambio solo de texto no necesita desplegarse. Una rama sin PR no dispara nada. Fusionar un PR en `develop` no despliega: solo corre el E2E completo. Un PR con conflictos con su base tampoco (GitHub no lo ejecuta hasta resolverlos).
+Una rama sin PR no dispara nada.
 
-También puede lanzarse a mano (Actions → Deploy → *Run workflow*): sobre una rama distinta de `main` despliega en `staging` sin pedir la etiqueta, y desde `main` vuelve a desplegar producción. `staging` es compartido: tiene el código del último PR que se desplegó, y las migraciones de una rama sin fusionar quedan aplicadas en la base de `staging`. Por cada despliegue:
+A mano (Actions → Deploy → *Run workflow*): sobre una rama distinta de `main` despliega en `staging` (`test.musicos-catolicos.com`), que es la forma de probar un cambio allí antes de fusionarlo; desde `main` vuelve a desplegar producción. `staging` es compartido: tiene el código del último PR que se desplegó, y las migraciones de una rama sin fusionar quedan aplicadas en la base de `staging`. Por cada despliegue:
 
 1. Corre las pruebas; si fallan, no se despliega. Son las únicas pruebas del CI: sus resultados aparecen también en el PR.
 2. Compila la API (`composer install --no-dev`) y la web (`npm run build`).
@@ -138,7 +138,7 @@ Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). No e
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.
-2. Abre un PR contra `develop` y ponle la etiqueta `pre-deploy` (o lanza *Actions → Deploy → Run workflow* sobre la rama): despliega a `staging`. La etiqueta debe existir en el repositorio; si no, créala en *Issues → Labels*.
+2. Lanza *Actions → Deploy → Run workflow* sobre una rama distinta de `main`: despliega a `staging`.
 3. En el log, el paso **Apply migrations** (el primero) responde 404 y se tolera; el segundo debe responder `200` con la migración aplicada.
 4. El paso **Smoke test** debe terminar en verde y mostrar el diagnóstico.
 5. Abre `https://test.musicos-catolicos.com`: debe verse la pantalla vacía con «El servicio está en línea».

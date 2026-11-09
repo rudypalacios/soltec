@@ -8,7 +8,7 @@ El plan gratuito de GitHub limita los minutos de Actions por mes. El CI (pruebas
 ## Decisión
 - **Antes de crear un PR, Claude corre las comprobaciones completas en su servidor** (`CLAUDE.md`, sección 7): API (`composer lint`, `analyse` y `test`), web y `shared` (lint, contrato, tipos y pruebas), y el E2E contra el servidor desechable local. Ya no corren como *checks* al subir a GitHub.
 - `tests.yml` y `e2e.yml` quedan **solo manuales** (*Run workflow*): sirven para repetir las comprobaciones en los *runners* de GitHub cuando se quiera, por ejemplo antes de un release. `e2e.yml` pide qué escenarios correr (`all` o `changed`).
-- `deploy.yml` **solo despliega**: a `staging` con la etiqueta `pre-deploy`, y a `production` con el push a `main`. Ya no ejecuta las pruebas antes de desplegar.
+- `deploy.yml` **solo despliega, y solo corre al fusionar en `main`** (el release `develop → main`) o a mano: un PR no ejecuta nada, fusionar en `develop` tampoco, y la etiqueta `pre-deploy` ya no hace nada. Ya no ejecuta las pruebas antes de desplegar. `staging` se despliega a mano (*Run workflow* sobre la rama que se quiera probar), decisión del usuario para gastar minutos solo en producción.
 - El cuerpo del PR dice en una línea que se corrieron las comprobaciones completas en la sesión, y lo que no se pudo comprobar.
 
 ## Alternativas descartadas
