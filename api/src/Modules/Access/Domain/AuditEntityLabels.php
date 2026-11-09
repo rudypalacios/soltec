@@ -34,6 +34,7 @@ final class AuditEntityLabels
         'products',
         'bundles',
         'workflow_states',
+        'task_types',
     ];
 
     /** Longest label stored: the column's width. */

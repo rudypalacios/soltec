@@ -36,7 +36,7 @@ final class ResourceScopedMigrationTest extends AccessTestCase
 
         self::assertSame(['view'], $this->actionsOf($role, 'departments'));
         self::assertSame(
-            ['audit_logs', 'clients', 'contacts', 'files', 'users'],
+            ['audit_logs', 'clients', 'contacts', 'files', 'tasks', 'users'],
             $this->connection->fetchFirstColumn('SELECT code FROM resources WHERE scoped = 1 ORDER BY code'),
         );
     }

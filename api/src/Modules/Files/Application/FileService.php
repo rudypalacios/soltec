@@ -32,12 +32,22 @@ final class FileService
         private readonly FileRepository $files,
         private readonly FileStorage $storage,
         private readonly AuditLogger $audit,
+        private readonly FileAccessGrant $grant,
     ) {
     }
 
+    /**
+     * A photo is reached through the data scope of `files` (its uploader) or because a record the caller can see
+     * carries it (ADR-0027).
+     */
     public function get(CurrentUser $caller, string $id): FileRecord
     {
-        return $this->files->find($id, $caller) ?? throw ApiException::notFound();
+        $file = $this->files->find($id, $caller);
+        if ($file === null && $this->grant->mayRead($caller, $id)) {
+            $file = $this->files->findUnscoped($id);
+        }
+
+        return $file ?? throw ApiException::notFound();
     }
 
     /**
@@ -148,7 +158,8 @@ final class FileService
     public function deactivate(CurrentUser $caller, ActorContext $actor, string $id): FileRecord
     {
         $this->connection->transactional(function () use ($caller, $actor, $id): void {
-            $file = $this->get($caller, $id);
+            // Only through the data scope: a record that shows the photo does not let its readers deactivate it.
+            $file = $this->files->find($id, $caller) ?? throw ApiException::notFound();
             if (!$file->isActive() || !$this->files->lock($id)) {
                 return;
             }

@@ -25,10 +25,14 @@ use Soltec\Kernel\Mail\PhpMailerTransport;
 use Soltec\Modules\Access\Deploy\AccessRequirements;
 use Soltec\Modules\Access\Deploy\AdminFromEnvStep;
 use Soltec\Modules\Access\Persistence\PermissionLoader;
+use Soltec\Modules\Files\Application\FileAccessGrant;
 use Soltec\Modules\Files\Application\FileStorage;
 use Soltec\Modules\Files\Persistence\LocalFileStorage;
 use Soltec\Modules\Products\Application\ProductDeactivationCascade;
 use Soltec\Modules\Suppliers\Application\DeactivationCascade;
+use Soltec\Modules\Tasks\Application\TaskThreadSubject;
+use Soltec\Modules\Thread\Application\ThreadFileAccessGrant;
+use Soltec\Modules\Thread\Domain\ThreadSubjects;
 
 use function DI\autowire;
 use function DI\factory;
@@ -89,6 +93,10 @@ final class Bootstrap
                 MailTransport::class => autowire(PhpMailerTransport::class),
                 DeactivationCascade::class => autowire(ProductDeactivationCascade::class),
                 FileStorage::class => autowire(LocalFileStorage::class),
+                FileAccessGrant::class => autowire(ThreadFileAccessGrant::class),
+                ThreadSubjects::class => factory(
+                    static fn (TaskThreadSubject $tasks): ThreadSubjects => new ThreadSubjects([$tasks]),
+                ),
                 Connection::class => factory(
                     static fn (Config $settings): Connection => ConnectionFactory::create($settings),
                 ),

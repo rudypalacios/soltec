@@ -1,0 +1,992 @@
+paths:
+  /v1/task-types/options:
+    get:
+      operationId: listTaskTypeOptions
+      summary: List the active task types to choose from.
+      description:
+        For the selector of the forms that use this list (the form of a task). It returns only the id and the
+        name of the active values, sorted by name. Any internal session may read it, so every form can fill its
+        selectors without any access to this section (ADR-0024). The complete list, with the inactive values, still
+        needs `task_types.view`.
+      tags:
+        - Catalog parameters
+      x-permission: internal
+      responses:
+        '200':
+          description: The active values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParameterOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/task-types:
+    get:
+      operationId: listTaskTypes
+      summary: List task types.
+      description:
+        Inactive values are hidden unless status says otherwise. Sorted by name. A parameter has no data scope; whoever
+        may view it sees all its values.
+      tags:
+        - Catalog parameters
+      x-permission: task_types.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+      responses:
+        '200':
+          description: A page of task types.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTypePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createTaskType
+      summary: Create a task type.
+      description: The name must be unique among active values (422 `taken`).
+      tags:
+        - Catalog parameters
+      x-permission: task_types.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTypeCreate'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/task-types/{taskTypeId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskTypeId'
+    get:
+      operationId: getTaskType
+      summary: Get a task type by id.
+      description: Returns the value, active or not.
+      tags:
+        - Catalog parameters
+      x-permission: task_types.view
+      responses:
+        '200':
+          description: The task type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateTaskType
+      summary: Edit a task type.
+      description: A stale version answers 409 `conflict`; a name used by another active value, 422 `taken`.
+      tags:
+        - Catalog parameters
+      x-permission: task_types.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTypeUpdate'
+      responses:
+        '200':
+          description: The updated task type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/task-types/{taskTypeId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaskTypeId'
+    post:
+      operationId: deactivateTaskType
+      summary: Deactivate a task type.
+      description:
+        Logical deactivation. It never blocks and drags nothing along (ADR-0023). The records that use the value keep
+        it, and forms offer only active values plus the one a record already had. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: task_types.deactivate
+      responses:
+        '200':
+          description: The deactivated task type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/task-types/{taskTypeId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaskTypeId'
+    post:
+      operationId: reactivateTaskType
+      summary: Reactivate a task type.
+      description: Fails with 422 `taken` if the name is now used by an active value. Idempotent.
+      tags:
+        - Catalog parameters
+      x-permission: task_types.deactivate
+      responses:
+        '200':
+          description: The reactivated task type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks:
+    get:
+      operationId: listTasks
+      summary: List the tasks the caller reaches.
+      description:
+        A task is reached by its owner, its assignee and whoever the data scope of `tasks` allows; the scope looks at
+        both people, so `own` lists the tasks the caller asked for and the ones they have to do, `team` those of the
+        caller's team and `all` every one. Inactive tasks are hidden unless status says otherwise. Sorted by due date.
+        `q` searches the title. `relation` narrows to the tasks the caller owns or is assigned. `due_before` keeps the
+        tasks due before a date, and with `open_only` it lists the overdue ones.
+      tags:
+        - Tasks
+      x-permission: tasks.view
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - name: relation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [any, owned, assigned]
+            default: any
+        - name: state_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: task_type_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: assignee_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: due_before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: open_only
+          in: query
+          required: false
+          description: Leaves out the tasks that are in a final state.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: A page of tasks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: createTask
+      summary: Create a task.
+      description:
+        The caller becomes the owner and the task starts in the initial state of the `task` flow. The assignee must be
+        an active internal user other than the owner (422 `same_as_owner`, `not_found`) and the type an active one
+        (422 `not_found`). The due date is a calendar date; the hour is not kept. The thread starts with a `created`
+        event.
+      tags:
+        - Tasks
+      x-permission: tasks.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/assignee-options:
+    get:
+      operationId: listTaskAssigneeOptions
+      summary: List the people a task can be assigned to.
+      description:
+        Any active internal user, by name; `q` filters by name or email. Open to any internal session, so a form can
+        fill its selector without access to the users section (ADR-0024).
+      tags:
+        - Tasks
+      x-permission: internal
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The people.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: getTask
+      summary: Get a task.
+      description:
+        The field `next_states` lists the states the caller may move the task to now, meaning the ones the flow links from its state,
+        minus the closing step when the caller is not the owner.
+      tags:
+        - Tasks
+      x-permission: tasks.view
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateTask
+      summary: Change a task.
+      description:
+        Replaces title, description, type, assignee and due date. A new assignee and a new due date each leave an event
+        in the thread. A closed task (409 `task_closed`) or an inactive one (409 `task_inactive`) cannot be changed.
+        A stale `version` is 409 `conflict`.
+      tags:
+        - Tasks
+      x-permission: tasks.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    post:
+      operationId: transitionTask
+      summary: Move a task to another state of its flow.
+      description:
+        The destination must be linked from the current state (422 `transition_not_allowed` on `state_id`). The
+        assignee or the owner may move the task; closing it, or reopening a closed one, is the owner's alone (403
+        `forbidden` otherwise). `reason` and `proposed_due_date` are what an assignee who cannot make the date writes
+        when sending the task back; the proposed date stays on the task until the next move. The owner may send
+        `accept_proposed_due_date` to make it the due date. The change goes to the thread as a `state_changed` event.
+      tags:
+        - Tasks
+      x-permission: tasks.view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransition'
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    post:
+      operationId: deactivateTask
+      summary: Deactivate a task.
+      description: Idempotent. Nothing is deleted; the thread stays.
+      tags:
+        - Tasks
+      x-permission: tasks.deactivate
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}/reactivate:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    post:
+      operationId: reactivateTask
+      summary: Reactivate a task.
+      description: Idempotent.
+      tags:
+        - Tasks
+      x-permission: tasks.deactivate
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}/thread:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: listTaskThread
+      summary: Read the thread of a task, newest first.
+      description:
+        Needs to see the task; one outside the caller's reach is 404. Read with a cursor, not with pages, so send back
+        `meta.next_cursor` as `cursor` for the next older entries; it is null on the last page. Only active entries
+        are listed. Entries are comments written by people and events written by the system (`created`,
+        `state_changed`, `assignee_changed`, `due_date_changed`). Photos are listed by id; each is read with
+        `GET /v1/files/{id}/content`, which any reader of the task may do.
+      tags:
+        - Thread
+      x-permission: thread_entries.view
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        '200':
+          description: A page of the thread.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    post:
+      operationId: commentOnTask
+      summary: Write a comment on a task.
+      description:
+        The text may carry mentions written as `@[user-id]`; each must be an active internal user who can see the task
+        (422 `invalid_mention` on `body`). Up to five photos the caller uploaded may be attached (`file_ids`, with 422
+        `too_many` or `not_found`); from then on whoever sees the task sees them. A comment needs text or a photo. The
+        optional `id` (a UUID v7 chosen by the client) makes a retry safe, because the same id with the same comment answers
+        200 with what was stored, any other use of it is 409.
+      tags:
+        - Thread
+      x-permission: thread_entries.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInput'
+      responses:
+        '200':
+          description: The comment was already stored (a retry).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadEntry'
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/tasks/{taskId}/mention-options:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: listTaskMentionOptions
+      summary: List the people a comment on the task can mention.
+      description:
+        Active internal users who can see the task, filtered by `q` (name or email) as the person types after `@`.
+        Everyone listed is accepted by the comment; nobody else is.
+      tags:
+        - Thread
+      x-permission: thread_entries.create
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: The people.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonOptions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/thread-entries/{entryId}:
+    parameters:
+      - $ref: '#/components/parameters/ThreadEntryId'
+    patch:
+      operationId: editThreadEntry
+      summary: Change the text of a comment.
+      description:
+        Only its author, and only a comment that is active, on a task the author still sees (403 `forbidden` for
+        anyone else; events are 404). The entry is marked as edited and the audit log keeps the previous text. A stale
+        `version` is 409 `conflict`.
+      tags:
+        - Thread
+      x-permission: thread_entries.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentEdit'
+      responses:
+        '200':
+          description: The comment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/thread-entries/{entryId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/ThreadEntryId'
+    post:
+      operationId: deactivateThreadEntry
+      summary: Hide a comment from the thread.
+      description: Only its author. Idempotent. The text stays in the audit log; nothing is deleted.
+      tags:
+        - Thread
+      x-permission: thread_entries.deactivate
+      responses:
+        '200':
+          description: The comment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    TaskTypeId:
+      name: taskTypeId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ThreadEntryId:
+      name: entryId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    TaskType:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - name
+            - is_active
+          properties:
+            name:
+              type: string
+            is_active:
+              type: boolean
+    TaskTypePage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskType'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    TaskTypeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    TaskTypeUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 100
+    TaskFields:
+      type: object
+      required:
+        - title
+        - description
+        - task_type_id
+        - assignee_id
+        - due_date
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 150
+        description:
+          type: [string, 'null']
+          maxLength: 5000
+        task_type_id:
+          $ref: '#/components/schemas/Uuid'
+        assignee_id:
+          $ref: '#/components/schemas/Uuid'
+        due_date:
+          type: string
+          format: date
+          description: A calendar date, `YYYY-MM-DD`. The hour is not kept.
+    TaskInput:
+      $ref: '#/components/schemas/TaskFields'
+    TaskUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - $ref: '#/components/schemas/TaskFields'
+    TaskState:
+      type: object
+      required:
+        - id
+        - name
+        - color
+        - is_terminal
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        color:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+        is_terminal:
+          type: boolean
+    NextState:
+      type: object
+      required:
+        - id
+        - name
+        - color
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        color:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+    Task:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - title
+            - description
+            - task_type
+            - owner
+            - assignee
+            - due_date
+            - proposed_due_date
+            - state
+            - is_active
+          properties:
+            title:
+              type: string
+            description:
+              type: [string, 'null']
+            task_type:
+              $ref: '#/components/schemas/NamedRef'
+            owner:
+              $ref: '#/components/schemas/NamedRef'
+            assignee:
+              $ref: '#/components/schemas/NamedRef'
+            due_date:
+              type: string
+              format: date
+            proposed_due_date:
+              type: [string, 'null']
+              format: date
+              description: The date the assignee proposed when sending the task back, until the next move.
+            state:
+              $ref: '#/components/schemas/TaskState'
+            is_active:
+              type: boolean
+            next_states:
+              type: array
+              description: Only when one task is read. The states the caller may move it to now.
+              items:
+                $ref: '#/components/schemas/NextState'
+    TaskPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    TaskTransition:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - state_id
+          properties:
+            state_id:
+              $ref: '#/components/schemas/Uuid'
+            reason:
+              type: [string, 'null']
+              maxLength: 1000
+            proposed_due_date:
+              type: [string, 'null']
+              format: date
+            accept_proposed_due_date:
+              type: boolean
+              default: false
+    PersonOptions:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+    CommentInput:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        body:
+          type: string
+          maxLength: 5000
+          description: Plain text. A mention is written `@[user-id]`.
+        file_ids:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/Uuid'
+    CommentEdit:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          properties:
+            body:
+              type: string
+              maxLength: 5000
+    ThreadEvent:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+          enum: [created, state_changed, assignee_changed, due_date_changed]
+        data:
+          type: [object, 'null']
+          additionalProperties: true
+          description: |
+            `created`: `assignee` and `due_date`. `state_changed`: `from` and `to` (id and name), `reason` and
+            `proposed_due_date`. `assignee_changed`: `from` and `to` (id and name). `due_date_changed`: `from` and `to`.
+    ThreadEntry:
+      type: object
+      required:
+        - id
+        - kind
+        - author
+        - body
+        - event
+        - visibility
+        - mentions
+        - file_ids
+        - is_edited
+        - is_active
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          type: string
+          enum: [comment, event]
+        author:
+          $ref: '#/components/schemas/NamedRef'
+        body:
+          type: [string, 'null']
+        event:
+          oneOf:
+            - $ref: '#/components/schemas/ThreadEvent'
+            - type: 'null'
+        visibility:
+          type: string
+          enum: [internal, external]
+          description: Every entry is internal for now; the client portal will read only the external ones.
+        mentions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedRef'
+        file_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+        is_edited:
+          type: boolean
+        is_active:
+          type: boolean
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    ThreadPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThreadEntry'
+        meta:
+          type: object
+          required:
+            - limit
+            - next_cursor
+          properties:
+            limit:
+              type: integer
+            next_cursor:
+              type: [string, 'null']

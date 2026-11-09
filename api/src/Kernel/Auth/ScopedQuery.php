@@ -39,6 +39,41 @@ final class ScopedQuery
     }
 
     /**
+     * The same filter for rows that count as someone's through more than one column (a task is its owner's and its
+     * assignee's): the row is reached when any of the columns names the user (`own`) or a member of their team
+     * (`team`).
+     *
+     * @param non-empty-list<string> $ownerColumns columns with a user id, such as `t.owner_id`
+     */
+    public static function restrictAny(
+        QueryBuilder $query,
+        CurrentUser $user,
+        string $resource,
+        array $ownerColumns,
+    ): void {
+        $members = match ($user->scopeFor($resource)) {
+            DataScope::All => null,
+            DataScope::Own => [$user->id],
+            DataScope::Team => self::teamOf($user),
+            DataScope::Client => [],
+        };
+        if ($members === null) {
+            return;
+        }
+        if ($members === []) {
+            $query->andWhere('1 = 0');
+
+            return;
+        }
+
+        $list = self::placeholders($query, $members, 'scope_any');
+        $query->andWhere('(' . implode(' OR ', array_map(
+            static fn (string $column): string => sprintf('%s IN (%s)', $column, $list),
+            $ownerColumns,
+        )) . ')');
+    }
+
+    /**
      * The same filter for rows that have several owners, kept in a link table (the advisers of a client, ADR-0025):
      * the row is reached when any of its owners is the user (`own`) or a member of their team (`team`).
      *

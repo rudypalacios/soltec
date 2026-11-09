@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Soltec\Modules\Workflow\Application;
 
 use Soltec\Modules\Workflow\Domain\WorkflowCode;
+use Soltec\Modules\Workflow\Domain\WorkflowStateRecord;
 use Soltec\Modules\Workflow\Persistence\WorkflowRepository;
 
 /**
@@ -28,5 +29,29 @@ final class WorkflowEngine
     public function canTransition(WorkflowCode $code, string $fromStateId, string $toStateId): bool
     {
         return $this->workflows->transitionAllowed($code, $fromStateId, $toStateId);
+    }
+
+    /** A state of the flow, active or not (a record keeps showing the state it is in after it is deactivated). */
+    public function state(WorkflowCode $code, string $stateId): ?WorkflowStateRecord
+    {
+        return $this->workflows->find($code, $stateId);
+    }
+
+    /**
+     * The active states a record in `$fromStateId` may move to, in the order of the flow.
+     *
+     * @return list<WorkflowStateRecord>
+     */
+    public function nextStates(WorkflowCode $code, string $fromStateId): array
+    {
+        $from = $this->workflows->find($code, $fromStateId);
+        if ($from === null) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->workflows->list($code, 'active'),
+            static fn (WorkflowStateRecord $state): bool => in_array($state->id, $from->transitionsTo, true),
+        ));
     }
 }

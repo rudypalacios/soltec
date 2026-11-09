@@ -36,3 +36,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0026](0026-flujos-de-estado.md) | Flujos de estado como datos, flujos como código | Aceptada |
 | [0027](0027-fotos-subidas-y-su-acceso.md) | Fotos subidas: quién las ve y cómo viajan | Aceptada |
 | [0028](0028-pruebas-en-la-sesion-no-en-github.md) | Las pruebas corren en la sesión, no en GitHub | Aceptada |
+| [0029](0029-tareas-e-hilo-de-actividad.md) | Tareas e hilo de actividad | Aceptada |

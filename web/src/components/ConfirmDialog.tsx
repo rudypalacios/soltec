@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Button,
   Dialog,
@@ -15,6 +16,8 @@ interface ConfirmDialogProps {
   /** The action is hard to undo (deactivate): the confirm button is red. Otherwise it is the primary blue. */
   destructive?: boolean;
   busy?: boolean;
+  /** Fields the action needs (a reason), shown under the message. */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,6 +30,7 @@ export function ConfirmDialog({
   confirmLabel,
   destructive = false,
   busy,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -41,6 +45,7 @@ export function ConfirmDialog({
       <DialogTitle id="confirm-title">{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
+        {children}
       </DialogContent>
       <DialogActions>
         <Button variant="outlined" color="inherit" onClick={onCancel} disabled={busy}>

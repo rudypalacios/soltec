@@ -52,6 +52,9 @@ import { CatalogPage } from '../modules/catalog/CatalogPage';
 import { ParametersPage } from '../modules/parameters/ParametersPage';
 import { SecurityPage } from '../modules/settings/SecurityPage';
 import { SequencesPage } from '../modules/settings/SequencesPage';
+import { TaskCreatePage, TaskEditPage } from '../modules/tasks/TaskFormPage';
+import { TaskDetailPage } from '../modules/tasks/TaskDetailPage';
+import { TasksPage } from '../modules/tasks/TasksPage';
 import { WorkflowsPage } from '../modules/workflows/WorkflowsPage';
 import { useBranding } from '../modules/settings/useSettings';
 import { SettingsIndex, SettingsLayout } from '../modules/settings/SettingsLayout';
@@ -134,6 +137,38 @@ export function App() {
           element={
             <RequirePermission resource="departments" action="view">
               <DepartmentsPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="tareas"
+          element={
+            <RequirePermission resource="tasks" action="view">
+              <TasksPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="tareas/nueva"
+          element={
+            <RequirePermission resource="tasks" action="create">
+              <TaskCreatePage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="tareas/:taskId"
+          element={
+            <RequirePermission resource="tasks" action="view">
+              <TaskDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="tareas/:taskId/editar"
+          element={
+            <RequirePermission resource="tasks" action="edit">
+              <TaskEditPage />
             </RequirePermission>
           }
         />

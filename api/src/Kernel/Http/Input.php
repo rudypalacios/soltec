@@ -231,6 +231,26 @@ final class Input
         return $this->reject($field, 'invalid');
     }
 
+    /**
+     * A calendar date as `YYYY-MM-DD` (no time), returned as that same text. Null when absent or empty and optional.
+     * A date that does not exist, such as February 30th, is `invalid`.
+     */
+    public function date(string $field, bool $required = true): ?string
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null || $value === '') {
+            return $this->missing($field, $required);
+        }
+        if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('UTC'));
+            if ($parsed !== false && $parsed->format('Y-m-d') === $value) {
+                return $value;
+            }
+        }
+
+        return $this->reject($field, 'invalid');
+    }
+
     /** A UUID that must be there (a required reference). */
     public function requiredUuid(string $field): ?string
     {

@@ -36,10 +36,10 @@ abstract class AccessTestCase extends IntegrationTestCase
     protected const PASSWORD = 'correct horse battery staple';
 
     /** The rows of `role_permissions` the migrations leave (the `admin` role's); a migration that grants more raises it. */
-    protected const SEEDED_PERMISSION_ROWS = 93;
+    protected const SEEDED_PERMISSION_ROWS = 105;
 
     /** The rows of `role_scopes` the migrations leave: the `admin` role's scope on each resource with an owner. */
-    protected const SEEDED_SCOPE_ROWS = 12;
+    protected const SEEDED_SCOPE_ROWS = 13;
 
     protected FixedClock $clock;
     protected FakeMailTransport $mail;
@@ -355,7 +355,8 @@ abstract class AccessTestCase extends IntegrationTestCase
         // The hierarchy points users at users: unlink it before deleting them.
         $this->connection->executeStatement('UPDATE users SET manager_id = NULL');
         $tables = [
-            'audit_logs', 'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'client_contacts',
+            'thread_entry_files', 'thread_entry_mentions', 'thread_entries', 'tasks', 'files', 'audit_logs',
+            'account_tokens', 'refresh_tokens', 'devices', 'user_roles', 'client_contacts',
             'client_sellers', 'client_addresses', 'client_billing_profiles', 'contacts', 'users', 'clients',
             'departments', 'bundle_items', 'bundles', 'products', 'supplier_contacts', 'supplier_addresses',
             'suppliers',
@@ -394,6 +395,10 @@ abstract class AccessTestCase extends IntegrationTestCase
             'brands' => [],
             'areas' => ['Aire Acondicionado', 'Electricidad', 'Cableado', 'Equipo', 'Otros'],
             'unit_categories' => ['Cantidad', 'Longitud', 'Peso', 'Volumen', 'Superficie'],
+            'task_types' => [
+                'Ventas', 'Compras', 'Administrativa', 'Mantenimiento', 'Emergencia', 'Proyecto', 'Cobro', 'Pago',
+                'Servicios',
+            ],
         ];
         $units = [
             'Cantidad' => ['Unidad', 'Par', 'Caja', 'Rollo'],
