@@ -32,6 +32,8 @@ use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Products\Http\BundleController;
 use Soltec\Modules\Products\Http\ProductController;
 use Soltec\Modules\Settings\Http\BrandingController;
+use Soltec\Modules\Tasks\Http\TaskController;
+use Soltec\Modules\Thread\Http\ThreadController;
 use Soltec\Modules\Suppliers\Http\SupplierController;
 use Soltec\Modules\Settings\Http\CompanyController;
 use Soltec\Modules\Settings\Http\FinancialSettingsController;
@@ -261,6 +263,32 @@ return static function (App $app): void {
             ->setArgument('permission', 'bundles.deactivate');
         $group->post('/bundles/{bundleId}/reactivate', [BundleController::class, 'reactivate'])
             ->setArgument('permission', 'bundles.deactivate');
+
+        // Tasks: the data scope looks at both the owner and the assignee. Moving a task needs only `tasks.view`:
+        // the service decides whether the caller is the person whose turn it is. The fixed `assignee-options` comes
+        // before `{taskId}`. The thread hangs from the task (`subject`), and its entries have their own routes.
+        $group->get('/tasks', [TaskController::class, 'list'])->setArgument('permission', 'tasks.view');
+        $group->get('/tasks/assignee-options', [TaskController::class, 'assigneeOptions'])
+            ->setArgument('permission', 'internal');
+        $group->post('/tasks', [TaskController::class, 'create'])->setArgument('permission', 'tasks.create');
+        $group->get('/tasks/{taskId}', [TaskController::class, 'show'])->setArgument('permission', 'tasks.view');
+        $group->patch('/tasks/{taskId}', [TaskController::class, 'update'])->setArgument('permission', 'tasks.edit');
+        $group->post('/tasks/{taskId}/transition', [TaskController::class, 'transition'])
+            ->setArgument('permission', 'tasks.view');
+        $group->post('/tasks/{taskId}/deactivate', [TaskController::class, 'deactivate'])
+            ->setArgument('permission', 'tasks.deactivate');
+        $group->post('/tasks/{taskId}/reactivate', [TaskController::class, 'reactivate'])
+            ->setArgument('permission', 'tasks.deactivate');
+        $group->get('/tasks/{taskId}/thread', [ThreadController::class, 'list'])
+            ->setArguments(['permission' => 'thread_entries.view', 'subject' => 'task']);
+        $group->post('/tasks/{taskId}/thread', [ThreadController::class, 'comment'])
+            ->setArguments(['permission' => 'thread_entries.create', 'subject' => 'task']);
+        $group->get('/tasks/{taskId}/mention-options', [ThreadController::class, 'mentionOptions'])
+            ->setArguments(['permission' => 'thread_entries.create', 'subject' => 'task']);
+        $group->patch('/thread-entries/{entryId}', [ThreadController::class, 'edit'])
+            ->setArgument('permission', 'thread_entries.edit');
+        $group->post('/thread-entries/{entryId}/deactivate', [ThreadController::class, 'deactivate'])
+            ->setArgument('permission', 'thread_entries.deactivate');
 
         $group->get('/branding', [BrandingController::class, 'show'])->setArgument('permission', 'public');
         $group->get('/branding/logo', [BrandingController::class, 'logo'])->setArgument('permission', 'public');

@@ -70,6 +70,10 @@ tags:
     description: Photos, kept as a normal image and a thumbnail, owned by whoever uploaded them.
   - name: Workflows
     description: The states of the task and ticket flows and the transitions between them.
+  - name: Tasks
+    description: What the owner asks the assignee to do by a date, with its state.
+  - name: Thread
+    description: The activity thread of a record, with comments, mentions, photos and the events the system writes.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
 components:

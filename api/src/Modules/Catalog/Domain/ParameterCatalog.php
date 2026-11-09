@@ -55,6 +55,7 @@ final class ParameterCatalog
                 parent: new ParentLink('category_id', 'unit_categories', 'category'),
                 offersOptions: true,
             ),
+            new ParameterDefinition('task-types', 'task_types', 'taskTypeId', offersOptions: true),
         ];
     }
 

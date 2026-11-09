@@ -44,6 +44,21 @@ final class FileRepository
         return $row === false ? null : $this->hydrate($row);
     }
 
+    /** The file with this id whoever asks, for the readers a record has granted access to (see FileAccessGrant). */
+    public function findUnscoped(string $id): ?FileRecord
+    {
+        $row = $this->connection->createQueryBuilder()
+            ->select(self::COLUMNS)
+            ->from('files', 'f')
+            ->innerJoin('f', 'users', 'u', 'u.id = f.uploaded_by')
+            ->andWhere('f.id = UNHEX(:id)')
+            ->setParameter('id', Uuid::toHex($id))
+            ->executeQuery()
+            ->fetchAssociative();
+
+        return $row === false ? null : $this->hydrate($row);
+    }
+
     /**
      * Who uploaded the file with this id and its content hash, whoever asks: the upload of an id that exists must
      * tell a retry of the same photo from a clash with someone else's.
@@ -65,6 +80,17 @@ final class FileRepository
             'uploaded_by' => Uuid::fromHex(Row::string($row, 'uploaded_by')),
             'content_hash' => Row::string($row, 'content_hash'),
         ];
+    }
+
+    /** Who uploaded the file, when it exists and is active: the only person who can attach it to a comment. */
+    public function activeUploader(string $id): ?string
+    {
+        $hex = $this->connection->fetchOne(
+            'SELECT LOWER(HEX(uploaded_by)) FROM files WHERE id = UNHEX(:id) AND deleted_at IS NULL',
+            ['id' => Uuid::toHex($id)],
+        );
+
+        return is_string($hex) ? Uuid::fromHex($hex) : null;
     }
 
     /** Locks the row until the end of the transaction. */
