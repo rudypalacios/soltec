@@ -26,6 +26,9 @@ export const ENTITY_LABELS: Record<string, string> = {
   bundles: 'Paquetes',
   workflow_states: 'Flujos de estado',
   files: 'Archivos',
+  tasks: 'Tareas',
+  thread_entries: 'Comentarios',
+  task_types: 'Tipos de tarea',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -80,6 +83,9 @@ export const ENTITY_NOUNS: Record<string, string> = {
   bundles: 'Paquete',
   workflow_states: 'Estado de flujo',
   files: 'Archivo',
+  tasks: 'Tarea',
+  thread_entries: 'Comentario',
+  task_types: 'Tipo de tarea',
 };
 
 /**
@@ -111,6 +117,9 @@ export function recordPath(
   }
   if (entityType === 'products' && can('products', 'edit')) {
     return `/productos/${entityId}/editar`;
+  }
+  if (entityType === 'tasks' && can('tasks', 'view')) {
+    return `/tareas/${entityId}`;
   }
   if (entityType === 'bundles' && can('bundles', 'edit')) {
     return `/paquetes/${entityId}/editar`;

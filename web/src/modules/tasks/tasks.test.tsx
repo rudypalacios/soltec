@@ -147,7 +147,10 @@ describe('task detail', () => {
     renderApp(session, `/tareas/${TASK.id}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Pasar a «Aceptada»/ }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Estado: Asignada. Cambiar estado' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Aceptada' }));
     const dialog = await screen.findByRole('dialog');
     expect(calls).toHaveLength(0);
     await user.type(within(dialog).getByLabelText(/Motivo/), 'Ya tengo el material');
@@ -169,7 +172,10 @@ describe('task detail', () => {
     renderApp(session, `/tareas/${TASK.id}`);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: /Pasar a «Aceptada»/ }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Estado: Asignada. Cambiar estado' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Aceptada' }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirmar' }),
     );
@@ -251,6 +257,82 @@ describe('task detail', () => {
     expect(within(comment).getByRole('button', { name: 'Quitar' })).toBeVisible();
   });
 
+  it('lets the author take a photo off a comment they edit and sends the photos that stay', async () => {
+    const PHOTO_A = '0192f1c2-7d3a-7a11-8f2e-0000000000a1';
+    const PHOTO_B = '0192f1c2-7d3a-7a11-8f2e-0000000000a2';
+    const mine = {
+      ...COMMENT,
+      author: { id: ME.id, name: ME.name },
+      mentions: [],
+      body: 'Dos fotos',
+      file_ids: [PHOTO_A, PHOTO_B],
+    };
+    const patches: Call[] = [];
+    const { session } = createTestSession(
+      handlers({
+        [`GET /v1/tasks/${TASK.id}/thread`]: () => thread([mine]),
+        [`GET /v1/files/${PHOTO_A}/content`]: () => problem(404, 'not_found'),
+        [`GET /v1/files/${PHOTO_B}/content`]: () => problem(404, 'not_found'),
+        [`PATCH /v1/thread-entries/${mine.id}`]: (call) => {
+          patches.push(call);
+          return Response.json({ ...mine, file_ids: [PHOTO_A], version: 2 });
+        },
+      }),
+      meWith(),
+    );
+    renderApp(session, `/tareas/${TASK.id}`);
+    const user = userEvent.setup();
+
+    const comment = await screen.findByRole('article', { name: `Comentario de ${ME.name}` });
+    await user.click(within(comment).getByRole('button', { name: 'Editar' }));
+    await user.click(await screen.findByRole('button', { name: 'Quitar «Foto 2»' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]?.body).toMatchObject({ body: 'Dos fotos', file_ids: [PHOTO_A], version: 1 });
+  });
+
+  it('offers a single state control that lists every step the flow allows', async () => {
+    const many = {
+      ...TASK,
+      next_states: [
+        ...TASK.next_states,
+        { id: '0192f1c2-7d3a-7a11-8f2e-0000000000d3', name: 'Rechazada', color: '#B3261E' },
+        { id: '0192f1c2-7d3a-7a11-8f2e-0000000000d4', name: 'En espera', color: '#9A5800' },
+      ],
+    };
+    const { session } = createTestSession(
+      handlers({ [`GET /v1/tasks/${TASK.id}`]: () => Response.json(many) }),
+      meWith(),
+    );
+    renderApp(session, `/tareas/${TASK.id}`);
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Estado: Asignada. Cambiar estado' }),
+    );
+    const menu = await screen.findByRole('menu');
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Aceptada', 'Rechazada', 'En espera']);
+    // The steps are not buttons on the page any more.
+    expect(screen.queryByRole('button', { name: /Pasar a/ })).not.toBeInTheDocument();
+  });
+
+  it('shows only the state, with no menu, when the person has no step to take', async () => {
+    const closed = { ...TASK, next_states: [] };
+    const { session } = createTestSession(
+      handlers({ [`GET /v1/tasks/${TASK.id}`]: () => Response.json(closed) }),
+      meWith(),
+    );
+    renderApp(session, `/tareas/${TASK.id}`);
+
+    expect(await screen.findByLabelText('Estado: Asignada')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Cambiar estado/ })).not.toBeInTheDocument();
+  });
+
   it('does not offer the composer without the permission to comment', async () => {
     const { session } = createTestSession(
       handlers(),
@@ -262,5 +344,45 @@ describe('task detail', () => {
     expect(
       screen.queryByRole('combobox', { name: 'Escribe un comentario' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('new task', () => {
+  it('lets the person assign the task to themselves and creates it', async () => {
+    const posts: Call[] = [];
+    const { session } = createTestSession(
+      {
+        'GET /v1/task-types/options': () => Response.json({ data: [TASK.task_type] }),
+        'GET /v1/tasks/assignee-options': () => Response.json({ data: [ANDRES] }),
+        'POST /v1/tasks': (call) => {
+          posts.push(call);
+          return Response.json(TASK, { status: 201 });
+        },
+        [`GET /v1/tasks/${TASK.id}`]: () => Response.json(TASK),
+        [`GET /v1/tasks/${TASK.id}/thread`]: () => thread([]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas/nueva');
+    const user = userEvent.setup();
+
+    await user.type(
+      await screen.findByLabelText(/¿Qué hay que hacer\?/),
+      'Dar seguimiento al cobro',
+    );
+    await user.click(screen.getByRole('combobox', { name: /Tipo/ }));
+    await user.click(await screen.findByRole('option', { name: 'Ventas' }));
+    await user.click(screen.getByRole('button', { name: 'Asignármela a mí' }));
+    expect(screen.getByRole('combobox', { name: /Asignada a/ })).toHaveValue(ME.name);
+    expect(screen.queryByRole('button', { name: 'Asignármela a mí' })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Vence/), '2030-01-15');
+    await user.click(screen.getByRole('button', { name: 'Crear tarea' }));
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]?.body).toMatchObject({
+      title: 'Dar seguimiento al cobro',
+      assignee_id: ME.id,
+      due_date: '2030-01-15',
+    });
   });
 });

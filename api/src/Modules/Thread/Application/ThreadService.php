@@ -130,10 +130,12 @@ final class ThreadService
     }
 
     /**
-     * Replaces the text of a comment. Only its author, only while it is active.
+     * Replaces the text of a comment and, when `$fileIds` is given, its photos (null leaves them as they are). Only its
+     * author, only while it is active. A photo already on the comment may stay; a new one must be the author's.
      *
+     * @param list<string>|null $fileIds
      * @throws ApiException 404, 403 `forbidden` (not the author), 409 `conflict` (stale version)
-     * @throws ValidationException `body`
+     * @throws ValidationException `body` or `file_ids`
      */
     public function edit(
         CurrentUser $caller,
@@ -141,27 +143,41 @@ final class ThreadService
         string $entryId,
         int $version,
         string $body,
+        ?array $fileIds = null,
     ): ThreadEntryRecord {
-        $this->connection->transactional(function () use ($caller, $actor, $entryId, $version, $body): void {
+        $this->connection->transactional(function () use ($caller, $actor, $entryId, $version, $body, $fileIds): void {
             if (!$this->entries->lock($entryId)) {
                 throw ApiException::notFound();
             }
             $entry = $this->ownComment($caller, $entryId);
-            if ($body === '' && $entry->fileIds === []) {
+            $files = $fileIds === null ? $entry->fileIds : array_values(array_unique($fileIds));
+            if ($body === '' && $files === []) {
                 throw ValidationException::field('body', 'required');
             }
             $mentioned = $this->assertMentionable($entry->subjectType, $entry->subjectId, $body);
-            if ($body === ($entry->body ?? '')) {
+            $this->assertPhotos($caller, $files, $entry->fileIds);
+            $textChanged = $body !== ($entry->body ?? '');
+            $photosChanged = $files !== $entry->fileIds;
+            if (!$textChanged && !$photosChanged) {
                 return;
             }
 
             if (!$this->entries->updateBody($entryId, $version, $body, $this->clock->now())) {
                 throw ApiException::conflict();
             }
-            $this->entries->replaceMentions($entryId, $mentioned);
-            $this->audit->record($actor, 'update', self::ENTITY, $entryId, ['body' => $entry->body], [
-                'body' => $body === '' ? null : $body,
-            ]);
+            $before = [];
+            $after = [];
+            if ($textChanged) {
+                $this->entries->replaceMentions($entryId, $mentioned);
+                $before['body'] = $entry->body;
+                $after['body'] = $body === '' ? null : $body;
+            }
+            if ($photosChanged) {
+                $this->entries->replaceFiles($entryId, $files);
+                $before['file_ids'] = $entry->fileIds;
+                $after['file_ids'] = $files;
+            }
+            $this->audit->record($actor, 'update', self::ENTITY, $entryId, $before, $after);
         });
 
         return $this->entries->find($entryId) ?? throw ApiException::notFound();
@@ -311,14 +327,18 @@ final class ThreadService
 
     /**
      * @param list<string> $fileIds
+     * @param list<string> $alreadyAttached photos the comment already carries, which stay even if deactivated since
      * @throws ValidationException `file_ids` `too_many` or `not_found`
      */
-    private function assertPhotos(CurrentUser $caller, array $fileIds): void
+    private function assertPhotos(CurrentUser $caller, array $fileIds, array $alreadyAttached = []): void
     {
         if (count($fileIds) > self::MAX_FILES) {
             throw ValidationException::field('file_ids', 'too_many');
         }
         foreach ($fileIds as $fileId) {
+            if (in_array($fileId, $alreadyAttached, true)) {
+                continue;
+            }
             if ($this->files->activeUploader($fileId) !== $caller->id) {
                 throw ValidationException::field('file_ids', 'not_found');
             }

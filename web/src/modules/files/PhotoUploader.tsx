@@ -1,5 +1,5 @@
 import AddAPhotoOutlined from '@mui/icons-material/AddAPhotoOutlined';
-import { Alert, Box, Button, CircularProgress, IconButton, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, IconButton, LinearProgress, Stack, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { newUuidV7, type PhotoPreparer } from '@soltec/shared';
 import { useRef, useState, type ChangeEvent } from 'react';
@@ -157,12 +157,14 @@ export function PhotoUploader({
             <PhotoRow
               key={photo.id}
               name={photo.name}
-              thumbnail={
-                photo.failure ? null : (
-                  <CircularProgress size={24} aria-label={`Subiendo «${photo.name}»`} />
+              thumbnail={<ThumbnailSlot />}
+              message={
+                photo.failure ? (
+                  <Alert severity="error">{photo.failure}</Alert>
+                ) : (
+                  <ProgressBar label={`Subiendo «${photo.name}»`} />
                 )
               }
-              message={photo.failure ? <Alert severity="error">{photo.failure}</Alert> : undefined}
               action={
                 photo.failure ? (
                   <Stack direction="row" spacing={0.5}>
@@ -229,6 +231,40 @@ function Thumbnail({ fileId, name }: { fileId: string; name: string }) {
       Sin vista previa
     </Typography>
   ) : (
-    <CircularProgress size={24} aria-label={`Cargando «${name}»`} />
+    <ThumbnailSlot label={`Cargando «${name}»`} />
+  );
+}
+
+/**
+ * A progress bar for a photo that is going up or coming down. The browser's fetch does not report how many bytes it
+ * has sent, so the bar is the indeterminate kind: it says «working», not «40 %».
+ */
+export function ProgressBar({ label }: { label: string }) {
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <LinearProgress aria-label={label} sx={{ height: 6, borderRadius: 3 }} />
+      <Typography variant="caption" color="text.secondary">
+        {label.startsWith('Subiendo') ? 'Subiendo…' : 'Cargando…'}
+      </Typography>
+    </Box>
+  );
+}
+
+/** The grey square a thumbnail will fill, with a bar while it loads. */
+export function ThumbnailSlot({ label }: { label?: string }) {
+  return (
+    <Box
+      sx={{
+        width: 56,
+        height: 56,
+        borderRadius: 1,
+        bgcolor: 'action.hover',
+        display: 'flex',
+        alignItems: 'flex-end',
+        overflow: 'hidden',
+      }}
+    >
+      {label ? <LinearProgress aria-label={label} sx={{ width: 1, height: 4 }} /> : null}
+    </Box>
   );
 }

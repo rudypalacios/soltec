@@ -96,7 +96,7 @@ Parámetro del catálogo (misma forma que `payment_methods`: nombre único entre
 | `description` | `TEXT NULL` | Hasta 5000 caracteres |
 | `task_type_id` | `BINARY(16) NOT NULL` | FK `task_types`; uno inactivo se acepta solo si la tarea ya lo tenía |
 | `owner_id` | `BINARY(16) NOT NULL` | FK `users`; quien la creó |
-| `assignee_id` | `BINARY(16) NOT NULL` | FK `users`; usuario interno activo, distinto del dueño |
+| `assignee_id` | `BINARY(16) NOT NULL` | FK `users`; usuario interno activo; puede ser el mismo dueño (una tarea para dar seguimiento uno mismo) |
 | `due_date` | `DATE NOT NULL` | Solo fecha; la hora queda para después |
 | `state_id` | `BINARY(16) NOT NULL` | FK `workflow_states` (flujo `task`) |
 | `proposed_due_date` | `DATE NULL` | La fecha que propone el asignado al devolver la tarea; se limpia en el siguiente paso |

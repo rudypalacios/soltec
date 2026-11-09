@@ -41,6 +41,7 @@ export function CommentComposer({
   taskId,
   initialText = '',
   initialMentions = [],
+  initialPhotos = [],
   submitLabel = 'Comentar',
   withPhotos = true,
   onSubmit,
@@ -49,8 +50,9 @@ export function CommentComposer({
   taskId: string;
   initialText?: string;
   initialMentions?: readonly Mentioned[];
+  /** The photos a comment that is edited already has; the person can remove them and add others. */
+  initialPhotos?: readonly UploadedPhoto[];
   submitLabel?: string;
-  /** A comment that is edited keeps the photos it had; only the text changes. */
   withPhotos?: boolean;
   /** Resolves when the comment is saved; a rejection leaves the text for the person to retry. */
   onSubmit: (result: ComposerResult) => Promise<void>;
@@ -59,7 +61,7 @@ export function CommentComposer({
   const [text, setText] = useState(initialText);
   const [caret, setCaret] = useState(initialText.length);
   const [chosen, setChosen] = useState<Mentioned[]>([...initialMentions]);
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([...initialPhotos]);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
   const [active, setActive] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
@@ -73,10 +75,7 @@ export function CommentComposer({
   const listOpen = open && choices.length > 0;
 
   const track = (target: HTMLTextAreaElement) => {
-    // Selection events that arrive while the field is not focused (a click on the list) say nothing about typing.
-    if (document.activeElement === target) {
-      setCaret(target.selectionStart);
-    }
+    setCaret(target.selectionStart);
   };
 
   const change = (event: ChangeEvent<HTMLTextAreaElement>) => {

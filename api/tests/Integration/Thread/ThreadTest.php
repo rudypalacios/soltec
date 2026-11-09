@@ -244,6 +244,82 @@ final class ThreadTest extends TasksTestCase
         self::assertSame(404, $this->api('GET', $content, $this->assignee['token'])->getStatusCode());
     }
 
+    public function testEditingACommentCanRemoveAndAddPhotos(): void
+    {
+        $first = $this->uploadPhoto($this->owner['token']);
+        $second = $this->uploadPhoto($this->owner['token']);
+        $comment = $this->json($this->api('POST', $this->threadPath, $this->owner['token'], [
+            'body' => 'Dos fotos',
+            'file_ids' => [$first, $second],
+        ]));
+        $entry = '/thread-entries/' . $this->text($comment, 'id');
+
+        // Leaving file_ids out keeps the photos.
+        $body = ['version' => 1, 'body' => 'Dos fotos!'];
+        $kept = $this->json($this->api('PATCH', $entry, $this->owner['token'], $body));
+        self::assertSame([$first, $second], $kept['file_ids']);
+
+        // A list replaces them: one is removed and the reader loses access to it.
+        $removed = $this->json($this->api('PATCH', $entry, $this->owner['token'], [
+            'version' => $this->versionOf($kept),
+            'body' => 'Dos fotos!',
+            'file_ids' => [$first],
+        ]));
+        self::assertSame([$first], $removed['file_ids']);
+        self::assertSame(
+            200,
+            $this->api('GET', '/files/' . $first . '/content', $this->assignee['token'])->getStatusCode(),
+        );
+        self::assertSame(
+            404,
+            $this->api('GET', '/files/' . $second . '/content', $this->assignee['token'])->getStatusCode(),
+        );
+
+        // A new photo can be added, and only the photos of the author.
+        $third = $this->uploadPhoto($this->owner['token']);
+        $added = $this->api('PATCH', $entry, $this->owner['token'], [
+            'version' => $this->versionOf($removed),
+            'body' => 'Dos fotos!',
+            'file_ids' => [$first, $third],
+        ]);
+        self::assertSame(200, $added->getStatusCode());
+        self::assertSame([$first, $third], $this->json($added)['file_ids']);
+        $foreign = $this->api('PATCH', $entry, $this->owner['token'], [
+            'version' => $this->versionOf($this->json($added)),
+            'body' => 'Dos fotos!',
+            'file_ids' => [$this->uploadPhoto($this->assignee['token'])],
+        ]);
+        self::assertSame(['file_ids' => 'not_found'], $this->errorCodes($foreign));
+
+        $audit = $this->auditEntries('thread_entries', $this->text($comment, 'id'));
+        self::assertSame(['create', 'update', 'update', 'update'], array_column($audit, 'action'));
+        self::assertSame([$first, $second], $this->valueAt($audit[2], 'before', 'file_ids'));
+        self::assertSame([$first], $this->valueAt($audit[2], 'after', 'file_ids'));
+    }
+
+    public function testACommentCannotLoseItsLastPhotoAndItsText(): void
+    {
+        $photo = $this->uploadPhoto($this->owner['token']);
+        $comment = $this->json($this->api('POST', $this->threadPath, $this->owner['token'], [
+            'file_ids' => [$photo],
+        ]));
+        $entry = '/thread-entries/' . $this->text($comment, 'id');
+
+        $empty = $this->api('PATCH', $entry, $this->owner['token'], [
+            'version' => 1,
+            'body' => '',
+            'file_ids' => [],
+        ]);
+        self::assertSame(['body' => 'required'], $this->errorCodes($empty));
+
+        $text = $this->json($this->api('PATCH', $entry, $this->owner['token'], [
+            'version' => 1,
+            'body' => 'Ahora con texto',
+            'file_ids' => [],
+        ]));
+        self::assertSame([], $text['file_ids']);
+    }
+
     public function testOnlyTheOwnPhotosAndAtMostFiveCanBeAttached(): void
     {
         $theirs = $this->uploadPhoto($this->assignee['token']);
