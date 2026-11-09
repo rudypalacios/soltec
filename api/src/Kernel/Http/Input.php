@@ -51,6 +51,20 @@ final class Input
         return new self($body);
     }
 
+    /**
+     * The text fields of a multipart form. A form with only a file has none, and the body parser then leaves the parsed
+     * body empty or null, which is not an error here as it is for a JSON body.
+     */
+    public static function form(ServerRequestInterface $request): self
+    {
+        $fields = $request->getParsedBody() ?? [];
+        if (!is_array($fields) || array_is_list($fields) && $fields !== []) {
+            throw ValidationException::field('body', 'invalid');
+        }
+
+        return new self($fields);
+    }
+
     public static function query(ServerRequestInterface $request): self
     {
         return new self($request->getQueryParams());
@@ -262,6 +276,25 @@ final class Input
         }
 
         return $value >= $min && $value <= $max ? $value : $this->reject($field, 'out_of_range');
+    }
+
+    /**
+     * A coordinate sent as a JSON number between -$limit and $limit (degrees), or null when absent. A string is not a
+     * number here: a client that sends "14.6" has a bug that should show, not be guessed at.
+     */
+    public function coordinate(string $field, int $limit): ?float
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value === null) {
+            return null;
+        }
+        if (!is_int($value) && !is_float($value)) {
+            return $this->reject($field, 'invalid');
+        }
+
+        return is_finite((float) $value) && abs($value) <= $limit
+            ? (float) $value
+            : $this->reject($field, 'out_of_range');
     }
 
     /** A JSON boolean; absent or null is $default. */

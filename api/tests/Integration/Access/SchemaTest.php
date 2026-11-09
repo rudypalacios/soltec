@@ -20,7 +20,8 @@ final class SchemaTest extends AccessTestCase
             [
                 'areas', 'audit_logs', 'brands', 'bundles', 'client_profile', 'client_statuses', 'clients', 'company',
                 'contact_types', 'contacts',
-                'departments', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups', 'products',
+                'departments', 'files', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups',
+                'products',
                 'roles',
                 'security_settings', 'segments', 'sequences', 'suppliers', 'tax_regimes', 'unit_categories',
                 'units_of_measure', 'users', 'workflow_states',
@@ -45,7 +46,7 @@ final class SchemaTest extends AccessTestCase
             'Access, departments, margin levels and the catalog have every verb; the settings only view and edit.',
         );
         self::assertSame(
-            array_fill(0, 11, 'all'),
+            array_fill(0, self::SEEDED_SCOPE_ROWS, 'all'),
             $this->connection->fetchFirstColumn('SELECT scope FROM role_scopes ORDER BY resource_code'),
         );
     }
@@ -87,7 +88,7 @@ final class SchemaTest extends AccessTestCase
         self::assertSame(1, $this->countRows("SELECT COUNT(*) FROM roles WHERE code = 'admin'"));
         self::assertSame($adminBefore, $this->adminRoleId());
         self::assertSame(self::SEEDED_PERMISSION_ROWS, $this->countRows('SELECT COUNT(*) FROM role_permissions'));
-        self::assertSame(11, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
+        self::assertSame(self::SEEDED_SCOPE_ROWS, $this->countRows('SELECT COUNT(*) FROM role_scopes'));
     }
 
     public function testDroppingTheMarginLevelSortOrderWorksWhetherOrNotTheColumnIsThere(): void

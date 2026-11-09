@@ -17,7 +17,7 @@ Lista viva de hitos. Marca `[x]` al terminar y revisar. Cada hito dice explícit
   - [x] Correo: remitente `noreply@musicos-catolicos.com`; P24 (dominio de la organización) sigue abierta hasta antes de producción
   - [x] Archivos del servidor: `.env`, `api/` y `db/` nunca se sirvieron (siempre 403); no hace falta rotar secretos. Cada entorno ya tiene su propio usuario de base de datos en su `.env`
   - [x] Production: sin *Required reviewers* (decisión del usuario: único revisor, repo privado)
-  - [x] Subir `upload_max_filesize` y `post_max_size` (eran 2M y 8M) antes del Hito 3 (fotos): el usuario los cambió el 2026-10-30; falta volver a leerlos en `/api/system/requirements` al construir 3.2
+  - [x] Subir `upload_max_filesize` y `post_max_size` (eran 2M y 8M) antes del Hito 3 (fotos): el usuario los cambió el 2026-10-30; leídos en `staging` el 2026-11-02: 16M, 24M y 128M de memoria, y GD codifica WebP
   - [x] Acceso de red de la sesión a los subdominios: verificado (2026-10-12), la sesión alcanza `staging`. El QA usa las variables del environment `QA_BASE_URL`, `QA_EMAIL` y `QA_PASSWORD` (cuenta de administrador de `staging`)
   - [x] Lista de requisitos del servidor (`/api/system/requirements`), con verificación SMTP
 - [x] 4. ERD: convenciones y Hito 1 detallado; esbozo de los hitos 2 a 9. Las columnas de cada hito se detallan al planearlo
@@ -181,7 +181,11 @@ Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal
   - **Hecho:** tablas `workflow_states` y `workflow_transitions`, siembra de los flujos de tareas (Asignada, Aceptada, En ejecución, Completada, Cerrada, Rechazada) y tickets (Abierto, En atención, Resuelto, Cerrado), `WorkflowEngine` (estado inicial y si se puede pasar de A a B), rutas `/v1/workflows/{task|ticket}/states` y `/transitions`, pantalla «Flujos de estado» en Configuración (crear, editar, siguientes estados, ordenar, desactivar y reactivar), recurso de permisos `workflow_states`
   - **Acordado:** «un estado nuevo aplica solo a registros futuros» = agregarlo no cambia el estado de registros existentes; llegan a él solo por una transición permitida. Los estados de tareas y tickets son flujos separados, con permiso de perfil. Ordenar y elegir siguientes estados se guardan con un botón en un diálogo (no un clic suelto por fila)
   - **Fuera:** aplicar los estados a tareas y tickets (3.5 y 3.6), notificaciones por transición (3.4), permisos por transición según el perfil, pasar los estados de cliente al motor (atado a P3)
-- [ ] **3.2 Archivos y fotos** (ADR-0009)
+- [ ] **3.2 Archivos y fotos** (ficha aprobada el 2026-11-09; un solo PR; ADR-0009 y ADR-0027)
+  - **Hecho:** tabla `files` y recurso de permisos `files` con alcance (el dueño es quien sube), `POST /v1/files` (multipart: foto, `id` del cliente y `metadata`), `GET /v1/files/{id}`, `/content?size=normal|thumbnail` con `ETag` y `POST /v1/files/{id}/deactivate`; dos WebP (1600 y 320 px) a `storage/files/`; `WebpImage` en el `Kernel` (el logo lo usa también); en `shared/` el puerto `PhotoPreparer`, `newUuidV7`, `fitWithin` y `photoMetadataFrom`; en la web `PhotoUploader`, `useUploadPhoto` y `useFileImage`, con el adaptador del navegador (canvas y `exifr`)
+  - **Acordado:** solo fotos por ahora (documentos y PDF cuando un módulo los necesite); permiso propio `files`; sin pantalla hasta que tareas y tickets (3.5 y 3.6) adopten fotos, así que el QA en `staging` es por API
+  - **Pendiente:** que el registro que adopte fotos (3.5, 3.6) las haga visibles a quien ve el registro (ADR-0027); limpiar fotos subidas que nadie adoptó; ubicación del dispositivo cuando la foto no trae GPS (P6, Hito 8); esconder el GPS al usuario externo (Hito 9)
+  - **Fuera:** adjuntar a registros, documentos, rotar por EXIF fuera del navegador
 - [ ] **3.3 Hilo de actividad**
 - [ ] **3.4 Notificaciones y endpoint de actualizaciones (polling)** (medir los límites de envío del SMTP del hosting)
 - [ ] **3.5 Tareas**

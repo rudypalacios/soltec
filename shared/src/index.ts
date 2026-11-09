@@ -20,7 +20,12 @@ export type { CostLine } from './domain/bundleCost';
 export { calculatePrice, isValidCost, PriceError } from './domain/price';
 export type { Price, PriceErrorCode, PriceInput } from './domain/price';
 export { percentToRate, rateToPercent } from './domain/rates';
+export { fitWithin, PHOTO_MAX_SIDE, photoMetadataFrom } from './domain/photo';
+export type { ExifReading, PhotoMetadata } from './domain/photo';
+export { newUuidV7 } from './domain/uuid';
+export type { RandomBytes } from './domain/uuid';
 export type { DeviceIdStore } from './ports/deviceIdStore';
+export type { PhotoPreparer, PreparedPhoto } from './ports/photoPreparer';
 export { groupChecks, isRequirementsReport } from './system/requirements';
 export type {
   CheckGroup,

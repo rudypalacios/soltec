@@ -36,7 +36,10 @@ abstract class AccessTestCase extends IntegrationTestCase
     protected const PASSWORD = 'correct horse battery staple';
 
     /** The rows of `role_permissions` the migrations leave (the `admin` role's); a migration that grants more raises it. */
-    protected const SEEDED_PERMISSION_ROWS = 89;
+    protected const SEEDED_PERMISSION_ROWS = 93;
+
+    /** The rows of `role_scopes` the migrations leave: the `admin` role's scope on each resource with an owner. */
+    protected const SEEDED_SCOPE_ROWS = 12;
 
     protected FixedClock $clock;
     protected FakeMailTransport $mail;

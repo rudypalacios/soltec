@@ -25,6 +25,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   products: 'Productos',
   bundles: 'Paquetes',
   workflow_states: 'Flujos de estado',
+  files: 'Archivos',
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -78,6 +79,7 @@ export const ENTITY_NOUNS: Record<string, string> = {
   products: 'Producto',
   bundles: 'Paquete',
   workflow_states: 'Estado de flujo',
+  files: 'Archivo',
 };
 
 /**
