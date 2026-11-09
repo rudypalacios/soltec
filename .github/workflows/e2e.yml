@@ -2,14 +2,20 @@ name: E2E
 
 # End-to-end tests (Playwright) against a throwaway server built inside the job: MySQL 5.7, the PHP API, the built web
 # app and a mail sink. They never touch "staging" (docs/adr/0020-pruebas-e2e.md).
-# - A pull request into develop runs only the scenarios it adds or changes, so the job stays short. Each pull request
-#   brings the scenario of what must not break; the CI does not read the application code to guess which ones.
-# - A push to develop (the squash merge of a pull request) runs the whole suite, as the regression of what was merged.
+# Manual only (Actions -> E2E -> Run workflow): the suite is run in the working session before a pull request is
+# opened (CLAUDE.md, section 7), because the free plan of GitHub has a monthly limit of CI minutes.
+# - "changed" runs only the scenarios added or changed against origin/develop, which is what a pull request brings.
+# - "all" runs the whole suite, as the regression of what is in the chosen branch.
 on:
-  pull_request:
-    branches: [develop]
-  push:
-    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: Which scenarios to run
+        type: choice
+        options:
+          - all
+          - changed
+        default: all
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -70,13 +76,13 @@ jobs:
       - name: Install the browser
         run: npx playwright install --with-deps chromium
 
-      - name: Scenarios of the pull request
-        if: github.event_name == 'pull_request'
+      - name: Scenarios added or changed
+        if: inputs.scenarios == 'changed'
         working-directory: e2e
-        run: npx playwright test --only-changed=origin/${{ github.base_ref }} --pass-with-no-tests
+        run: npx playwright test --only-changed=origin/develop --pass-with-no-tests
 
       - name: All scenarios
-        if: github.event_name == 'push'
+        if: inputs.scenarios == 'all'
         working-directory: e2e
         run: npx playwright test
 

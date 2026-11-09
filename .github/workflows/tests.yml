@@ -1,9 +1,10 @@
 name: Tests
 
-# Runs only as part of the Deploy workflow (every pull request and every push to main), whose checks also show up on
-# the pull request. A separate pull_request/push trigger would run the same tests twice.
+# Manual only (Actions -> Tests -> Run workflow). Nothing triggers it: the tests are run in the working session before
+# a pull request is opened (CLAUDE.md, section 7), because the free plan of GitHub has a monthly limit of CI minutes.
+# This workflow stays as a way to run the same checks on GitHub's runners when they are wanted.
 on:
-  workflow_call:
+  workflow_dispatch:
 
 jobs:
   api:
