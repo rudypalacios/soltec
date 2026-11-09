@@ -1,10 +1,22 @@
-import { Alert, Autocomplete, Button, CircularProgress, MenuItem, TextField } from '@mui/material';
+import {
+  Alert,
+  Autocomplete,
+  Box,
+  Button,
+  CircularProgress,
+  Link,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import type { components } from '@soltec/shared';
 import { useDeferredValue, useState, type FormEvent } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { FormActions, FormPage } from '../../components/FormPage';
 import { PageHeader } from '../../components/PageHeader';
 import { fieldMessages, problemMessage } from '../access/messages';
+import { useCurrentUser } from '../access/SessionContext';
 import {
   useAssigneeOptions,
   useCreateTask,
@@ -108,6 +120,7 @@ function AssigneeSelect({
 
 function TaskForm({ task }: { task: Task | null }) {
   const navigate = useNavigate();
+  const me = useCurrentUser();
   const create = useCreateTask();
   const update = useUpdateTask(task?.id ?? '');
   const types = useTaskTypeOptions();
@@ -154,86 +167,138 @@ function TaskForm({ task }: { task: Task | null }) {
   };
 
   return (
-    <FormPage onSubmit={(event) => void submit(event)}>
-      {failure ? <Alert severity="error">{failure}</Alert> : null}
-      <TextField
-        label="Título"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        error={Boolean(fieldErrors.title)}
-        helperText={fieldErrors.title}
-        slotProps={{ htmlInput: { maxLength: 150 } }}
-        required
-        autoFocus
-        fullWidth
-      />
-      <TextField
-        label="Descripción"
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-        error={Boolean(fieldErrors.description)}
-        helperText={fieldErrors.description}
-        slotProps={{ htmlInput: { maxLength: 5000 } }}
-        multiline
-        minRows={3}
-        fullWidth
-      />
-      <TextField
-        select
-        label="Tipo"
-        value={typeId}
-        onChange={(event) => setTypeId(event.target.value)}
-        error={Boolean(fieldErrors.task_type_id)}
-        helperText={fieldErrors.task_type_id}
-        slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
-        required
-        fullWidth
-      >
-        <MenuItem value="" disabled>
-          Elige un tipo
-        </MenuItem>
-        {typeChoices.map((type) => (
-          <MenuItem key={type.id} value={type.id}>
-            {type.name}
-          </MenuItem>
-        ))}
-      </TextField>
-      <AssigneeSelect value={assignee} onChange={setAssignee} error={fieldErrors.assignee_id} />
-      <TextField
-        label="Vence"
-        type="date"
-        value={dueDate}
-        onChange={(event) => setDueDate(event.target.value)}
-        error={Boolean(fieldErrors.due_date)}
-        helperText={fieldErrors.due_date}
-        slotProps={{ inputLabel: { shrink: true } }}
-        required
-        fullWidth
-      />
-      <FormActions>
-        <Button
-          component={RouterLink}
-          to={task ? `/tareas/${task.id}` : '/tareas'}
-          variant="outlined"
-          color="inherit"
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          disabled={
-            create.isPending ||
-            update.isPending ||
-            !title.trim() ||
-            !typeId ||
-            !assignee ||
-            !dueDate
-          }
-        >
-          Guardar
-        </Button>
-      </FormActions>
-    </FormPage>
+    <Box
+      component="form"
+      onSubmit={(event: FormEvent) => void submit(event)}
+      noValidate
+      sx={{
+        display: 'grid',
+        gap: 3,
+        alignItems: 'start',
+        gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 320px' },
+      }}
+    >
+      {failure ? (
+        <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>
+          {failure}
+        </Alert>
+      ) : null}
+
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+        <Stack spacing={2.5}>
+          <TextField
+            label="¿Qué hay que hacer?"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            error={Boolean(fieldErrors.title)}
+            helperText={fieldErrors.title}
+            slotProps={{
+              htmlInput: { maxLength: 150, style: { fontSize: 18, fontWeight: 600 } },
+              inputLabel: { shrink: true },
+            }}
+            required
+            autoFocus
+            fullWidth
+          />
+          <TextField
+            label="Descripción"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            error={Boolean(fieldErrors.description)}
+            helperText={
+              fieldErrors.description ??
+              'Después podrás comentar, mencionar a otras personas y adjuntar fotos en la actividad de la tarea.'
+            }
+            slotProps={{ htmlInput: { maxLength: 5000 } }}
+            multiline
+            minRows={6}
+            fullWidth
+          />
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" component="aside" aria-label="Detalles" sx={{ p: 2.5 }}>
+        <Stack spacing={2.5}>
+          <Typography variant="h6" component="h2">
+            Detalles
+          </Typography>
+          <TextField
+            select
+            label="Tipo"
+            value={typeId}
+            onChange={(event) => setTypeId(event.target.value)}
+            error={Boolean(fieldErrors.task_type_id)}
+            helperText={fieldErrors.task_type_id}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+            required
+            fullWidth
+          >
+            <MenuItem value="" disabled>
+              Elige un tipo
+            </MenuItem>
+            {typeChoices.map((type) => (
+              <MenuItem key={type.id} value={type.id}>
+                {type.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Box>
+            <AssigneeSelect
+              value={assignee}
+              onChange={setAssignee}
+              error={fieldErrors.assignee_id}
+            />
+            {me && assignee?.id !== me.id ? (
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => setAssignee({ id: me.id, name: me.name })}
+                sx={{ mt: 1, minHeight: 32 }}
+              >
+                Asignármela a mí
+              </Link>
+            ) : null}
+          </Box>
+          <TextField
+            label="Vence"
+            type="date"
+            value={dueDate}
+            onChange={(event) => setDueDate(event.target.value)}
+            error={Boolean(fieldErrors.due_date)}
+            helperText={fieldErrors.due_date}
+            slotProps={{ inputLabel: { shrink: true } }}
+            required
+            fullWidth
+          />
+          <Stack spacing={1}>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={
+                create.isPending ||
+                update.isPending ||
+                !title.trim() ||
+                !typeId ||
+                !assignee ||
+                !dueDate
+              }
+            >
+              {task ? 'Guardar' : 'Crear tarea'}
+            </Button>
+            <Button
+              component={RouterLink}
+              to={task ? `/tareas/${task.id}` : '/tareas'}
+              variant="outlined"
+              color="inherit"
+              size="large"
+            >
+              Cancelar
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    </Box>
   );
 }
