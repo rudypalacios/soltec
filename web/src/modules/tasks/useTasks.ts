@@ -176,7 +176,16 @@ export function useEditComment(taskId: string) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ entryId, ...body }: { entryId: string; version: number; body: string }) =>
+    mutationFn: async ({
+      entryId,
+      ...body
+    }: {
+      entryId: string;
+      version: number;
+      body: string;
+      /** The photos the comment should have afterwards; leave it out to keep them. */
+      file_ids?: string[];
+    }) =>
       unwrap(
         await apiClient.PATCH('/v1/thread-entries/{entryId}', {
           params: { path: { entryId } },

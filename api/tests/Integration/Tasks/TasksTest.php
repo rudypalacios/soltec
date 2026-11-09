@@ -55,10 +55,6 @@ final class TasksTest extends TasksTestCase
         );
 
         self::assertSame(
-            ['assignee_id' => 'same_as_owner'],
-            $this->errorCodes($this->createTask(null, ['assignee_id' => $this->owner['id']])),
-        );
-        self::assertSame(
             ['assignee_id' => 'not_found'],
             $this->errorCodes($this->createTask(null, ['assignee_id' => '0192a1b2-0000-7000-8000-000000000000'])),
         );
@@ -144,6 +140,25 @@ final class TasksTest extends TasksTestCase
             $this->eventTypes($thread),
         );
         self::assertSame('Cerrada', $this->valueAt($this->rowsAt($thread, 'data')[0], 'event', 'data', 'to', 'name'));
+    }
+
+    public function testATaskCanBeAssignedToItsOwnerWhoThenMovesItThroughTheWholeFlow(): void
+    {
+        $task = $this->newTask(['assignee_id' => $this->owner['id']]);
+        self::assertSame($this->owner['id'], $this->valueAt($task, 'assignee', 'id'));
+        $path = '/tasks/' . $this->text($task, 'id');
+
+        $version = $this->versionOf($task);
+        foreach (['Aceptada', 'En ejecución', 'Completada', 'Cerrada'] as $name) {
+            $moved = $this->api('POST', $path . '/transition', $this->owner['token'], [
+                'state_id' => $this->stateId($name),
+                'version' => $version,
+            ]);
+            self::assertSame(200, $moved->getStatusCode(), $name);
+            $version = $this->versionOf($this->json($moved));
+        }
+        // A task that is its owner's own is reached by nobody else with the own scope.
+        self::assertSame(404, $this->api('GET', $path, $this->assignee['token'])->getStatusCode());
     }
 
     public function testRefusesAStateTheFlowDoesNotLink(): void

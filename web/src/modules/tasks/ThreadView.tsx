@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  LinearProgress,
   Link,
   Paper,
   Stack,
@@ -67,8 +68,10 @@ function Thumbnail({ fileId }: { fileId: string }) {
         sx={{
           width: 96,
           height: 96,
-          display: 'grid',
-          placeItems: 'center',
+          display: 'flex',
+          alignItems: image.isError ? 'center' : 'flex-end',
+          justifyContent: 'center',
+          overflow: 'hidden',
           bgcolor: 'action.hover',
           borderRadius: 1,
         }}
@@ -76,7 +79,7 @@ function Thumbnail({ fileId }: { fileId: string }) {
         {image.isError ? (
           <Typography variant="caption">Sin foto</Typography>
         ) : (
-          <CircularProgress size={20} />
+          <LinearProgress aria-label="Cargando la foto" sx={{ width: 1, height: 4 }} />
         )}
       </Box>
     );
@@ -152,12 +155,17 @@ function Comment({ taskId, entry }: { taskId: string; entry: ThreadEntry }) {
         taskId={taskId}
         initialText={draft.text}
         initialMentions={draft.mentions}
+        initialPhotos={entry.file_ids.map((id, index) => ({ id, name: `Foto ${index + 1}` }))}
         submitLabel="Guardar"
-        withPhotos={false}
         onCancel={() => setEditing(false)}
-        onSubmit={async ({ body }) => {
+        onSubmit={async ({ body, fileIds }) => {
           try {
-            await edit.mutateAsync({ entryId: entry.id, version: entry.version, body });
+            await edit.mutateAsync({
+              entryId: entry.id,
+              version: entry.version,
+              body,
+              file_ids: fileIds,
+            });
             setEditing(false);
           } catch (error) {
             throw new Error(

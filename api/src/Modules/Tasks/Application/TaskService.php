@@ -99,7 +99,7 @@ final class TaskService
     /**
      * The caller becomes the owner; the task starts in the initial state of the flow.
      *
-     * @throws ValidationException `task_type_id` `not_found`; `assignee_id` `not_found` or `same_as_owner`
+     * @throws ValidationException `task_type_id` `not_found`; `assignee_id` `not_found`
      * @throws ApiException 409 `not_configured` when the flow has no initial state
      */
     public function create(CurrentUser $caller, ActorContext $actor, TaskData $data): TaskRecord
@@ -344,9 +344,6 @@ final class TaskService
     {
         if ($data->taskTypeId !== $current?->taskTypeId && !$this->tasks->taskTypeIsActive($data->taskTypeId)) {
             throw ValidationException::field('task_type_id', 'not_found');
-        }
-        if ($data->assigneeId === $ownerId) {
-            throw ValidationException::field('assignee_id', 'same_as_owner');
         }
         if ($data->assigneeId !== $current?->assigneeId && !$this->users->isActiveInternal($data->assigneeId)) {
             throw ValidationException::field('assignee_id', 'not_found');

@@ -100,6 +100,11 @@ final class ThreadController
         $input = Input::body($request);
         $version = $input->version();
         $body = $input->text('body', 0, ThreadService::MAX_BODY, false) ?? '';
+        // Absent leaves the photos as they are; a list (even an empty one) replaces them.
+        $fileIds = null;
+        if ($input->has('file_ids')) {
+            $fileIds = $input->isEmptyList('file_ids') ? [] : $input->uuidList('file_ids');
+        }
         $input->done();
 
         $entry = $this->thread->edit(
@@ -108,6 +113,7 @@ final class ThreadController
             $id,
             (int) $version,
             $body,
+            $fileIds,
         );
 
         return Json::write($response, $entry->toApi());

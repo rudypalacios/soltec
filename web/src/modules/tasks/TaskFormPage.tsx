@@ -18,7 +18,6 @@ type NamedRef = components['schemas']['NamedRef'];
 
 const FIELD_MESSAGES = {
   assignee_id: {
-    same_as_owner: 'Elige a otra persona: quien pide la tarea no puede ser quien la hace.',
     not_found: 'Esa persona ya no está activa.',
   },
   task_type_id: { not_found: 'Ese tipo ya no está disponible.' },

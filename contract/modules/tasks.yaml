@@ -266,7 +266,7 @@ paths:
       summary: Create a task.
       description:
         The caller becomes the owner and the task starts in the initial state of the `task` flow. The assignee must be
-        an active internal user other than the owner (422 `same_as_owner`, `not_found`) and the type an active one
+        an active internal user (422 `not_found`), who may be the owner when the task is for their own follow-up, and the type an active one
         (422 `not_found`). The due date is a calendar date; the hour is not kept. The thread starts with a `created`
         event.
       tags:
@@ -616,11 +616,13 @@ paths:
       - $ref: '#/components/parameters/ThreadEntryId'
     patch:
       operationId: editThreadEntry
-      summary: Change the text of a comment.
+      summary: Change the text and the photos of a comment.
       description:
         Only its author, and only a comment that is active, on a task the author still sees (403 `forbidden` for
         anyone else; events are 404). The entry is marked as edited and the audit log keeps the previous text. A stale
-        `version` is 409 `conflict`.
+        `version` is 409 `conflict`. `file_ids` replaces the photos of the comment, so one left out is removed and a new
+        one must be the author's (422 `not_found`, `too_many`); leaving it out keeps them. A comment keeps at least a
+        text or a photo.
       tags:
         - Thread
       x-permission: thread_entries.edit
@@ -902,6 +904,11 @@ components:
             body:
               type: string
               maxLength: 5000
+            file_ids:
+              type: array
+              maxItems: 5
+              items:
+                $ref: '#/components/schemas/Uuid'
     ThreadEvent:
       type: object
       required:

@@ -168,6 +168,21 @@ final class ThreadRepository
     }
 
     /**
+     * Replaces the photos of a comment with these, in this order. The link rows are configuration of the comment, not
+     * records: the photos themselves stay stored.
+     *
+     * @param list<string> $fileIds
+     */
+    public function replaceFiles(string $entryId, array $fileIds): void
+    {
+        $this->connection->executeStatement(
+            'DELETE FROM thread_entry_files WHERE entry_id = UNHEX(:id)',
+            ['id' => Uuid::toHex($entryId)],
+        );
+        $this->attachFiles($entryId, $fileIds);
+    }
+
+    /**
      * The records whose active thread entries carry this photo: whoever sees one of them sees the photo.
      *
      * @return list<array{type: string, id: string}>

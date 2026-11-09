@@ -251,6 +251,41 @@ describe('task detail', () => {
     expect(within(comment).getByRole('button', { name: 'Quitar' })).toBeVisible();
   });
 
+  it('lets the author take a photo off a comment they edit and sends the photos that stay', async () => {
+    const PHOTO_A = '0192f1c2-7d3a-7a11-8f2e-0000000000a1';
+    const PHOTO_B = '0192f1c2-7d3a-7a11-8f2e-0000000000a2';
+    const mine = {
+      ...COMMENT,
+      author: { id: ME.id, name: ME.name },
+      mentions: [],
+      body: 'Dos fotos',
+      file_ids: [PHOTO_A, PHOTO_B],
+    };
+    const patches: Call[] = [];
+    const { session } = createTestSession(
+      handlers({
+        [`GET /v1/tasks/${TASK.id}/thread`]: () => thread([mine]),
+        [`GET /v1/files/${PHOTO_A}/content`]: () => problem(404, 'not_found'),
+        [`GET /v1/files/${PHOTO_B}/content`]: () => problem(404, 'not_found'),
+        [`PATCH /v1/thread-entries/${mine.id}`]: (call) => {
+          patches.push(call);
+          return Response.json({ ...mine, file_ids: [PHOTO_A], version: 2 });
+        },
+      }),
+      meWith(),
+    );
+    renderApp(session, `/tareas/${TASK.id}`);
+    const user = userEvent.setup();
+
+    const comment = await screen.findByRole('article', { name: `Comentario de ${ME.name}` });
+    await user.click(within(comment).getByRole('button', { name: 'Editar' }));
+    await user.click(await screen.findByRole('button', { name: 'Quitar «Foto 2»' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]?.body).toMatchObject({ body: 'Dos fotos', file_ids: [PHOTO_A], version: 1 });
+  });
+
   it('does not offer the composer without the permission to comment', async () => {
     const { session } = createTestSession(
       handlers(),
