@@ -75,10 +75,7 @@ export function CommentComposer({
   const listOpen = open && choices.length > 0;
 
   const track = (target: HTMLTextAreaElement) => {
-    // Selection events that arrive while the field is not focused (a click on the list) say nothing about typing.
-    if (document.activeElement === target) {
-      setCaret(target.selectionStart);
-    }
+    setCaret(target.selectionStart);
   };
 
   const change = (event: ChangeEvent<HTMLTextAreaElement>) => {
