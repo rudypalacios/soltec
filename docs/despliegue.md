@@ -9,8 +9,10 @@ El workflow **Deploy** se dispara solo:
 | Evento | Qué hace |
 |---|---|
 | Un PR (al abrirlo, con cada push o con una etiqueta) | **No corre nada.** Las pruebas se corren en la sesión antes del PR ([ADR-0028](adr/0028-pruebas-en-la-sesion-no-en-github.md)). |
-| Fusionar un PR en `develop` | **No despliega ni corre nada.** |
-| `main` (el PR de release `develop → main`, con commit de fusión) | Despliega en `production` (`soltec.musicos-catolicos.com`). Es lo único que corre solo. |
+| Fusionar un PR en `develop` | Despliega en `staging` (`test.musicos-catolicos.com`). |
+| `main` (el PR de release `develop → main`, con commit de fusión) | Despliega en `production` (`soltec.musicos-catolicos.com`). |
+
+Estos dos despliegues son lo único que corre solo.
 
 Una rama sin PR no dispara nada.
 
