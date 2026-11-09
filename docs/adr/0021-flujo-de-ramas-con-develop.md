@@ -19,4 +19,4 @@ Todo PR iba a `main` con squash y cada fusión desplegaba a producción. No hab�
 ## Consecuencias
 - Hay dos fusiones distintas; el tipo se elige por destino. Los *rulesets* de GitHub fuerzan el método por rama (`develop`: solo squash; `main`: solo merge commit), así que un squash a `main` por error no es posible; sin ellos, se corregiría con un PR de reconciliación.
 - Producción sigue limitada a `main` (entorno `production`); `staging` debe aceptar las ramas de PR.
-- En GitHub: un ruleset para `develop` (PR, solo squash, pruebas y `Playwright` obligatorios) y otro para `main` (PR, solo merge commit, pruebas obligatorias). `staging` ya desplegaba desde ramas de PR y no cambia.
+- En GitHub: un ruleset para `develop` (PR, solo squash, pruebas y `Playwright` obligatorios) y otro para `main` (PR, solo merge commit, pruebas obligatorias). *Desde el 2026-11-09 esos checks ya no se publican (ADR-0028): hay que quitarlos de los rulesets.* `staging` ya desplegaba desde ramas de PR y no cambia.

@@ -34,3 +34,4 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0024](0024-permisos-por-seccion-y-listas-de-opciones.md) | Permisos por sección y listas de opciones | Aceptada |
 | [0025](0025-clientes-con-varios-asesores-y-contactos-propios.md) | Clientes con varios asesores, contactos propios y perfil externo reducido | Aceptada |
 | [0026](0026-flujos-de-estado.md) | Flujos de estado como datos, flujos como código | Aceptada |
+| [0028](0028-pruebas-en-la-sesion-no-en-github.md) | Las pruebas corren en la sesión, no en GitHub | Aceptada |

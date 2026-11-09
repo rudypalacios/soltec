@@ -10,7 +10,7 @@ Dos entornos ya existen: `test.musicos-catolicos.com` y `soltec.musicos-catolico
 - Un PR con la etiqueta `pre-deploy` despliega al entorno **staging** (`test.musicos-catolicos.com`) *(cambio del 2026-10-09: antes lo hacía cada push a una rama; ahora lo decide quien revisa, porque no todo cambio, por ejemplo uno solo de texto, necesita probarse allí)*; las pruebas corren en todo PR. El merge a la rama de producción despliega a **production** (`soltec.musicos-catolicos.com`). La rama de producción es `main` (a la que llega solo el release desde `develop`, ADR-0021). El entorno `production` de GitHub solo admite `main`. El workflow Deploy se dispara con cada push; también puede lanzarse a mano con la misma regla.
 - CI instala dependencias (`composer --no-dev`), compila `web/` y sube `api/` (con `vendor/`) y el build del frontend. Nunca sube `.env`, `.htaccess`, logs ni archivos de desarrollo.
 - Secretos y URL por entorno (GitHub Environments). `concurrency` por entorno para no desplegar dos veces a la vez.
-- Los tests corren contra un servicio MySQL 5.7 antes de desplegar.
+- ~~Los tests corren contra un servicio MySQL 5.7 antes de desplegar.~~ Desde el 2026-11-09 el despliegue ya no ejecuta pruebas: se corren en la sesión antes del PR (ADR-0028).
 - En staging, una rama a la vez (la última que se subió), con acción manual para resetear su base de datos.
 - Web en `/` y API en `/api/v1` bajo el mismo subdominio (sin CORS, refresh token en cookie httpOnly). La versión en la ruta permite migrar la API poco a poco. *(Confirmado.)*
 

@@ -33,6 +33,8 @@ npm run dev                     # http://localhost:5173
 
 ## Pruebas y calidad
 
+Las pruebas **no corren solas en GitHub** (el plan gratuito limita los minutos, ADR-0028): se corren en la sesión de trabajo antes de abrir un PR. Los workflows *Tests* y *E2E* se lanzan a mano con *Run workflow* cuando se quiera repetirlas en GitHub.
+
 | Qué | Comando |
 |---|---|
 | API: estilo, análisis estático y pruebas | `cd api && composer check` |
