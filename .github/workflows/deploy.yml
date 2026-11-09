@@ -1,15 +1,15 @@
 name: Deploy
 
 # What runs and what deploys (ADR-0004, changed by ADR-0028):
-# - This workflow only deploys, and only when main changes: the merge commit of the release PR develop -> main
-#   deploys to production ("production"). A pull request runs nothing, and neither does merging one into develop.
+# - This workflow only deploys, and only when develop or main change: a merge into develop deploys to "staging" and the
+#   merge commit of the release PR develop -> main deploys to "production". A pull request runs nothing.
 # - "Run workflow" (manual) applies the same rule to the chosen branch: on main it redeploys production, and on any
 #   other branch it deploys that branch to "staging", which is how a change is tried there before it is merged.
 # - The tests (tests.yml) and the E2E suite (e2e.yml) are manual too: they are run in the working session before a
 #   pull request is opened, because the free plan of GitHub limits the CI minutes.
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   workflow_dispatch:
 
 jobs:
