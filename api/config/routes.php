@@ -27,6 +27,7 @@ use Soltec\Modules\Clients\Http\ClientContactController;
 use Soltec\Modules\Clients\Http\ClientController;
 use Soltec\Modules\Clients\Http\ClientSellerController;
 use Soltec\Modules\Contacts\Http\ContactController;
+use Soltec\Modules\Files\Http\FileController;
 use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Products\Http\BundleController;
 use Soltec\Modules\Products\Http\ProductController;
@@ -103,6 +104,15 @@ return static function (App $app): void {
             ->setArgument('permission', 'departments.deactivate');
         $group->post('/departments/{departmentId}/reactivate', [DepartmentController::class, 'reactivate'])
             ->setArgument('permission', 'departments.deactivate');
+
+        // Photos: the owner of a file is whoever uploaded it, and the scope of `files` decides whose files a user
+        // reaches. The photo itself is read with the same permission as its description.
+        $group->post('/files', [FileController::class, 'upload'])->setArgument('permission', 'files.create');
+        $group->get('/files/{fileId}', [FileController::class, 'show'])->setArgument('permission', 'files.view');
+        $group->get('/files/{fileId}/content', [FileController::class, 'content'])
+            ->setArgument('permission', 'files.view');
+        $group->post('/files/{fileId}/deactivate', [FileController::class, 'deactivate'])
+            ->setArgument('permission', 'files.deactivate');
 
         // Flows of states (tasks, tickets): the lists are short, so they are not paginated. The fixed `order` path
         // comes before `{stateId}`.

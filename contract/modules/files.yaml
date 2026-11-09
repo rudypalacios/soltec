@@ -1,0 +1,233 @@
+paths:
+  /v1/files:
+    post:
+      operationId: uploadFile
+      summary: Upload a photo.
+      description:
+        A multipart form with the photo in `file` (JPEG, PNG or WebP, up to 10 MB and 16 megapixels, identified by its
+        content), an optional `id` and an optional `metadata`. The photo is decoded and stored again as two WebP
+        files, normal (1600 px on the longer side) and thumbnail (320 px), so nothing the file carried beyond the
+        picture is kept. The uploader owns the file; the data scope of `files` decides whose files a user reaches.
+        The `id` is a UUID the client chose, so a retry does not duplicate the photo. The same id with the same photo
+        from the same person answers 200 with the photo already stored, and any other use of an existing id answers
+        409 `conflict`. Validation errors (422) are reported on `file` (`required`, `too_large`, `unsupported_type`,
+        `invalid`), on `id` (`invalid`) and on `metadata` (`invalid`, or the field inside it such as
+        `metadata.latitude` with `invalid`, `out_of_range` or `required`).
+      tags:
+        - Files
+      x-permission: files.create
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FileUpload'
+      responses:
+        '200':
+          description: The photo was already stored (a retry).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getFile
+      summary: Get the description of a photo.
+      description: Returns the photo, active or not. A photo outside the caller's data scope answers 404.
+      tags:
+        - Files
+      x-permission: files.view
+      responses:
+        '200':
+          description: The photo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/files/{fileId}/content:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getFileContent
+      summary: Get the image of a photo.
+      description:
+        The WebP image in the size asked for (`normal` by default). It needs the bearer token, so a browser reads it
+        with a request and shows the result, not with an image tag. The answer carries an ETag and the browser
+        revalidates it on every use, so a user who loses access, or a photo that is deactivated, stops getting it at
+        once and an unchanged photo costs a 304. An inactive photo answers 404.
+      tags:
+        - Files
+      x-permission: files.view
+      parameters:
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - normal
+              - thumbnail
+            default: normal
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The image.
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '304':
+          description: The image has not changed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/files/{fileId}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    post:
+      operationId: deactivateFile
+      summary: Deactivate a photo.
+      description:
+        Logical deactivation. The photo stops being served and the files stay on the disk, because nothing is deleted.
+        Idempotent.
+      tags:
+        - Files
+      x-permission: files.deactivate
+      responses:
+        '200':
+          description: The deactivated photo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    PhotoMetadata:
+      type: object
+      description:
+        What the phone says about the photo, read from the EXIF before the picture was shrunk. Only these fields are
+        kept; any other the client sends is ignored. The coordinates go together or not at all.
+      properties:
+        taken_at:
+          $ref: '#/components/schemas/Timestamp'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+          description: Degrees, as a JSON number, kept with six decimals.
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        device_make:
+          type: string
+          maxLength: 100
+        device_model:
+          type: string
+          maxLength: 100
+    File:
+      allOf:
+        - $ref: '#/components/schemas/RecordMeta'
+        - type: object
+          required:
+            - original_name
+            - width
+            - height
+            - size_bytes
+            - metadata
+            - uploaded_by
+            - is_active
+          properties:
+            original_name:
+              type: string
+              description: The name the client gave, kept only to show it.
+            width:
+              type: integer
+              minimum: 1
+              description: Pixels of the normal image.
+            height:
+              type: integer
+              minimum: 1
+            size_bytes:
+              type: integer
+              minimum: 1
+              description: Bytes of the normal image.
+            metadata:
+              oneOf:
+                - $ref: '#/components/schemas/PhotoMetadata'
+                - type: 'null'
+            uploaded_by:
+              $ref: '#/components/schemas/NamedRef'
+            is_active:
+              type: boolean
+    FileUpload:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+        id:
+          $ref: '#/components/schemas/Uuid'
+        metadata:
+          type: string
+          maxLength: 8192
+          description: A JSON object with the fields of PhotoMetadata, as text.
