@@ -1,8 +1,8 @@
 # ERD — Hito 3: tareas, tickets y cierre del legacy
 
-**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados) y la 3.2 (fotos) · Fecha: 2026-11-09
+**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados), la 3.2 (fotos) y la 3.3 (tareas e hilo) · Fecha: 2026-11-10
 
-Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md) y [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md). Convenciones: [README](README.md).
+Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md), [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md) y [ADR-0029](../../adr/0029-tareas-e-hilo-de-actividad.md). Convenciones: [README](README.md).
 
 ## 3.1 Motor de estados
 
@@ -68,3 +68,52 @@ erDiagram
 Más los campos de toda tabla de negocio. El id lo elige el cliente (UUID v7), así que la tabla puede llenarse sin conexión.
 
 Recurso de permisos `files` (ver, crear, editar, desactivar) con alcance; `admin` lo recibe completo con `all`. No lleva columnas de adopción: cuando un registro adopte fotos, lo hará con su propia tabla de unión o su propia columna, y quien ve el registro verá sus fotos (ADR-0027).
+
+## 3.3 Tareas e hilo de actividad
+
+```mermaid
+erDiagram
+    TASK_TYPES ||--o{ TASKS : "task_type_id"
+    USERS ||--o{ TASKS : "owner_id"
+    USERS ||--o{ TASKS : "assignee_id"
+    WORKFLOW_STATES ||--o{ TASKS : "state_id"
+    TASKS ||--o{ THREAD_ENTRIES : "subject (task, id)"
+    USERS ||--o{ THREAD_ENTRIES : "author_id"
+    THREAD_ENTRIES ||--o{ THREAD_ENTRY_MENTIONS : "entry_id"
+    USERS ||--o{ THREAD_ENTRY_MENTIONS : "user_id"
+    THREAD_ENTRIES ||--o{ THREAD_ENTRY_FILES : "entry_id"
+    FILES ||--o{ THREAD_ENTRY_FILES : "file_id"
+```
+
+### `task_types`
+Parámetro del catálogo (misma forma que `payment_methods`: nombre único entre activos, sembrado con los nueve tipos de AP1: Ventas, Compras, Administrativa, Mantenimiento, Emergencia, Proyecto, Cobro, Pago y Servicios). Recurso de permisos `task_types`, con lista de opciones abierta a toda sesión interna.
+
+### `tasks`
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `title` | `VARCHAR(150) NOT NULL` | |
+| `description` | `TEXT NULL` | Hasta 5000 caracteres |
+| `task_type_id` | `BINARY(16) NOT NULL` | FK `task_types`; uno inactivo se acepta solo si la tarea ya lo tenía |
+| `owner_id` | `BINARY(16) NOT NULL` | FK `users`; quien la creó |
+| `assignee_id` | `BINARY(16) NOT NULL` | FK `users`; usuario interno activo, distinto del dueño |
+| `due_date` | `DATE NOT NULL` | Solo fecha; la hora queda para después |
+| `state_id` | `BINARY(16) NOT NULL` | FK `workflow_states` (flujo `task`) |
+| `proposed_due_date` | `DATE NULL` | La fecha que propone el asignado al devolver la tarea; se limpia en el siguiente paso |
+
+Más los campos de toda tabla de negocio. Recurso `tasks` con alcance: lo alcanzan el dueño, el asignado y lo que dé el alcance (que mira ambas columnas).
+
+### `thread_entries`
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `seq` | `BIGINT UNSIGNED AUTO_INCREMENT` | Desempata entradas del mismo milisegundo; el orden de lectura es `(created_at, seq)` |
+| `subject_type`, `subject_id` | `VARCHAR(30)`, `BINARY(16)` | El registro del que cuelga (`task` hoy, `ticket` en 3.5); sin FK |
+| `kind` | `VARCHAR(10) NOT NULL` | `comment` o `event` |
+| `author_id` | `BINARY(16) NOT NULL` | FK `users`; en un evento, quien hizo el cambio |
+| `body` | `TEXT NULL` | Con menciones como `@[id]`; nulo en un evento o en un comentario solo de fotos |
+| `event_type`, `event_data` | `VARCHAR(40)`, `JSON` | `created`, `state_changed`, `assignee_changed`, `due_date_changed` |
+| `visibility` | `VARCHAR(10) NOT NULL` | `internal` hoy; el portal (Hito 9) leerá solo `external` |
+| `edited_at` | `DATETIME(3) NULL` | Marca «editado» |
+
+Más los campos de toda tabla de negocio. `thread_entry_mentions (entry_id, user_id)` y `thread_entry_files (entry_id, file_id, sort_order)` son uniones de clave compuesta. Recurso `thread_entries` (ver, crear, editar, desactivar), sin alcance propio: ver el hilo exige ver el registro.
