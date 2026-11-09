@@ -59,7 +59,8 @@ final class ThreadController
         $input = Input::body($request);
         $id = $input->nullableUuid('id');
         $body = $input->text('body', 0, ThreadService::MAX_BODY, false) ?? '';
-        $fileIds = $input->uuidList('file_ids', false) ?? [];
+        // A comment without photos sends an empty list, which uuidList reads as «nothing chosen».
+        $fileIds = $input->isEmptyList('file_ids') ? [] : ($input->uuidList('file_ids', false) ?? []);
         $input->done();
 
         $result = $this->thread->comment(

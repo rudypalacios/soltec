@@ -72,6 +72,14 @@ final class ThreadTest extends TasksTestCase
         );
     }
 
+    public function testAnEmptyListOfPhotosIsAcceptedAsNoPhotos(): void
+    {
+        $response = $this->api('POST', $this->threadPath, $this->owner['token'], ['body' => 'Hola', 'file_ids' => []]);
+
+        self::assertSame(201, $response->getStatusCode());
+        self::assertSame([], $this->json($response)['file_ids']);
+    }
+
     public function testANewCommentNeedsTextOrAPhotoAndIsLimited(): void
     {
         $empty = $this->api('POST', $this->threadPath, $this->owner['token'], ['body' => '   ']);

@@ -40,6 +40,6 @@ test(
 
     await page.goto('/tareas');
     await page.getByLabel(/^Buscar por/).fill(title);
-    await expect(page.getByRole('link', { name: title })).toBeVisible();
+    await expect(page.getByRole('link', { name: title, exact: true })).toBeVisible();
   },
 );

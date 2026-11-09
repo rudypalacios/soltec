@@ -73,7 +73,10 @@ export function CommentComposer({
   const listOpen = open && choices.length > 0;
 
   const track = (target: HTMLTextAreaElement) => {
-    setCaret(target.selectionStart);
+    // Selection events that arrive while the field is not focused (a click on the list) say nothing about typing.
+    if (document.activeElement === target) {
+      setCaret(target.selectionStart);
+    }
   };
 
   const change = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -87,7 +90,9 @@ export function CommentComposer({
     if (!typing) {
       return;
     }
-    const next = insertMention(text, typing.start, caret, person.name);
+    // The end of what was typed comes from the text, not from the caret: a click on the list can move the caret.
+    const end = typing.start + 1 + typing.query.length;
+    const next = insertMention(text, typing.start, end, person.name);
     setText(next.text);
     setCaret(next.caret);
     setChosen((current) =>
