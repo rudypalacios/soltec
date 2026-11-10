@@ -161,6 +161,58 @@ final class TasksTest extends TasksTestCase
         self::assertSame(404, $this->api('GET', $path, $this->assignee['token'])->getStatusCode());
     }
 
+    public function testWhoeverIsAskedToDoATaskSeesItWithoutAnyTaskPermission(): void
+    {
+        $role = $this->createRole('Sin permisos de tareas');
+        $nobody = $this->createUser('nobody@example.com', [$role], name: 'Nadie Permisos');
+        $token = $this->tokenFor($nobody['id']);
+        $task = $this->newTask(['assignee_id' => $nobody['id']]);
+        $path = '/tasks/' . $this->text($task, 'id');
+
+        $list = $this->json($this->api('GET', '/tasks', $token));
+        self::assertSame([$this->text($task, 'id')], $this->columnAt($list, 'id', 'data'));
+        $shown = $this->json($this->api('GET', $path, $token));
+        self::assertSame(['Aceptada', 'Rechazada'], $this->columnAt($shown, 'name', 'next_states'));
+        self::assertSame(200, $this->api('GET', $path . '/thread', $token)->getStatusCode());
+        $moved = $this->api('POST', $path . '/transition', $token, [
+            'state_id' => $this->stateId('Aceptada'),
+            'version' => 1,
+        ]);
+        self::assertSame(200, $moved->getStatusCode());
+        // Seeing is all that being involved gives: changing the task keeps its permission.
+        self::assertSame(403, $this->api('PATCH', $path, $token, ['version' => 2])->getStatusCode());
+    }
+
+    public function testOnlyTheSystemAdministratorMovesEveryStepOfSomeoneElsesTask(): void
+    {
+        $task = $this->newTask();
+        $path = '/tasks/' . $this->text($task, 'id');
+
+        // A profile somebody created with every permission edits tasks but is not in charge of them.
+        $powerful = $this->tokenWith('tasks', 'view', 'create', 'edit', 'deactivate');
+        $seen = $this->json($this->api('GET', $path, $powerful));
+        self::assertSame([], $seen['next_states']);
+        $denied = $this->api('POST', $path . '/transition', $powerful, [
+            'state_id' => $this->stateId('Aceptada'),
+            'version' => 1,
+        ]);
+        self::assertSame(403, $denied->getStatusCode());
+
+        $admin = $this->tokenFor($this->createAdmin()['id']);
+
+        $shown = $this->json($this->api('GET', $path, $admin));
+        self::assertSame(['Aceptada', 'Rechazada'], $this->columnAt($shown, 'name', 'next_states'));
+        $version = 1;
+        foreach (['Aceptada', 'En ejecución', 'Completada', 'Cerrada'] as $name) {
+            $moved = $this->api('POST', $path . '/transition', $admin, [
+                'state_id' => $this->stateId($name),
+                'version' => $version,
+            ]);
+            self::assertSame(200, $moved->getStatusCode(), $name);
+            $version = $this->versionOf($this->json($moved));
+        }
+    }
+
     public function testRefusesAStateTheFlowDoesNotLink(): void
     {
         $task = $this->newTask();

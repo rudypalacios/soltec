@@ -85,7 +85,7 @@ final class ThreadService
         if ($body === '' && $fileIds === []) {
             throw ValidationException::field('body', 'required');
         }
-        $mentioned = $this->assertMentionable($type, $subjectId, $body);
+        $mentioned = $this->assertMentionable($body);
         $this->assertPhotos($caller, $fileIds);
 
         try {
@@ -154,7 +154,7 @@ final class ThreadService
             if ($body === '' && $files === []) {
                 throw ValidationException::field('body', 'required');
             }
-            $mentioned = $this->assertMentionable($entry->subjectType, $entry->subjectId, $body);
+            $mentioned = $this->assertMentionable($body);
             $this->assertPhotos($caller, $files, $entry->fileIds);
             $textChanged = $body !== ($entry->body ?? '');
             $photosChanged = $files !== $entry->fileIds;
@@ -238,7 +238,8 @@ final class ThreadService
     }
 
     /**
-     * The people the caller can mention on a record: active internal users who reach it, matching the typed text.
+     * The people a comment on the record can mention: any active internal user, filtered by the typed text. Being
+     * mentioned gives access to the record and its thread, so the list is not narrowed to who already sees it.
      *
      * @return list<array{id: string, name: string}>
      */
@@ -249,16 +250,9 @@ final class ThreadService
         ?string $text,
         int $limit,
     ): array {
-        $subject = $this->assertCanSee($caller, $type, $subjectId);
-        // Look at more candidates than the page holds: some of them will not reach the record.
-        $candidates = $this->users->search($text, 200);
-        $reach = array_flip($subject->whoCanSee($subjectId, array_column($candidates, 'id')));
+        $this->assertCanSee($caller, $type, $subjectId);
 
-        return array_slice(
-            array_values(array_filter($candidates, static fn (array $user): bool => isset($reach[$user['id']]))),
-            0,
-            $limit,
-        );
+        return $this->users->search($text, $limit);
     }
 
     private function assertCanSee(CurrentUser $caller, string $type, string $subjectId): ThreadSubject
@@ -305,20 +299,15 @@ final class ThreadService
     }
 
     /**
-     * The ids the text mentions, after checking each is an active internal user who reaches the record.
+     * The ids the text mentions, after checking each is an active internal user.
      *
      * @return list<string>
      * @throws ValidationException `body` `invalid_mention`
      */
-    private function assertMentionable(string $type, string $subjectId, string $body): array
+    private function assertMentionable(string $body): array
     {
         $ids = Mentions::idsIn($body);
-        if ($ids === []) {
-            return [];
-        }
-        $active = array_column($this->users->activeAmong($ids), 'id');
-        $reach = $this->subjects->get($type)->whoCanSee($subjectId, $active);
-        if (count($reach) !== count($ids)) {
+        if ($ids !== [] && count($this->users->activeAmong($ids)) !== count($ids)) {
             throw ValidationException::field('body', 'invalid_mention');
         }
 

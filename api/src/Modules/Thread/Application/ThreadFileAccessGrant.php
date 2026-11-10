@@ -18,9 +18,6 @@ final class ThreadFileAccessGrant implements FileAccessGrant
 
     public function mayRead(CurrentUser $reader, string $fileId): bool
     {
-        if (!$reader->can('thread_entries', 'view')) {
-            return false;
-        }
         foreach ($this->entries->subjectsHoldingFile($fileId) as $subject) {
             if ($this->subjects->get($subject['type'])->canSee($reader, $subject['id'])) {
                 return true;

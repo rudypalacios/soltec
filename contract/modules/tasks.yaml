@@ -198,14 +198,15 @@ paths:
       operationId: listTasks
       summary: List the tasks the caller reaches.
       description:
-        A task is reached by its owner, its assignee and whoever the data scope of `tasks` allows; the scope looks at
-        both people, so `own` lists the tasks the caller asked for and the ones they have to do, `team` those of the
-        caller's team and `all` every one. Inactive tasks are hidden unless status says otherwise. Sorted by due date.
+        A task is reached by its owner, its assignee and whoever was mentioned in an active comment of it, with no
+        permission needed (any internal session may call this). `tasks.view` with its data scope widens that, so `own`
+        lists what the caller asked for, was asked to do or was mentioned in, `team` adds the caller's team and `all`
+        every task. Inactive tasks are hidden unless status says otherwise. Sorted by due date.
         `q` searches the title. `relation` narrows to the tasks the caller owns or is assigned. `due_before` keeps the
         tasks due before a date, and with `open_only` it lists the overdue ones.
       tags:
         - Tasks
-      x-permission: tasks.view
+      x-permission: internal
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
@@ -337,11 +338,11 @@ paths:
       operationId: getTask
       summary: Get a task.
       description:
-        The field `next_states` lists the states the caller may move the task to now, meaning the ones the flow links from its state,
-        minus the closing step when the caller is not the owner.
+        The field `next_states` lists the states the caller may move the task to now, meaning the ones the flow links
+        from its state that the caller may take (see the transition). It is empty for whoever is only mentioned.
       tags:
         - Tasks
-      x-permission: tasks.view
+      x-permission: internal
       responses:
         '200':
           description: The task.
@@ -400,13 +401,13 @@ paths:
       summary: Move a task to another state of its flow.
       description:
         The destination must be linked from the current state (422 `transition_not_allowed` on `state_id`). The
-        assignee or the owner may move the task; closing it, or reopening a closed one, is the owner's alone (403
-        `forbidden` otherwise). `reason` and `proposed_due_date` are what an assignee who cannot make the date writes
+        assignee or the owner may move the task; closing it, or reopening a closed one, is the owner's alone, and the
+        system administrator (the `admin` profile) may take any step (403 `forbidden` otherwise). `reason` and `proposed_due_date` are what an assignee who cannot make the date writes
         when sending the task back; the proposed date stays on the task until the next move. The owner may send
         `accept_proposed_due_date` to make it the due date. The change goes to the thread as a `state_changed` event.
       tags:
         - Tasks
-      x-permission: tasks.view
+      x-permission: internal
       requestBody:
         required: true
         content:
@@ -496,7 +497,7 @@ paths:
         `GET /v1/files/{id}/content`, which any reader of the task may do.
       tags:
         - Thread
-      x-permission: thread_entries.view
+      x-permission: internal
       parameters:
         - name: limit
           in: query
@@ -533,8 +534,9 @@ paths:
       operationId: commentOnTask
       summary: Write a comment on a task.
       description:
-        The text may carry mentions written as `@[user-id]`; each must be an active internal user who can see the task
-        (422 `invalid_mention` on `body`). Up to five photos the caller uploaded may be attached (`file_ids`, with 422
+        The text may carry mentions written as `@[user-id]`; each must be an active internal user (422
+        `invalid_mention` on `body`). Being mentioned gives the person access to the task and its thread for as long
+        as the comment is active. Up to five photos the caller uploaded may be attached (`file_ids`, with 422
         `too_many` or `not_found`); from then on whoever sees the task sees them. A comment needs text or a photo. The
         optional `id` (a UUID v7 chosen by the client) makes a retry safe, because the same id with the same comment answers
         200 with what was stored, any other use of it is 409.
@@ -579,8 +581,8 @@ paths:
       operationId: listTaskMentionOptions
       summary: List the people a comment on the task can mention.
       description:
-        Active internal users who can see the task, filtered by `q` (name or email) as the person types after `@`.
-        Everyone listed is accepted by the comment; nobody else is.
+        Any active internal user, filtered by `q` (name or email) as the person types after `@`. Everyone listed is
+        accepted by the comment; nobody else is.
       tags:
         - Thread
       x-permission: thread_entries.create

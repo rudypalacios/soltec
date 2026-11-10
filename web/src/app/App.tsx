@@ -140,14 +140,7 @@ export function App() {
             </RequirePermission>
           }
         />
-        <Route
-          path="tareas"
-          element={
-            <RequirePermission resource="tasks" action="view">
-              <TasksPage />
-            </RequirePermission>
-          }
-        />
+        <Route path="tareas" element={<TasksPage />} />
         <Route
           path="tareas/nueva"
           element={
@@ -156,14 +149,7 @@ export function App() {
             </RequirePermission>
           }
         />
-        <Route
-          path="tareas/:taskId"
-          element={
-            <RequirePermission resource="tasks" action="view">
-              <TaskDetailPage />
-            </RequirePermission>
-          }
-        />
+        <Route path="tareas/:taskId" element={<TaskDetailPage />} />
         <Route
           path="tareas/:taskId/editar"
           element={

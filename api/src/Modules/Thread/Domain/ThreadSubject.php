@@ -15,14 +15,6 @@ interface ThreadSubject
     /** The value stored in `thread_entries.subject_type`, e.g. `task`. */
     public function type(): string;
 
-    /** Whether the user reaches the record, by permission and by data scope. */
+    /** Whether the user reaches the record: because they are involved in it, or by permission and data scope. */
     public function canSee(CurrentUser $user, string $subjectId): bool;
-
-    /**
-     * Of these users, the ones who reach the record (the people a comment may mention).
-     *
-     * @param list<string> $userIds
-     * @return list<string>
-     */
-    public function whoCanSee(string $subjectId, array $userIds): array;
 }

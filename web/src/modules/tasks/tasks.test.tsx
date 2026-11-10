@@ -321,7 +321,7 @@ describe('task detail', () => {
     expect(screen.queryByRole('button', { name: /Pasar a/ })).not.toBeInTheDocument();
   });
 
-  it('shows only the state, with no menu, when the person has no step to take', async () => {
+  it('keeps the state as a dropdown that stays closed when the person has no step to take', async () => {
     const closed = { ...TASK, next_states: [] };
     const { session } = createTestSession(
       handlers({ [`GET /v1/tasks/${TASK.id}`]: () => Response.json(closed) }),
@@ -329,8 +329,89 @@ describe('task detail', () => {
     );
     renderApp(session, `/tareas/${TASK.id}`);
 
-    expect(await screen.findByLabelText('Estado: Asignada')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /Cambiar estado/ })).not.toBeInTheDocument();
+    const control = await screen.findByRole('button', { name: 'Estado: Asignada' });
+    expect(control).toBeDisabled();
+    expect(screen.getByText('No tienes pasos que dar en esta tarea.')).toBeVisible();
+  });
+
+  it('puts the state inside the details panel, above who and when', async () => {
+    const { session } = createTestSession(handlers(), meWith());
+    renderApp(session, `/tareas/${TASK.id}`);
+
+    const details = await screen.findByRole('complementary', { name: 'Detalles' });
+    expect(
+      within(details).getByRole('button', { name: 'Estado: Asignada. Cambiar estado' }),
+    ).toBeVisible();
+    expect(within(details).getByText('Andrés Asignado')).toBeVisible();
+  });
+
+  it('opens the photos of one comment as a gallery and moves only among them', async () => {
+    Object.assign(URL, { createObjectURL: () => 'blob:photo', revokeObjectURL: () => {} });
+    const A = '0192f1c2-7d3a-7a11-8f2e-0000000000b1';
+    const B = '0192f1c2-7d3a-7a11-8f2e-0000000000b2';
+    const OTHER = '0192f1c2-7d3a-7a11-8f2e-0000000000b3';
+    const base = { ...COMMENT, mentions: [] };
+    const two = {
+      ...base,
+      id: '0192f1c2-7d3a-7a11-8f2e-0000000000e8',
+      body: 'Dos',
+      file_ids: [A, B],
+    };
+    const one = {
+      ...base,
+      id: '0192f1c2-7d3a-7a11-8f2e-0000000000e9',
+      body: 'Una',
+      file_ids: [OTHER],
+    };
+    const image = () => new Response(new Blob(['x'], { type: 'image/webp' }));
+    const { session } = createTestSession(
+      handlers({
+        [`GET /v1/tasks/${TASK.id}/thread`]: () => thread([one, two]),
+        [`GET /v1/files/${A}/content`]: image,
+        [`GET /v1/files/${B}/content`]: image,
+        [`GET /v1/files/${OTHER}/content`]: image,
+      }),
+      meWith(),
+    );
+    renderApp(session, `/tareas/${TASK.id}`);
+    const user = userEvent.setup();
+
+    // In reading order: the photo of the first comment, then the two of the second.
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Ver la foto en grande' })).toHaveLength(3),
+    );
+    const thumbnails = screen.getAllByRole('button', { name: 'Ver la foto en grande' });
+    await user.click(thumbnails[1] as HTMLElement);
+
+    const gallery = await screen.findByRole('dialog', { name: 'Galería de fotos' });
+    expect(within(gallery).getByText('1 / 2')).toBeVisible();
+    // The strip lists this comment's two photos, not the three of the thread.
+    expect(within(gallery).getAllByRole('button', { name: /^Ver la foto \d$/ })).toHaveLength(2);
+
+    await user.keyboard('{ArrowRight}');
+    expect(within(gallery).getByText('2 / 2')).toBeVisible();
+    await user.keyboard('{ArrowRight}');
+    expect(within(gallery).getByText('1 / 2')).toBeVisible();
+    await user.click(within(gallery).getByRole('button', { name: 'Ver la foto 2' }));
+    expect(within(gallery).getByText('2 / 2')).toBeVisible();
+
+    await user.click(within(gallery).getByRole('button', { name: 'Cerrar la galería' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Galería de fotos' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('shows Tareas to a person with no task permission and lists what they were asked to do', async () => {
+    const { session } = createTestSession(
+      { 'GET /v1/tasks': () => Response.json(page([TASK])) },
+      meWith({}),
+    );
+    renderApp(session, '/tareas');
+
+    const table = await screen.findByRole('table', { name: 'Lista de tareas' });
+    expect(within(table).getByRole('link', { name: 'Instalar el equipo' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Tareas' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: /Nueva tarea/ })).not.toBeInTheDocument();
   });
 
   it('does not offer the composer without the permission to comment', async () => {

@@ -79,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Tareas',
     path: '/tareas',
     icon: <TaskAltOutlined />,
-    permissions: [{ resource: 'tasks', action: 'view' }],
+    // For every internal user: whoever asked for a task, was asked to do it or was mentioned in it sees it.
   },
   {
     label: 'Clientes',
