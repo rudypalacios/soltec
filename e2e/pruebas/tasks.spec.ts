@@ -3,6 +3,12 @@ import { expect, test } from '../fixtures.ts';
 import { signIn } from '../flujos/signIn.ts';
 import { uniqueSuffix } from '../support/api.ts';
 
+// A 1×1 picture: enough for the browser to shrink it and for the server to accept it.
+const PHOTO = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 test(
   'a task is created, assigned, discussed with a mention and moved through its flow',
   { tag: '@mobile' },
@@ -29,9 +35,23 @@ test(
     await field.fill('Revisa esto @e2e-asignado');
     await page.getByRole('option', { name: assignee.name }).click();
     await expect(field).toHaveValue(new RegExp(`@${assignee.name} $`));
+    await page.getByLabel('Elegir fotos').setInputFiles([
+      { name: 'uno.png', mimeType: 'image/png', buffer: PHOTO },
+      { name: 'dos.png', mimeType: 'image/png', buffer: PHOTO },
+    ]);
+    await expect(page.getByRole('progressbar')).toHaveCount(0);
     await page.getByRole('button', { name: 'Comentar' }).click();
     const comment = page.getByRole('article', { name: /^Comentario de / });
     await expect(comment.getByText(`@${assignee.name}`)).toBeVisible();
+
+    // Touching a photo opens the gallery of this comment's photos, on a dark background.
+    await comment.getByRole('button', { name: 'Ver la foto en grande' }).first().click();
+    const gallery = page.getByRole('dialog', { name: 'Galería de fotos' });
+    await expect(gallery.getByText('1 / 2')).toBeVisible();
+    await page.keyboard.press('ArrowRight');
+    await expect(gallery.getByText('2 / 2')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(gallery).toBeHidden();
 
     // Moving the task asks first and leaves the change in the thread.
     await page.getByRole('button', { name: /^Estado: Asignada/ }).click();

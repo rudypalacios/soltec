@@ -198,8 +198,6 @@ function TaskHeader({ task }: { task: Task }) {
       >
         {task.title}
       </Typography>
-      <StatusMenu task={task} />
-
       <ConfirmDialog
         open={deactivating}
         title="Desactivar tarea"
@@ -223,14 +221,15 @@ function TaskHeader({ task }: { task: Task }) {
 }
 
 /**
- * The state of the task as one control. With next steps it opens a menu of the states the person may move the task to
- * (the flow can grow to several destinations without growing the screen); without them it is just the state. Choosing
- * a destination asks for confirmation, with an optional reason.
+ * The state of the task, always as a dropdown. With next steps it opens a menu of the states the person may move the
+ * task to (the flow can grow to several destinations without growing the screen); without any it stays closed and says
+ * why. Choosing a destination asks for confirmation, with an optional reason.
  */
 function StatusMenu({ task }: { task: Task }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [step, setStep] = useState<NextState | null>(null);
   const next = task.next_states ?? [];
+  const canMove = next.length > 0 && task.is_active;
   const look = {
     bgcolor: task.state.color,
     color: '#fff',
@@ -240,32 +239,39 @@ function StatusMenu({ task }: { task: Task }) {
     px: 2,
     borderRadius: 2,
     justifyContent: 'space-between',
-    width: { xs: 1, sm: 'auto' },
-    minWidth: { sm: 160 },
-    alignSelf: 'flex-start',
+    width: 1,
+    '&:hover': { bgcolor: task.state.color, filter: 'brightness(0.92)' },
+    // Without a step to take the control keeps its colour, so the state still reads at a glance.
+    '&.Mui-disabled': { bgcolor: task.state.color, color: '#fff', opacity: 0.8 },
   } as const;
 
   return (
     <>
-      {next.length === 0 ? (
-        <Box
-          sx={{ ...look, display: 'inline-flex', alignItems: 'center' }}
-          aria-label={`Estado: ${task.state.name}`}
-        >
-          {task.state.name}
-        </Box>
-      ) : (
+      <Box sx={{ py: 1.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          Estado
+        </Typography>
         <Button
           aria-haspopup="menu"
           aria-expanded={anchor !== null}
-          aria-label={`Estado: ${task.state.name}. Cambiar estado`}
+          aria-label={
+            canMove ? `Estado: ${task.state.name}. Cambiar estado` : `Estado: ${task.state.name}`
+          }
+          disabled={!canMove}
           onClick={(event) => setAnchor(event.currentTarget)}
           endIcon={<KeyboardArrowDownIcon />}
-          sx={{ ...look, '&:hover': { bgcolor: task.state.color, filter: 'brightness(0.92)' } }}
+          sx={look}
         >
           {task.state.name}
         </Button>
-      )}
+        {canMove ? null : (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            {task.is_active
+              ? 'No tienes pasos que dar en esta tarea.'
+              : 'Reactívala para cambiar su estado.'}
+          </Typography>
+        )}
+      </Box>
       <Menu
         anchorEl={anchor}
         open={anchor !== null}
@@ -347,7 +353,8 @@ function TaskDetails({ task, sx }: { task: Task; sx?: object }) {
       <Typography variant="h6" component="h2" sx={{ pt: 1.5 }}>
         Detalles
       </Typography>
-      <Box component="dl" sx={{ m: 0 }}>
+      <StatusMenu task={task} />
+      <Box component="dl" sx={{ m: 0, borderTop: 1, borderColor: 'divider' }}>
         <Detail label="Asignada a">
           <Person name={task.assignee.name} />
         </Detail>

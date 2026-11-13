@@ -43,15 +43,19 @@ final class ScopedQuery
      * assignee's): the row is reached when any of the columns names the user (`own`) or a member of their team
      * (`team`).
      *
+     * `$alsoWhen` is a condition (its parameters already bound) that reaches the row whatever the scope, such as «the
+     * user was mentioned in it»; the `all` scope needs no filter at all.
+     *
      * @param non-empty-list<string> $ownerColumns columns with a user id, such as `t.owner_id`
      */
     public static function restrictAny(
         QueryBuilder $query,
         CurrentUser $user,
-        string $resource,
+        DataScope $scope,
         array $ownerColumns,
+        ?string $alsoWhen = null,
     ): void {
-        $members = match ($user->scopeFor($resource)) {
+        $members = match ($scope) {
             DataScope::All => null,
             DataScope::Own => [$user->id],
             DataScope::Team => self::teamOf($user),
@@ -67,10 +71,14 @@ final class ScopedQuery
         }
 
         $list = self::placeholders($query, $members, 'scope_any');
-        $query->andWhere('(' . implode(' OR ', array_map(
+        $conditions = array_map(
             static fn (string $column): string => sprintf('%s IN (%s)', $column, $list),
             $ownerColumns,
-        )) . ')');
+        );
+        if ($alsoWhen !== null) {
+            $conditions[] = '(' . $alsoWhen . ')';
+        }
+        $query->andWhere('(' . implode(' OR ', $conditions) . ')');
     }
 
     /**

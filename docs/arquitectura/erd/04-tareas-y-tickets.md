@@ -101,7 +101,7 @@ Parámetro del catálogo (misma forma que `payment_methods`: nombre único entre
 | `state_id` | `BINARY(16) NOT NULL` | FK `workflow_states` (flujo `task`) |
 | `proposed_due_date` | `DATE NULL` | La fecha que propone el asignado al devolver la tarea; se limpia en el siguiente paso |
 
-Más los campos de toda tabla de negocio. Recurso `tasks` con alcance: lo alcanzan el dueño, el asignado y lo que dé el alcance (que mira ambas columnas).
+Más los campos de toda tabla de negocio. Recurso `tasks` con alcance: la alcanzan su dueño, su asignado y quien fue mencionado en un comentario activo sin necesitar permiso alguno; `tasks.view` con su alcance (que mira ambas columnas) solo ensancha eso.
 
 ### `thread_entries`
 

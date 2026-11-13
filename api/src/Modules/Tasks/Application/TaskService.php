@@ -314,11 +314,13 @@ final class TaskService
 
     /**
      * Closing a task, or reopening a closed one, is the owner's; any other step belongs to the assignee or the owner.
-     * Whoever only reaches the task through their scope moves nothing.
+     * The system administrator (the `admin` profile, which cannot be edited or deleted) may take any step. A profile
+     * somebody created with every permission may not: it edits tasks but is not in charge of them. Whoever only reaches
+     * the task because they were mentioned in it moves nothing.
      */
     private function mayMove(CurrentUser $caller, TaskRecord $task, bool $fromTerminal, bool $toTerminal): bool
     {
-        if ($caller->id === $task->ownerId) {
+        if ($caller->id === $task->ownerId || $caller->isAdmin()) {
             return true;
         }
 

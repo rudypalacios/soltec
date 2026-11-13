@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { problemMessage } from '../access/messages';
 import { formatMoment } from '../access/formatting';
 import { useCurrentUser } from '../access/SessionContext';
+import { PhotoGallery } from '../files/PhotoGallery';
 import { useFileImage } from '../files/useFiles';
 import { CommentComposer } from './CommentComposer';
 import { formatDay } from './dates';
@@ -58,10 +59,9 @@ export function describeEvent(entry: ThreadEntry): string {
   }
 }
 
-function Thumbnail({ fileId }: { fileId: string }) {
+/** A thumbnail of a comment's photo; touching it opens the gallery of that comment's photos. */
+function Thumbnail({ fileId, onOpen }: { fileId: string; onOpen: () => void }) {
   const image = useFileImage(fileId, 'thumbnail');
-  const [open, setOpen] = useState(false);
-  const full = useFileImage(open ? fileId : undefined, 'normal');
   if (!image.url) {
     return (
       <Box
@@ -85,34 +85,44 @@ function Thumbnail({ fileId }: { fileId: string }) {
     );
   }
   return (
-    <>
+    <Box
+      component="button"
+      type="button"
+      aria-label="Ver la foto en grande"
+      onClick={onOpen}
+      sx={{
+        p: 0,
+        border: 0,
+        bgcolor: 'transparent',
+        cursor: 'zoom-in',
+        borderRadius: 1,
+        overflow: 'hidden',
+        lineHeight: 0,
+      }}
+    >
       <Box
-        component="button"
-        type="button"
-        aria-label="Ver la foto completa"
-        onClick={() => setOpen((current) => !current)}
-        sx={{
-          p: 0,
-          border: 0,
-          bgcolor: 'transparent',
-          cursor: 'zoom-in',
-          borderRadius: 1,
-          overflow: 'hidden',
-          lineHeight: 0,
-        }}
-      >
-        <Box
-          component="img"
-          src={open && full.url ? full.url : image.url}
-          alt="Foto adjunta"
-          sx={{
-            width: open ? '100%' : 96,
-            maxWidth: '100%',
-            height: open ? 'auto' : 96,
-            objectFit: 'cover',
-          }}
-        />
-      </Box>
+        component="img"
+        src={image.url}
+        alt="Foto adjunta"
+        sx={{ width: 96, height: 96, objectFit: 'cover' }}
+      />
+    </Box>
+  );
+}
+
+/** The photos of one comment. Each opens the gallery of this comment only, at the photo that was touched. */
+function CommentPhotos({ fileIds }: { fileIds: readonly string[] }) {
+  const [opened, setOpened] = useState<number | null>(null);
+  return (
+    <>
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
+        {fileIds.map((fileId, index) => (
+          <Thumbnail key={fileId} fileId={fileId} onOpen={() => setOpened(index)} />
+        ))}
+      </Stack>
+      {opened !== null ? (
+        <PhotoGallery fileIds={fileIds} startIndex={opened} onClose={() => setOpened(null)} />
+      ) : null}
     </>
   );
 }
@@ -193,13 +203,7 @@ function Comment({ taskId, entry }: { taskId: string; entry: ThreadEntry }) {
           {entry.is_edited ? ' · editado' : ''}
         </Typography>
         <CommentBody entry={entry} />
-        {entry.file_ids.length > 0 ? (
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
-            {entry.file_ids.map((fileId) => (
-              <Thumbnail key={fileId} fileId={fileId} />
-            ))}
-          </Stack>
-        ) : null}
+        {entry.file_ids.length > 0 ? <CommentPhotos fileIds={entry.file_ids} /> : null}
         {failure ? (
           <Alert severity="error" sx={{ mt: 1 }}>
             {failure}

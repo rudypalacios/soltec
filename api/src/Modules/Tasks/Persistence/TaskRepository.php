@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Soltec\Kernel\Auth\CurrentUser;
+use Soltec\Kernel\Auth\DataScope;
 use Soltec\Kernel\Auth\ScopedQuery;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
@@ -23,6 +24,12 @@ use Soltec\Modules\Tasks\Domain\TaskRecord;
 final class TaskRepository
 {
     public const RESOURCE = 'tasks';
+
+    /** The reader has been mentioned in an active comment of the task. */
+    private const MENTIONED = 'EXISTS (SELECT 1 FROM thread_entry_mentions tm '
+        . 'JOIN thread_entries te ON te.id = tm.entry_id '
+        . "WHERE te.subject_type = 'task' AND te.subject_id = t.id AND te.deleted_at IS NULL "
+        . 'AND tm.user_id = UNHEX(:mentioned_user))';
 
     private const COLUMNS = 'LOWER(HEX(t.id)) AS id, t.title, t.description, '
         . 'LOWER(HEX(t.task_type_id)) AS task_type_id, ty.name AS task_type_name, '
@@ -238,7 +245,11 @@ final class TaskRepository
             ->innerJoin('t', 'users', 'ow', 'ow.id = t.owner_id')
             ->innerJoin('t', 'users', 'asg', 'asg.id = t.assignee_id')
             ->innerJoin('t', 'workflow_states', 'st', 'st.id = t.state_id');
-        ScopedQuery::restrictAny($query, $reader, self::RESOURCE, ['t.owner_id', 't.assignee_id']);
+        // Whoever asked for the task, was asked to do it or was mentioned in it reaches it, with or without the
+        // permission to see tasks; that permission, with its data scope, only widens what they reach (ADR-0029).
+        $scope = $reader->can(self::RESOURCE, 'view') ? $reader->scopeFor(self::RESOURCE) : DataScope::Own;
+        $query->setParameter('mentioned_user', Uuid::toHex($reader->id));
+        ScopedQuery::restrictAny($query, $reader, $scope, ['t.owner_id', 't.assignee_id'], self::MENTIONED);
 
         return $query;
     }

@@ -264,23 +264,24 @@ return static function (App $app): void {
         $group->post('/bundles/{bundleId}/reactivate', [BundleController::class, 'reactivate'])
             ->setArgument('permission', 'bundles.deactivate');
 
-        // Tasks: the data scope looks at both the owner and the assignee. Moving a task needs only `tasks.view`:
-        // the service decides whether the caller is the person whose turn it is. The fixed `assignee-options` comes
+        // Tasks: whoever asked for a task, was asked to do it or was mentioned in it reaches it without any permission,
+        // so reading and moving are open to any internal session and the service decides (ADR-0029); the data scope of
+        // `tasks` only widens what a person reaches. Writing keeps its permissions. The fixed `assignee-options` comes
         // before `{taskId}`. The thread hangs from the task (`subject`), and its entries have their own routes.
-        $group->get('/tasks', [TaskController::class, 'list'])->setArgument('permission', 'tasks.view');
+        $group->get('/tasks', [TaskController::class, 'list'])->setArgument('permission', 'internal');
         $group->get('/tasks/assignee-options', [TaskController::class, 'assigneeOptions'])
             ->setArgument('permission', 'internal');
         $group->post('/tasks', [TaskController::class, 'create'])->setArgument('permission', 'tasks.create');
-        $group->get('/tasks/{taskId}', [TaskController::class, 'show'])->setArgument('permission', 'tasks.view');
+        $group->get('/tasks/{taskId}', [TaskController::class, 'show'])->setArgument('permission', 'internal');
         $group->patch('/tasks/{taskId}', [TaskController::class, 'update'])->setArgument('permission', 'tasks.edit');
         $group->post('/tasks/{taskId}/transition', [TaskController::class, 'transition'])
-            ->setArgument('permission', 'tasks.view');
+            ->setArgument('permission', 'internal');
         $group->post('/tasks/{taskId}/deactivate', [TaskController::class, 'deactivate'])
             ->setArgument('permission', 'tasks.deactivate');
         $group->post('/tasks/{taskId}/reactivate', [TaskController::class, 'reactivate'])
             ->setArgument('permission', 'tasks.deactivate');
         $group->get('/tasks/{taskId}/thread', [ThreadController::class, 'list'])
-            ->setArguments(['permission' => 'thread_entries.view', 'subject' => 'task']);
+            ->setArguments(['permission' => 'internal', 'subject' => 'task']);
         $group->post('/tasks/{taskId}/thread', [ThreadController::class, 'comment'])
             ->setArguments(['permission' => 'thread_entries.create', 'subject' => 'task']);
         $group->get('/tasks/{taskId}/mention-options', [ThreadController::class, 'mentionOptions'])

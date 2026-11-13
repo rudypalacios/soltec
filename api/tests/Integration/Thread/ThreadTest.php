@@ -96,12 +96,13 @@ final class ThreadTest extends TasksTestCase
         $options = $this->api('GET', '/tasks/' . $this->taskId . '/mention-options', $this->stranger['token']);
         self::assertSame(404, $options->getStatusCode());
 
+        // Reading the thread of a task a person reaches needs no permission; writing in it does.
         $viewer = $this->tokenWith('tasks', 'view');
         self::assertSame(403, $this->api('POST', $this->threadPath, $viewer, ['body' => 'Hola'])->getStatusCode());
-        self::assertSame(403, $this->api('GET', $this->threadPath, $viewer)->getStatusCode());
+        self::assertSame(200, $this->api('GET', $this->threadPath, $viewer)->getStatusCode());
     }
 
-    public function testAMentionIsStoredAndNamedAndOnlyPeopleWhoSeeTheTaskCanBeMentioned(): void
+    public function testAMentionIsStoredAndNamedAndOnlyActiveInternalUsersCanBeMentioned(): void
     {
         $mark = '@[' . $this->assignee['id'] . ']';
         $comment = $this->json($this->api('POST', $this->threadPath, $this->owner['token'], [
@@ -113,29 +114,46 @@ final class ThreadTest extends TasksTestCase
         );
         self::assertSame(1, $this->countRows('SELECT COUNT(*) FROM thread_entry_mentions'));
 
-        $outsider = $this->api('POST', $this->threadPath, $this->owner['token'], [
-            'body' => 'Hola @[' . $this->stranger['id'] . ']',
-        ]);
-        self::assertSame(['body' => 'invalid_mention'], $this->errorCodes($outsider));
         $unknown = $this->api('POST', $this->threadPath, $this->owner['token'], [
             'body' => 'Hola @[0192a1b2-0000-7000-8000-000000000000]',
         ]);
         self::assertSame(['body' => 'invalid_mention'], $this->errorCodes($unknown));
     }
 
-    public function testTheMentionOptionsFilterByNameAndLeaveOutWhoCannotSeeTheTask(): void
+    public function testTheMentionOptionsListEveryActiveInternalUserFilteredByName(): void
     {
         $path = '/tasks/' . $this->taskId . '/mention-options';
         $all = $this->json($this->api('GET', $path, $this->owner['token']));
         self::assertEqualsCanonicalizing(
-            ['Andrés Asignado', 'Olga Owner'],
+            ['Andrés Asignado', 'Olga Owner', 'Sara Ajena'],
             $this->columnAt($all, 'name', 'data'),
         );
 
         $filtered = $this->json($this->api('GET', $path . '?q=andr', $this->owner['token']));
         self::assertSame(['Andrés Asignado'], $this->columnAt($filtered, 'name', 'data'));
-        $none = $this->json($this->api('GET', $path . '?q=ajena', $this->owner['token']));
+        $none = $this->json($this->api('GET', $path . '?q=nadie', $this->owner['token']));
         self::assertSame([], $this->rowsAt($none, 'data'));
+    }
+
+    public function testBeingMentionedGivesAccessToTheTaskUntilTheCommentLeavesTheThread(): void
+    {
+        $taskPath = '/tasks/' . $this->taskId;
+        self::assertSame(404, $this->api('GET', $taskPath, $this->stranger['token'])->getStatusCode());
+
+        $comment = $this->json($this->api('POST', $this->threadPath, $this->owner['token'], [
+            'body' => 'Sara, mira esto @[' . $this->stranger['id'] . ']',
+        ]));
+
+        self::assertSame(200, $this->api('GET', $taskPath, $this->stranger['token'])->getStatusCode());
+        self::assertSame(200, $this->api('GET', $this->threadPath, $this->stranger['token'])->getStatusCode());
+        $list = $this->json($this->api('GET', '/tasks', $this->stranger['token']));
+        self::assertSame([$this->taskId], $this->columnAt($list, 'id', 'data'));
+        // Mentioned is not the same as being in charge: no step of the flow is theirs.
+        $shown = $this->json($this->api('GET', $taskPath, $this->stranger['token']));
+        self::assertSame([], $shown['next_states']);
+
+        $this->api('POST', '/thread-entries/' . $this->text($comment, 'id') . '/deactivate', $this->owner['token']);
+        self::assertSame(404, $this->api('GET', $taskPath, $this->stranger['token'])->getStatusCode());
     }
 
     public function testOnlyTheAuthorEditsAndTheAuditKeepsThePreviousText(): void
