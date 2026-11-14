@@ -410,10 +410,11 @@ describe('board columns', () => {
     expect(within(table).getByRole('columnheader', { name: 'Columna del tablero' })).toBeVisible();
     // The fake gives each state a column named like it.
     expect(within(table).getAllByText('Aceptada').length).toBeGreaterThan(1);
-    expect(screen.queryByRole('button', { name: 'Columnas del tablero' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Configurar tablero' })).not.toBeInTheDocument();
   });
 
   it('groups states into one column and sends the arrangement only on Guardar', async () => {
+    setViewportWidth(390);
     const calls: Call[] = [];
     const { session } = workflowSession(
       {
@@ -428,8 +429,8 @@ describe('board columns', () => {
     renderApp(session, '/configuracion/flujos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
     const save = within(dialog).getByRole('button', { name: 'Guardar' });
     expect(save).toBeDisabled();
 
@@ -458,6 +459,7 @@ describe('board columns', () => {
   });
 
   it('starts a new column for a state and reorders the columns', async () => {
+    setViewportWidth(390);
     const calls: Call[] = [];
     const { session } = workflowSession(
       {
@@ -472,8 +474,8 @@ describe('board columns', () => {
     renderApp(session, '/configuracion/flujos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
     // It is the fourth of five active columns: three steps up put it first.
     for (let step = 0; step < 3; step += 1) {
       await user.click(
@@ -491,6 +493,7 @@ describe('board columns', () => {
   });
 
   it('refuses an empty or repeated name before sending anything', async () => {
+    setViewportWidth(390);
     const { session } = workflowSession(
       { 'GET /v1/workflows/task/states': listOf(TASKS) },
       withAccess(),
@@ -498,8 +501,8 @@ describe('board columns', () => {
     renderApp(session, '/configuracion/flujos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
     const fields = within(dialog).getAllByLabelText('Nombre de la columna');
     await user.clear(fields[1] as HTMLElement);
     expect(within(dialog).getByText('Escribe un nombre.')).toBeVisible();
@@ -510,7 +513,96 @@ describe('board columns', () => {
     expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled();
   });
 
+  it('shows lanes with a handle for each column and state on a desktop, and no selectors', async () => {
+    const { session } = workflowSession(
+      { 'GET /v1/workflows/task/states': listOf(TASKS) },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
+    const lanes = within(dialog).getByRole('list', { name: 'Columnas del tablero' });
+    expect(
+      within(lanes).getByRole('button', { name: 'Arrastrar la columna «Aceptada»' }),
+    ).toBeVisible();
+    expect(
+      within(lanes).getByRole('button', { name: 'Arrastrar el estado «Aceptada»' }),
+    ).toBeVisible();
+    expect(within(lanes).getAllByLabelText('Nombre de la columna')).toHaveLength(5);
+    expect(
+      within(lanes).getByText('Suelta aquí un estado para crear una columna nueva'),
+    ).toBeVisible();
+    // Dragging is how a desktop moves a state: the phone's selectors are not there until the list is asked for.
+    expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Usar la lista (sin arrastrar)' }));
+    expect(within(dialog).getByRole('combobox', { name: 'Columna de «Aceptada»' })).toBeVisible();
+    expect(
+      within(dialog).queryByRole('list', { name: 'Columnas del tablero' }),
+    ).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Volver al arrastre' }));
+    expect(within(dialog).getByRole('list', { name: 'Columnas del tablero' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  });
+
+  it('offers «Una columna nueva» only to a state that shares its column, and sends it without an id', async () => {
+    setViewportWidth(390);
+    const calls: Call[] = [];
+    const { session } = workflowSession(
+      {
+        'GET /v1/workflows/task/states': listOf(TASKS),
+        'GET /v1/workflows/task/board-columns': () =>
+          Response.json({
+            data: [
+              {
+                id: id(101),
+                workflow: 'task',
+                name: 'Por hacer',
+                sort_order: 1,
+                color: '#0B6BB0',
+                is_final: false,
+                state_ids: [id(1), id(2)],
+              },
+              {
+                id: id(103),
+                workflow: 'task',
+                name: 'En ejecución',
+                sort_order: 2,
+                color: '#9A5800',
+                is_final: false,
+                state_ids: [id(3), id(4), id(5)],
+              },
+            ],
+          }),
+        'PUT /v1/workflows/task/board-columns': (call) => {
+          calls.push(call);
+          return Response.json({ data: [] });
+        },
+      },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
+    await user.click(within(dialog).getByRole('combobox', { name: 'Columna de «Rechazada»' }));
+    await user.click(await screen.findByRole('option', { name: 'Una columna nueva' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toEqual({
+      columns: [
+        { id: id(101), name: 'Por hacer', state_ids: [id(1), id(2)] },
+        { id: id(103), name: 'En ejecución', state_ids: [id(3), id(5)] },
+        { id: null, name: 'Rechazada', state_ids: [id(4)] },
+      ],
+    });
+  });
+
   it('tells the person when the flow changed while they edited', async () => {
+    setViewportWidth(390);
     const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
@@ -522,8 +614,8 @@ describe('board columns', () => {
     renderApp(session, '/configuracion/flujos');
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Configurar tablero' });
     await user.click(within(dialog).getByRole('button', { name: 'Bajar la columna «Asignada»' }));
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 

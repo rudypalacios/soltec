@@ -15,6 +15,15 @@ export {
   toPayload,
 } from './domain/permissionMatrix';
 export type { CheckState, MatrixScope, MatrixValue } from './domain/permissionMatrix';
+export {
+  isChanged,
+  moveColumn,
+  moveState,
+  nameProblems,
+  NEW_COLUMN,
+  renameColumn,
+} from './domain/boardColumns';
+export type { ColumnDraft, NameProblem } from './domain/boardColumns';
 export { bundleCostPreview, isValidQuantity, lineCostPreview } from './domain/bundleCost';
 export type { CostLine } from './domain/bundleCost';
 export { calculatePrice, isValidCost, PriceError } from './domain/price';

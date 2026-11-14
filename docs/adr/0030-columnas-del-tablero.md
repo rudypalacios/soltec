@@ -25,3 +25,4 @@ El tablero de tareas (3.3c) dibuja columnas. Una columna por estado del flujo se
 - La migración `20261114000001` crea una columna por estado existente con el id del estado (así no necesita generar UUID en SQL) y es repetible.
 - Quien edita estados ve en la tabla de Flujos de estado a qué columna va cada uno, y el diálogo «Columnas del tablero» es el único lugar donde se cambia después del alta.
 - Arrastrar tarjetas entre columnas queda para después: mover una tarea sigue siendo abrirla y usar su menú de estado.
+- **«Configurar tablero» se abre desde el tablero y desde Flujos de estado** con el mismo diálogo. Las reglas de mover estados y columnas son funciones puras de `shared/` (`boardColumns.ts`); en escritorio se arrastra (`@dnd-kit`, solo en `web/`) y en teléfono se usan selectores. La lista sin arrastrar también está en escritorio, porque la librería no resuelve bien el teclado entre columnas y el selector sí es accesible.

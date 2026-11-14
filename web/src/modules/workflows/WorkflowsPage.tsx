@@ -34,7 +34,7 @@ import { statusPalette } from '../../theme/tokens';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ColorField } from '../parameters/ColorField';
-import { BoardColumnsDialog } from './BoardColumnsDialog';
+import { ConfigureBoardButton } from './ConfigureBoardButton';
 import { ColoredName } from './ColoredName';
 import {
   useBoardColumns,
@@ -85,8 +85,7 @@ export function WorkflowsPage() {
 type Dialog =
   | { kind: 'state'; state: WorkflowState | null }
   | { kind: 'transitions'; state: WorkflowState }
-  | { kind: 'order' }
-  | { kind: 'columns' };
+  | { kind: 'order' };
 
 function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }) {
   const can = useCan();
@@ -212,11 +211,7 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
           useFlexGap
           sx={{ justifyContent: 'flex-end', mb: 2, flexWrap: 'wrap' }}
         >
-          {can(RESOURCE, 'edit') && boardColumns.data ? (
-            <Button variant="outlined" onClick={() => setDialog({ kind: 'columns' })}>
-              Columnas del tablero
-            </Button>
-          ) : null}
+          <ConfigureBoardButton workflow={workflow} />
           {can(RESOURCE, 'edit') && activeCount > 1 ? (
             <Button variant="outlined" onClick={() => setDialog({ kind: 'order' })}>
               Ordenar estados
@@ -260,14 +255,6 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
           workflow={workflow}
           states={rows}
           state={dialog.state}
-          onClose={() => setDialog(null)}
-        />
-      ) : null}
-      {dialog?.kind === 'columns' && rows && boardColumns.data ? (
-        <BoardColumnsDialog
-          workflow={workflow}
-          states={rows}
-          columns={boardColumns.data}
           onClose={() => setDialog(null)}
         />
       ) : null}

@@ -105,5 +105,12 @@ test(
         page.getByRole('region', { name: 'Aceptada' }).getByRole('link', { name: title }),
       ).toBeVisible();
     }
+
+    // The board is configured from the board itself: the dialog opens and, with nothing changed, cannot be saved.
+    await page.getByRole('button', { name: 'Configurar tablero' }).click();
+    const configure = page.getByRole('dialog', { name: 'Configurar tablero' });
+    await expect(configure.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    await configure.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(configure).toBeHidden();
   },
 );
