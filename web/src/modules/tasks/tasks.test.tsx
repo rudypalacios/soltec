@@ -309,6 +309,55 @@ describe('task board', () => {
     expect(screen.queryByRole('link', { name: 'Instalar el equipo' })).not.toBeInTheDocument();
   });
 
+  describe('configure the board', () => {
+    const states = { 'GET /v1/workflows/task/states': () => Response.json({ data: [] }) };
+    const columns = { 'GET /v1/workflows/task/board-columns': () => Response.json({ data: [] }) };
+    const withEdit = () =>
+      meWith({ tasks: ALL, thread_entries: ALL, workflow_states: ['view', 'edit'] });
+    const board = () =>
+      Response.json({ data: [column(1, { name: 'Asignada', total: 1, tasks: [TASK] })] });
+
+    it('puts «Configurar tablero» on the board for who may edit flows, and nowhere else', async () => {
+      const { session } = createTestSession(
+        {
+          'GET /v1/tasks': () => Response.json(page([TASK])),
+          'GET /v1/tasks/board': board,
+          ...states,
+          ...columns,
+        },
+        withEdit(),
+      );
+      renderApp(session, '/tareas');
+      const user = userEvent.setup();
+
+      await screen.findByRole('table', { name: 'Lista de tareas' });
+      expect(screen.queryByRole('button', { name: 'Configurar tablero' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Tablero' }));
+      await user.click(await screen.findByRole('button', { name: 'Configurar tablero' }));
+      expect(await screen.findByRole('dialog', { name: 'Configurar tablero' })).toBeVisible();
+    });
+
+    it('does not offer it without the permission to edit flows', async () => {
+      const { session } = createTestSession({ 'GET /v1/tasks/board': board }, meWith());
+      renderApp(session, '/tareas?vista=tablero');
+
+      await screen.findByRole('region', { name: 'Asignada' });
+      expect(screen.queryByRole('button', { name: 'Configurar tablero' })).not.toBeInTheDocument();
+    });
+
+    it('shrinks to an icon button on a phone', async () => {
+      setViewportWidth(390);
+      const { session } = createTestSession(
+        { 'GET /v1/tasks/board': board, ...states, ...columns },
+        withEdit(),
+      );
+      renderApp(session, '/tareas?vista=tablero');
+
+      const button = await screen.findByRole('button', { name: 'Configurar tablero' });
+      expect(button).not.toHaveTextContent('Configurar');
+    });
+  });
+
   it('keeps a very long title inside the card', async () => {
     const title = 'Una tarea con un título larguísimo '.repeat(12);
     const { session } = createTestSession(

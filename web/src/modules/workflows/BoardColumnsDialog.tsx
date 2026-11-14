@@ -1,41 +1,34 @@
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import {
   Alert,
-  Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
-  MenuItem,
-  Paper,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
+import {
+  isChanged,
+  moveColumn,
+  moveState,
+  nameProblems,
+  renameColumn,
+  type ColumnDraft,
+} from '@soltec/shared';
 import { useState, type FormEvent } from 'react';
+import { useIsMobile } from '../../components/useIsMobile';
 import { fieldMessages, problemMessage } from '../access/messages';
-import { ColoredName } from './ColoredName';
+import { ColumnLanes } from './ColumnLanes';
+import { ColumnList } from './ColumnList';
 import { useReplaceBoardColumns, type BoardColumn } from './useWorkflowStates';
 import type { WorkflowCode, WorkflowState } from './workflowFlows';
 
-/** A column while it is being arranged. `key` identifies it before it has an id; `id` is null until it is saved. */
-interface Draft {
-  key: string;
-  id: string | null;
-  name: string;
-  stateIds: string[];
-}
-
-const NEW_COLUMN = '__new__';
-const normalized = (name: string) => name.trim().toLowerCase();
-
 /**
- * Arranges the columns of the board of a flow: which states each column groups, its name and the order of the
- * columns. Nothing is saved until «Guardar», so moving things around and back is free. Every state is in a column:
- * moving it to «Una columna nueva» starts one, and a column left with no state disappears.
+ * «Configurar tablero»: arranges the columns of the board of a flow, which states each one groups, its name and the
+ * order of the columns. A desktop drags lanes and states; a phone picks the column of each state from a list. Nothing
+ * is saved until «Guardar», so moving things around and back is free. Every state is in a column: a state dropped
+ * on «Nueva columna» starts one, and a column left with no state disappears.
  */
 export function BoardColumnsDialog({
   workflow,
@@ -48,81 +41,42 @@ export function BoardColumnsDialog({
   columns: readonly BoardColumn[];
   onClose: () => void;
 }) {
+  const isMobile = useIsMobile();
   const save = useReplaceBoardColumns(workflow);
   const active = states.filter((state) => state.is_active);
-  const position = new Map(active.map((state, index) => [state.id, index]));
-  const byId = new Map(active.map((state) => [state.id, state]));
+  const order = new Map(active.map((state, index) => [state.id, index]));
+  const statesById = new Map(active.map((state) => [state.id, state]));
   // Columns without an active state have nothing to arrange; the server keeps them for their inactive states.
-  const initial: Draft[] = columns
+  const initial: readonly ColumnDraft[] = columns
     .filter((column) => column.state_ids.length > 0)
     .map((column) => ({
       key: column.id,
       id: column.id,
       name: column.name,
-      stateIds: [...column.state_ids],
+      stateIds: column.state_ids,
     }));
-  const [drafts, setDrafts] = useState<Draft[]>(initial);
+  const [original] = useState(initial);
+  const [drafts, setDrafts] = useState<readonly ColumnDraft[]>(initial);
   const [created, setCreated] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
+  // A desktop can also use the list a phone uses: it needs no pointer, which is what the keyboard and a screen reader want.
+  const [asList, setAsList] = useState(false);
+  const showList = isMobile || asList;
 
-  const summary = (list: readonly Draft[]) =>
-    JSON.stringify(list.map((draft) => [draft.id, draft.name.trim(), draft.stateIds]));
-  const changed = summary(drafts) !== summary(initial);
-  const names = drafts.map((draft) => normalized(draft.name));
-  const problemOf = (draft: Draft, index: number): string | null => {
-    if (draft.name.trim() === '') {
-      return 'Escribe un nombre.';
-    }
-    return names.indexOf(normalized(draft.name)) !== index
-      ? 'Otra columna ya tiene ese nombre.'
-      : null;
-  };
-  const valid = drafts.every((draft, index) => problemOf(draft, index) === null);
+  const problems = nameProblems(drafts);
+  const changed = isChanged(drafts, original);
+  const valid = problems.every((problem) => problem === null);
 
-  const rename = (key: string, name: string) =>
-    setDrafts(drafts.map((draft) => (draft.key === key ? { ...draft, name } : draft)));
-
-  const moveColumn = (index: number, by: -1 | 1) => {
-    const next = [...drafts];
-    const [item] = next.splice(index, 1);
-    if (item === undefined) {
+  const onMoveState = (stateId: string, targetKey: string) => {
+    const state = statesById.get(stateId);
+    if (!state) {
       return;
     }
-    next.splice(index + by, 0, item);
-    setDrafts(next);
-  };
-
-  const moveState = (state: WorkflowState, targetKey: string) => {
-    const origin = drafts.find((draft) => draft.stateIds.includes(state.id));
-    if (origin === undefined || origin.key === targetKey) {
-      return;
-    }
-    const withoutState = drafts.map((draft) =>
-      draft.key === origin.key
-        ? { ...draft, stateIds: draft.stateIds.filter((id) => id !== state.id) }
-        : draft,
-    );
-    let next: Draft[];
-    if (targetKey === NEW_COLUMN) {
-      next = [
-        ...withoutState,
-        { key: `new-${created}`, id: null, name: state.name, stateIds: [state.id] },
-      ];
+    const next = moveState(drafts, state, targetKey, order, `new-${created}`);
+    if (next !== drafts) {
       setCreated(created + 1);
-    } else {
-      next = withoutState.map((draft) =>
-        draft.key === targetKey
-          ? {
-              ...draft,
-              stateIds: [...draft.stateIds, state.id].sort(
-                (a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0),
-              ),
-            }
-          : draft,
-      );
+      setDrafts(next);
     }
-    // The column the state left disappears when it is empty.
-    setDrafts(next.filter((draft) => draft.stateIds.length > 0));
   };
 
   const submit = async (event: FormEvent) => {
@@ -133,7 +87,7 @@ export function BoardColumnsDialog({
         drafts.map((draft) => ({
           id: draft.id,
           name: draft.name.trim(),
-          stateIds: draft.stateIds,
+          stateIds: [...draft.stateIds],
         })),
       );
       onClose();
@@ -151,104 +105,50 @@ export function BoardColumnsDialog({
     }
   };
 
+  const editorProps = {
+    drafts,
+    problems,
+    statesById,
+    disabled: save.isPending,
+    onRename: (key: string, name: string) => setDrafts(renameColumn(drafts, key, name)),
+    onMoveColumn: (from: number, to: number) => setDrafts(moveColumn(drafts, from, to)),
+    onMoveState,
+  };
+
   return (
     <Dialog
       open
       onClose={save.isPending ? undefined : onClose}
       fullWidth
-      maxWidth="sm"
+      fullScreen={isMobile}
+      maxWidth={isMobile ? 'sm' : 'lg'}
       aria-labelledby="board-columns-title"
     >
-      <form onSubmit={(event) => void submit(event)} noValidate>
-        <DialogTitle id="board-columns-title">Columnas del tablero</DialogTitle>
+      <form
+        onSubmit={(event) => void submit(event)}
+        noValidate
+        style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}
+      >
+        <DialogTitle id="board-columns-title">Configurar tablero</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             {failure ? <Alert severity="error">{failure}</Alert> : null}
             <Typography variant="body2" color="text.secondary">
-              Cada estado está en una columna del tablero. Junta estados moviéndolos a la misma
-              columna; una columna que se queda sin estados desaparece.
+              {showList
+                ? 'Cada estado está en una columna del tablero. Junta estados eligiendo la misma columna; una columna que se queda sin estados desaparece.'
+                : 'Arrastra una columna por su asa para ordenarla. Arrastra un estado a otra columna para juntarlos, o a «Nueva columna» para separarlo. Para usar solo el teclado, cambia a la lista.'}
             </Typography>
-            <Stack
-              component="ul"
-              spacing={2}
-              aria-label="Columnas"
-              sx={{ listStyle: 'none', m: 0, p: 0 }}
-            >
-              {drafts.map((draft, index) => {
-                const problem = problemOf(draft, index);
-                return (
-                  <Paper key={draft.key} component="li" variant="outlined" sx={{ p: 1.5 }}>
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                        <TextField
-                          label="Nombre de la columna"
-                          value={draft.name}
-                          onChange={(event) => rename(draft.key, event.target.value)}
-                          error={problem !== null}
-                          helperText={problem}
-                          slotProps={{ htmlInput: { maxLength: 100 } }}
-                          fullWidth
-                        />
-                        <IconButton
-                          aria-label={`Subir la columna «${draft.name}»`}
-                          disabled={index === 0 || save.isPending}
-                          onClick={() => moveColumn(index, -1)}
-                          sx={{ mt: 0.5 }}
-                        >
-                          <ArrowUpwardIcon />
-                        </IconButton>
-                        <IconButton
-                          aria-label={`Bajar la columna «${draft.name}»`}
-                          disabled={index === drafts.length - 1 || save.isPending}
-                          onClick={() => moveColumn(index, 1)}
-                          sx={{ mt: 0.5 }}
-                        >
-                          <ArrowDownwardIcon />
-                        </IconButton>
-                      </Stack>
-                      <Stack component="ul" spacing={1.5} sx={{ listStyle: 'none', m: 0, p: 0 }}>
-                        {draft.stateIds.map((stateId) => {
-                          const state = byId.get(stateId);
-                          return state ? (
-                            <Box
-                              component="li"
-                              key={stateId}
-                              sx={{
-                                display: 'flex',
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                gap: 1,
-                                alignItems: { sm: 'center' },
-                                justifyContent: 'space-between',
-                              }}
-                            >
-                              <Box sx={{ overflowWrap: 'anywhere' }}>
-                                <ColoredName state={state} />
-                              </Box>
-                              <TextField
-                                select
-                                size="small"
-                                label={`Columna de «${state.name}»`}
-                                value={draft.key}
-                                onChange={(event) => moveState(state, event.target.value)}
-                                disabled={save.isPending}
-                                sx={{ minWidth: { sm: 220 } }}
-                              >
-                                {drafts.map((option) => (
-                                  <MenuItem key={option.key} value={option.key}>
-                                    {option.name.trim() || 'Sin nombre'}
-                                  </MenuItem>
-                                ))}
-                                <MenuItem value={NEW_COLUMN}>Una columna nueva</MenuItem>
-                              </TextField>
-                            </Box>
-                          ) : null;
-                        })}
-                      </Stack>
-                    </Stack>
-                  </Paper>
-                );
-              })}
-            </Stack>
+            {isMobile ? null : (
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => setAsList(!asList)}
+                sx={{ alignSelf: 'flex-start', minHeight: 44, textDecoration: 'underline' }}
+              >
+                {asList ? 'Volver al arrastre' : 'Usar la lista (sin arrastrar)'}
+              </Button>
+            )}
+            {showList ? <ColumnList {...editorProps} /> : <ColumnLanes {...editorProps} />}
           </Stack>
         </DialogContent>
         <DialogActions>

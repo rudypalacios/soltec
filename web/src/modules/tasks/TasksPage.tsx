@@ -21,6 +21,7 @@ import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { formatDay, isOverdue } from './dates';
+import { ConfigureBoardButton } from '../workflows/ConfigureBoardButton';
 import { TaskBoard } from './TaskBoard';
 import { useSetTaskActive, useTasks, type Task } from './useTasks';
 
@@ -83,6 +84,7 @@ export function TasksPage() {
         title="Tareas"
         actions={
           <>
+            {view === 'tablero' ? <ConfigureBoardButton workflow="task" iconOnPhone /> : null}
             <ToggleButtonGroup
               exclusive
               size="small"
