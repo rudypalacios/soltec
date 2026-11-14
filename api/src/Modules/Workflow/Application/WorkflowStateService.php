@@ -55,11 +55,34 @@ final class WorkflowStateService
         string $name,
         string $color,
         bool $isTerminal,
+        ?string $boardColumnId = null,
     ): WorkflowStateRecord {
         $id = Uuid::v7();
         try {
-            $this->connection->transactional(function () use ($actor, $code, $id, $name, $color, $isTerminal): void {
+            $this->connection->transactional(function () use (
+                $actor,
+                $code,
+                $id,
+                $name,
+                $color,
+                $isTerminal,
+                $boardColumnId,
+            ): void {
                 $this->workflows->lockFlow($code);
+                $now = $this->clock->now();
+                if ($boardColumnId === null) {
+                    // Every state belongs to a column: without one chosen, it starts its own, named like it.
+                    $boardColumnId = Uuid::v7();
+                    $this->workflows->insertColumn(
+                        $boardColumnId,
+                        $code,
+                        $name,
+                        $this->workflows->nextColumnSortOrder($code),
+                        $now,
+                    );
+                } elseif (!$this->workflows->columnIsActive($code, $boardColumnId)) {
+                    throw ValidationException::field('board_column_id', 'not_found');
+                }
                 $this->workflows->insert(
                     $id,
                     $code,
@@ -67,13 +90,15 @@ final class WorkflowStateService
                     $color,
                     $this->workflows->nextSortOrder($code),
                     $isTerminal,
-                    $this->clock->now(),
+                    $boardColumnId,
+                    $now,
                 );
                 $this->audit->record($actor, 'create', self::ENTITY, $id, null, [
                     'workflow' => $code->value,
                     'name' => $name,
                     'color' => $color,
                     'is_terminal' => $isTerminal,
+                    'board_column_id' => $boardColumnId,
                     'is_active' => true,
                 ]);
             });

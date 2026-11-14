@@ -22,7 +22,8 @@ test(
     await dialog.getByLabel(/^Nombre/).fill(name);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
     await expect(dialog).toBeHidden();
-    await expect(list.getByText(name, { exact: true })).toBeVisible();
+    // On a desktop the name shows twice: as the state and as its board column.
+    await expect(list.getByText(name, { exact: true }).first()).toBeVisible();
 
     // The same name cannot be used twice among the active states of a flow.
     await page.getByRole('button', { name: 'Nuevo estado' }).click();
@@ -54,7 +55,8 @@ test(
       .getByRole('button', { name: 'Reactivar' })
       .click();
     await expect(page.getByRole('dialog', { name: 'Reactivar estado' })).toBeHidden();
-    await expect(list.getByText(name, { exact: true })).toBeVisible();
+    // On a desktop the name shows twice: as the state and as its board column.
+    await expect(list.getByText(name, { exact: true }).first()).toBeVisible();
   },
 );
 
@@ -67,7 +69,7 @@ test('the initial state of a flow cannot be deactivated, and the screen says why
   await workflows.open();
   await workflows.choose('Tickets');
   await expect(
-    workflows.states('Estados de tickets').getByText('Abierto', { exact: true }),
+    workflows.states('Estados de tickets').getByText('Abierto', { exact: true }).first(),
   ).toBeVisible();
 
   await workflows.act('Desactivar', 'Abierto');
@@ -82,3 +84,45 @@ test('the initial state of a flow cannot be deactivated, and the screen says why
     ),
   ).toBeVisible();
 });
+
+test(
+  'two states of the ticket flow are grouped into one column of the board',
+  { tag: '@mobile' },
+  async ({ page, isMobile }) => {
+    const first = `E2E col A ${uniqueSuffix()}`;
+    const second = `E2E col B ${uniqueSuffix()}`;
+    await signIn(page, ADMIN.email, ADMIN.password);
+    const workflows = new WorkflowsPage(page, isMobile);
+    await workflows.open();
+    // The ticket flow belongs to this scenario: the board of tasks, which others read, stays as it is.
+    await workflows.choose('Tickets');
+
+    for (const name of [first, second]) {
+      await page.getByRole('button', { name: 'Nuevo estado' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Nuevo estado' });
+      await dialog.getByLabel(/^Nombre/).fill(name);
+      await dialog.getByRole('button', { name: 'Guardar' }).click();
+      await expect(dialog).toBeHidden();
+    }
+
+    await page.getByRole('button', { name: 'Columnas del tablero' }).click();
+    const columns = page.getByRole('dialog', { name: 'Columnas del tablero' });
+    // Each state started a column of its own, named like it.
+    await expect(columns.getByRole('combobox', { name: `Columna de «${second}»` })).toHaveText(
+      second,
+    );
+    await columns.getByRole('combobox', { name: `Columna de «${second}»` }).click();
+    await page.getByRole('option', { name: first, exact: true }).click();
+    // Nothing is saved until Guardar.
+    await columns.getByRole('button', { name: 'Guardar' }).click();
+    await expect(columns).toBeHidden();
+
+    await page.getByRole('button', { name: 'Columnas del tablero' }).click();
+    await expect(columns.getByRole('combobox', { name: `Columna de «${second}»` })).toHaveText(
+      first,
+    );
+    await expect(columns.getByRole('combobox', { name: `Columna de «${first}»` })).toHaveText(
+      first,
+    );
+  },
+);

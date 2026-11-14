@@ -255,6 +255,72 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/workflows/{workflow}/board-columns:
+    parameters:
+      - $ref: '#/components/parameters/Workflow'
+    get:
+      operationId: listBoardColumns
+      summary: List the columns of the board of a flow.
+      description:
+        The active columns in order, each with the active states it groups. Every state belongs to exactly one column, so the
+        union of the `state_ids` is the set of active states of the flow. A column whose states are all inactive comes back
+        with an empty `state_ids`. An unknown flow answers 404.
+      tags:
+        - Workflows
+      x-permission: workflow_states.view
+      responses:
+        '200':
+          description: The columns of the board.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardColumnList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    put:
+      operationId: replaceBoardColumns
+      summary: Replace the arrangement of the board of a flow.
+      description:
+        Sets the columns in the order given, each with the active states it groups. The states of all the columns must be
+        exactly the active states of the flow, each once (422 `invalid` on `state_ids`); a column needs a name, at least one
+        state, a name not used by another column of the list (case aside) and, when it has an `id`, an existing column of the
+        flow listed once (422 `invalid` on `columns`). A column without an `id` is created. An active column that is left
+        out is closed when it has no state left, and stays (after the others) when it still holds inactive states. Inactive
+        states keep the column they have. The change is one transaction and is audited.
+      tags:
+        - Workflows
+      x-permission: workflow_states.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardColumnsReplace'
+      responses:
+        '200':
+          description: The arrangement after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardColumnList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
 components:
   parameters:
     WorkflowStatusFilter:
@@ -298,6 +364,7 @@ components:
             - sort_order
             - is_initial
             - is_terminal
+            - board_column_id
             - transitions_to
             - is_active
           properties:
@@ -317,6 +384,9 @@ components:
             is_terminal:
               type: boolean
               description: Reaching it closes the record. A flow keeps at least one active terminal state.
+            board_column_id:
+              $ref: '#/components/schemas/Uuid'
+              description: The column of the board the state belongs to. Every state belongs to one.
             transitions_to:
               type: array
               items:
@@ -348,6 +418,12 @@ components:
         is_terminal:
           type: boolean
           default: false
+        board_column_id:
+          type: [string, 'null']
+          format: uuid
+          description:
+            The active column of the board to put the state in (422 `not_found` if it is not one of the flow). Without it
+            the state starts a column of its own, named like it.
     WorkflowStateUpdate:
       allOf:
         - $ref: '#/components/schemas/Version'
@@ -397,3 +473,72 @@ components:
                 $ref: '#/components/schemas/Uuid'
               to_id:
                 $ref: '#/components/schemas/Uuid'
+    BoardColumn:
+      type: object
+      required:
+        - id
+        - workflow
+        - name
+        - sort_order
+        - color
+        - is_final
+        - state_ids
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        workflow:
+          $ref: '#/components/schemas/WorkflowCode'
+        name:
+          type: string
+        sort_order:
+          type: integer
+          minimum: 1
+        color:
+          $ref: '#/components/schemas/HexColor'
+          description: The color of the first state of the column.
+        is_final:
+          type: boolean
+          description: True when the column holds a terminal state, so its records are closed ones.
+        state_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: The active states of the column, in the order of the flow.
+    BoardColumnList:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardColumn'
+    BoardColumnsReplace:
+      type: object
+      required:
+        - columns
+      properties:
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            type: object
+            required:
+              - name
+              - state_ids
+            properties:
+              id:
+                type: [string, 'null']
+                format: uuid
+                description: An existing column to keep; absent or null creates one.
+              name:
+                type: string
+                minLength: 1
+                maxLength: 100
+              state_ids:
+                type: array
+                minItems: 1
+                uniqueItems: true
+                items:
+                  $ref: '#/components/schemas/Uuid'

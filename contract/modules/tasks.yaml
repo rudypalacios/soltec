@@ -331,6 +331,53 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         default:
           $ref: '#/components/responses/Unexpected'
+  /v1/tasks/board:
+    get:
+      operationId: getTaskBoard
+      summary: The board of tasks.
+      description:
+        One entry per column of the board of the `task` flow, in order, each with how many tasks the caller reaches in it
+        (`total`) and a page of them. The caller reaches the same tasks as in `listTasks`. A column that only holds inactive
+        states and has no task is left out. Open columns list their tasks by due date; a column that holds a terminal state
+        lists the latest changed first. `page` and `per_page` apply to each column; `column_id` asks for that column only,
+        which is how a column loads its next page (404 when it is not on the board). `status` defaults to `active`.
+      tags:
+        - Tasks
+      x-permission: internal
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/StatusFilter'
+        - name: relation
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [any, owned, assigned]
+            default: any
+        - name: column_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: The columns of the board with their tasks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskBoard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
   /v1/tasks/{taskId}:
     parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -845,6 +892,32 @@ components:
               description: Only when one task is read. The states the caller may move it to now.
               items:
                 $ref: '#/components/schemas/NextState'
+    TaskBoardColumn:
+      allOf:
+        - $ref: '#/components/schemas/BoardColumn'
+        - type: object
+          required:
+            - total
+            - tasks
+          properties:
+            total:
+              type: integer
+              minimum: 0
+              description: Every task the caller reaches in the column, with the filters of the request.
+            tasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+              description: The requested page of them.
+    TaskBoard:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskBoardColumn'
     TaskPage:
       type: object
       required:

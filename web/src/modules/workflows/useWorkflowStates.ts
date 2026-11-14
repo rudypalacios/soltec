@@ -1,9 +1,24 @@
-import { unwrap } from '@soltec/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { unwrap, type components } from '@soltec/shared';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../access/SessionContext';
 import type { WorkflowCode } from './workflowFlows';
 
 const key = (workflow: WorkflowCode) => ['workflow-states', workflow] as const;
+const columnsKey = (workflow: WorkflowCode) => ['board-columns', workflow] as const;
+
+export type BoardColumn = components['schemas']['BoardColumn'];
+
+/**
+ * A change to a flow can move a state to another column or start a new one, so the columns and the board of tasks
+ * (which groups by them) are read again together with the states.
+ */
+const refreshFlow = async (queryClient: QueryClient, workflow: WorkflowCode) => {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: key(workflow) }),
+    queryClient.invalidateQueries({ queryKey: columnsKey(workflow) }),
+    queryClient.invalidateQueries({ queryKey: ['tasks', 'board'] }),
+  ]);
+};
 
 /** Every state of a flow, inactive ones included, in the order of the flow. */
 export function useWorkflowStates(workflow: WorkflowCode) {
@@ -19,12 +34,28 @@ export function useWorkflowStates(workflow: WorkflowCode) {
   });
 }
 
+/** The columns of the board of a flow, in order, each with its active states. */
+export function useBoardColumns(workflow: WorkflowCode) {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: columnsKey(workflow),
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/v1/workflows/{workflow}/board-columns', {
+          params: { path: { workflow } },
+        }),
+      ).data,
+  });
+}
+
 export interface StateInput {
   name: string;
   color: string;
   isTerminal: boolean;
   /** Edit only: true moves the initial flag to this state. */
   makeInitial?: boolean;
+  /** Create only: the column to put the state in; without it the state starts a column of its own. */
+  boardColumnId?: string;
   /** Present when editing. */
   id?: string;
   version?: number;
@@ -52,11 +83,16 @@ export function useSaveWorkflowState(workflow: WorkflowCode) {
         : unwrap(
             await apiClient.POST('/v1/workflows/{workflow}/states', {
               params: { path: { workflow } },
-              body: { name: input.name, color: input.color, is_terminal: input.isTerminal },
+              body: {
+                name: input.name,
+                color: input.color,
+                is_terminal: input.isTerminal,
+                ...(input.boardColumnId ? { board_column_id: input.boardColumnId } : {}),
+              },
             }),
           ),
     // Moving the initial flag or a terminal one changes other states too, so the whole flow is read again.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key(workflow) }),
+    onSettled: () => refreshFlow(queryClient, workflow),
   });
 }
 
@@ -73,7 +109,7 @@ export function useSetWorkflowStateActive(workflow: WorkflowCode) {
           { params: { path: { workflow, stateId } } },
         ),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key(workflow) }),
+    onSettled: () => refreshFlow(queryClient, workflow),
   });
 }
 
@@ -89,7 +125,7 @@ export function useReorderWorkflowStates(workflow: WorkflowCode) {
           body: { ids },
         }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key(workflow) }),
+    onSettled: () => refreshFlow(queryClient, workflow),
   });
 }
 
@@ -105,6 +141,35 @@ export function useSetWorkflowTransitions(workflow: WorkflowCode) {
           body: { transitions },
         }),
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key(workflow) }),
+    onSettled: () => refreshFlow(queryClient, workflow),
+  });
+}
+
+export interface BoardColumnInput {
+  /** An existing column to keep; null creates one. */
+  id: string | null;
+  name: string;
+  stateIds: string[];
+}
+
+/** Replaces the arrangement of the board: the columns in order, each with the active states it groups. */
+export function useReplaceBoardColumns(workflow: WorkflowCode) {
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (columns: BoardColumnInput[]) =>
+      unwrap(
+        await apiClient.PUT('/v1/workflows/{workflow}/board-columns', {
+          params: { path: { workflow } },
+          body: {
+            columns: columns.map((column) => ({
+              id: column.id,
+              name: column.name,
+              state_ids: column.stateIds,
+            })),
+          },
+        }),
+      ).data,
+    onSettled: () => refreshFlow(queryClient, workflow),
   });
 }

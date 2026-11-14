@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
-import { createTestSession, ME, problem, type Call } from '../../test/fakeApi';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createTestSession, ME, problem, type Call, type Handler } from '../../test/fakeApi';
 import { renderApp, setViewportWidth } from '../../test/render';
 import { transitionPairs, type WorkflowState } from './workflowFlows';
 
@@ -22,6 +22,7 @@ const state = (n: number, fields: Partial<WorkflowState>): WorkflowState => ({
   sort_order: n,
   is_initial: false,
   is_terminal: false,
+  board_column_id: id(100 + n),
   transitions_to: [],
   is_active: true,
   version: 1,
@@ -38,9 +39,36 @@ const OLD = state(6, { name: 'Archivada', is_active: false, is_terminal: true })
 const TASKS = [ASSIGNED, ACCEPTED, RUNNING, REJECTED, CLOSED, OLD];
 const listOf = (states: WorkflowState[]) => () => Response.json({ data: states });
 
+/** One column per state, as the migration leaves a flow: the screen reads the columns next to the states. */
+const columnsOf = (states: WorkflowState[]) => () =>
+  Response.json({
+    data: states.map((each, index) => ({
+      id: each.board_column_id,
+      workflow: each.workflow,
+      name: each.name,
+      sort_order: index + 1,
+      color: each.color,
+      is_final: each.is_terminal,
+      state_ids: each.is_active ? [each.id] : [],
+    })),
+  });
+
+const workflowSession = (
+  handlers: Record<string, Handler>,
+  me: Parameters<typeof createTestSession>[1],
+) =>
+  createTestSession(
+    {
+      'GET /v1/workflows/task/board-columns': columnsOf(TASKS),
+      'GET /v1/workflows/ticket/board-columns': () => Response.json({ data: [] }),
+      ...handlers,
+    },
+    me,
+  );
+
 describe('flows of states', () => {
   it('lists the states with their function, destinations and activity', async () => {
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       { 'GET /v1/workflows/task/states': listOf(TASKS) },
       withAccess(['view']),
     );
@@ -66,7 +94,7 @@ describe('flows of states', () => {
 
   it('switches to the ticket flow from the tabs', async () => {
     const ticket = state(20, { workflow: 'ticket', name: 'Abierto', is_initial: true });
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         'GET /v1/workflows/ticket/states': listOf([ticket]),
@@ -84,7 +112,7 @@ describe('flows of states', () => {
   });
 
   it('shows the section in Configuración only to who may view it', async () => {
-    const { session } = createTestSession({}, { ...ME, permissions: {}, scopes: {} });
+    const { session } = workflowSession({}, { ...ME, permissions: {}, scopes: {} });
     renderApp(session, '/configuracion/flujos');
 
     expect(await screen.findByText('No tienes permiso para ver esta pantalla.')).toBeVisible();
@@ -92,7 +120,7 @@ describe('flows of states', () => {
 
   it('creates a state at the end of the flow', async () => {
     const calls: Call[] = [];
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         'POST /v1/workflows/task/states': (call) => {
@@ -122,7 +150,7 @@ describe('flows of states', () => {
   });
 
   it('says when the name is already taken', async () => {
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         'POST /v1/workflows/task/states': () =>
@@ -146,7 +174,7 @@ describe('flows of states', () => {
 
   it('edits a state with the version it read and can make it the initial one', async () => {
     const calls: Call[] = [];
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         [`PATCH /v1/workflows/task/states/${ACCEPTED.id}`]: (call) => {
@@ -178,7 +206,7 @@ describe('flows of states', () => {
   });
 
   it('explains that the current initial state is changed by choosing another', async () => {
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       { 'GET /v1/workflows/task/states': listOf(TASKS) },
       withAccess(),
     );
@@ -197,7 +225,7 @@ describe('flows of states', () => {
 
   it('sets the next states of a state and sends the whole flow', async () => {
     const calls: Call[] = [];
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         'PUT /v1/workflows/task/transitions': (call) => {
@@ -234,7 +262,7 @@ describe('flows of states', () => {
 
   it('orders the states without saving until asked', async () => {
     const calls: Call[] = [];
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         'PUT /v1/workflows/task/states/order': (call) => {
@@ -268,7 +296,7 @@ describe('flows of states', () => {
 
   it('asks before deactivating and sends nothing if the person backs out', async () => {
     let called = false;
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         [`POST /v1/workflows/task/states/${RUNNING.id}/deactivate`]: () => {
@@ -293,7 +321,7 @@ describe('flows of states', () => {
   });
 
   it('says why the initial state cannot be deactivated', async () => {
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         [`POST /v1/workflows/task/states/${ASSIGNED.id}/deactivate`]: () =>
@@ -321,7 +349,7 @@ describe('flows of states', () => {
 
   it('reactivates an inactive state after confirming', async () => {
     const calls: Call[] = [];
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf(TASKS),
         [`POST /v1/workflows/task/states/${OLD.id}/reactivate`]: (call) => {
@@ -347,7 +375,7 @@ describe('flows of states', () => {
 
   it('works on a phone with cards and the same tabs', async () => {
     setViewportWidth(390);
-    const { session } = createTestSession(
+    const { session } = workflowSession(
       {
         'GET /v1/workflows/task/states': listOf([
           { ...ASSIGNED, name: 'Pendiente de que el técnico confirme la visita en el sitio' },
@@ -364,6 +392,169 @@ describe('flows of states', () => {
     expect(
       screen.getByText('Pendiente de que el técnico confirme la visita en el sitio'),
     ).toBeVisible();
+  });
+});
+
+describe('board columns', () => {
+  // The test before this one leaves a phone-sized window behind.
+  beforeEach(() => setViewportWidth(1280));
+
+  it('shows the column of each state next to it', async () => {
+    const { session } = workflowSession(
+      { 'GET /v1/workflows/task/states': listOf(TASKS) },
+      withAccess(['view']),
+    );
+    renderApp(session, '/configuracion/flujos');
+
+    const table = await screen.findByRole('table', { name: 'Estados de tareas' });
+    expect(within(table).getByRole('columnheader', { name: 'Columna del tablero' })).toBeVisible();
+    // The fake gives each state a column named like it.
+    expect(within(table).getAllByText('Aceptada').length).toBeGreaterThan(1);
+    expect(screen.queryByRole('button', { name: 'Columnas del tablero' })).not.toBeInTheDocument();
+  });
+
+  it('groups states into one column and sends the arrangement only on Guardar', async () => {
+    const calls: Call[] = [];
+    const { session } = workflowSession(
+      {
+        'GET /v1/workflows/task/states': listOf(TASKS),
+        'PUT /v1/workflows/task/board-columns': (call) => {
+          calls.push(call);
+          return Response.json({ data: [] });
+        },
+      },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    const save = within(dialog).getByRole('button', { name: 'Guardar' });
+    expect(save).toBeDisabled();
+
+    // Aceptada and En ejecución share a column called «En curso»: the first one is renamed, the second moves in.
+    const nameFields = within(dialog).getAllByLabelText('Nombre de la columna');
+    await user.clear(nameFields[1] as HTMLElement);
+    await user.type(nameFields[1] as HTMLElement, 'En curso');
+    await user.click(within(dialog).getByRole('combobox', { name: 'Columna de «En ejecución»' }));
+    await user.click(await screen.findByRole('option', { name: 'En curso' }));
+
+    // The column «En ejecución» had is gone, and nothing was sent yet.
+    expect(within(dialog).getAllByLabelText('Nombre de la columna')).toHaveLength(4);
+    expect(calls).toHaveLength(0);
+    await user.click(save);
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toEqual({
+      columns: [
+        { id: id(101), name: 'Asignada', state_ids: [id(1)] },
+        { id: id(102), name: 'En curso', state_ids: [id(2), id(3)] },
+        { id: id(104), name: 'Rechazada', state_ids: [id(4)] },
+        { id: id(105), name: 'Cerrada', state_ids: [id(5)] },
+      ],
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('starts a new column for a state and reorders the columns', async () => {
+    const calls: Call[] = [];
+    const { session } = workflowSession(
+      {
+        'GET /v1/workflows/task/states': listOf(TASKS),
+        'PUT /v1/workflows/task/board-columns': (call) => {
+          calls.push(call);
+          return Response.json({ data: [] });
+        },
+      },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    // It is the fourth of five active columns: three steps up put it first.
+    for (let step = 0; step < 3; step += 1) {
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Subir la columna «Rechazada»' }),
+      );
+    }
+    expect(
+      within(dialog).getByRole('button', { name: 'Subir la columna «Rechazada»' }),
+    ).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    const names = (calls[0]?.body as { columns: { name: string }[] }).columns.map((c) => c.name);
+    expect(names).toEqual(['Rechazada', 'Asignada', 'Aceptada', 'En ejecución', 'Cerrada']);
+  });
+
+  it('refuses an empty or repeated name before sending anything', async () => {
+    const { session } = workflowSession(
+      { 'GET /v1/workflows/task/states': listOf(TASKS) },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    const fields = within(dialog).getAllByLabelText('Nombre de la columna');
+    await user.clear(fields[1] as HTMLElement);
+    expect(within(dialog).getByText('Escribe un nombre.')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+
+    await user.type(fields[1] as HTMLElement, ' asignada ');
+    expect(within(dialog).getByText('Otra columna ya tiene ese nombre.')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  });
+
+  it('tells the person when the flow changed while they edited', async () => {
+    const { session } = workflowSession(
+      {
+        'GET /v1/workflows/task/states': listOf(TASKS),
+        'PUT /v1/workflows/task/board-columns': () =>
+          problem(422, 'validation_failed', [{ field: 'state_ids', code: 'invalid' }]),
+      },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Columnas del tablero' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Columnas del tablero' });
+    await user.click(within(dialog).getByRole('button', { name: 'Bajar la columna «Asignada»' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(await within(dialog).findByText(/cambiaron mientras editabas/)).toBeVisible();
+    expect(dialog).toBeVisible();
+  });
+
+  it('lets a new state join an existing column', async () => {
+    const calls: Call[] = [];
+    const { session } = workflowSession(
+      {
+        'GET /v1/workflows/task/states': listOf(TASKS),
+        'POST /v1/workflows/task/states': (call) => {
+          calls.push(call);
+          return Response.json(state(7, { name: 'En revisión' }), { status: 201 });
+        },
+      },
+      withAccess(),
+    );
+    renderApp(session, '/configuracion/flujos');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo estado' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo estado' });
+    await user.type(within(dialog).getByLabelText(/Nombre/), 'En revisión');
+    await user.click(within(dialog).getByRole('combobox', { name: 'Columna del tablero' }));
+    await user.click(await screen.findByRole('option', { name: 'En ejecución' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({ name: 'En revisión', board_column_id: id(103) });
   });
 });
 

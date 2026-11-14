@@ -91,16 +91,7 @@ final class TaskRepository
             $dueBefore,
             $openOnly,
         ): QueryBuilder {
-            if ($status === 'active') {
-                $query->andWhere('t.deleted_at IS NULL');
-            } elseif ($status === 'inactive') {
-                $query->andWhere('t.deleted_at IS NOT NULL');
-            }
-            if ($relation === 'owned') {
-                $query->andWhere('t.owner_id = UNHEX(:me)')->setParameter('me', Uuid::toHex($reader->id));
-            } elseif ($relation === 'assigned') {
-                $query->andWhere('t.assignee_id = UNHEX(:me)')->setParameter('me', Uuid::toHex($reader->id));
-            }
+            $this->applyFilters($query, $reader, $text, $status, $relation);
             $byId = ['state_id' => $stateId, 'task_type_id' => $taskTypeId, 'assignee_id' => $assigneeId];
             foreach ($byId as $column => $value) {
                 if ($value !== null) {
@@ -113,10 +104,6 @@ final class TaskRepository
             }
             if ($openOnly) {
                 $query->andWhere('st.is_terminal = 0');
-            }
-            if ($text !== null && $text !== '') {
-                $query->andWhere('t.title LIKE :text')
-                    ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
             }
 
             return $query;
@@ -136,6 +123,66 @@ final class TaskRepository
             'records' => array_map($this->hydrate(...), $rows),
             'total' => is_numeric($total) ? (int) $total : 0,
         ];
+    }
+
+    /**
+     * How many tasks the reader reaches in each state, with the filters of the board.
+     *
+     * @param string $status active, inactive or all
+     * @param string $relation any, owned or assigned
+     * @return array<string, int> counts by state id; a state without tasks is absent
+     */
+    public function countByState(CurrentUser $reader, ?string $text, string $status, string $relation): array
+    {
+        $query = $this->base($reader, 'LOWER(HEX(t.state_id)) AS state_id, COUNT(*) AS total');
+        $rows = $this->applyFilters($query, $reader, $text, $status, $relation)
+            ->groupBy('t.state_id')
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[Uuid::fromHex(Row::string($row, 'state_id'))] = Row::int($row, 'total');
+        }
+
+        return $counts;
+    }
+
+    /**
+     * A page of the tasks in any of the states, with the filters of the board: the closed ones by their latest change
+     * (the newest first), the open ones by due date.
+     *
+     * @param list<string> $stateIds
+     * @return list<TaskRecord>
+     */
+    public function inStates(
+        CurrentUser $reader,
+        ?string $text,
+        string $status,
+        string $relation,
+        array $stateIds,
+        bool $newestFirst,
+        Pagination $page,
+    ): array {
+        $query = $this->applyFilters($this->base($reader, self::COLUMNS), $reader, $text, $status, $relation);
+        $marks = [];
+        foreach ($stateIds as $position => $stateId) {
+            $marks[] = 'UNHEX(:board_state_' . $position . ')';
+            $query->setParameter('board_state_' . $position, Uuid::toHex($stateId));
+        }
+        $query->andWhere('t.state_id IN (' . implode(', ', $marks) . ')');
+        if ($newestFirst) {
+            $query->orderBy('t.updated_at', 'DESC');
+        } else {
+            $query->orderBy('t.due_date')->addOrderBy('t.created_at', 'DESC');
+        }
+        $rows = $query->addOrderBy('t.id')
+            ->setFirstResult($page->offset())
+            ->setMaxResults($page->perPage)
+            ->executeQuery()
+            ->fetchAllAssociative();
+
+        return array_map($this->hydrate(...), $rows);
     }
 
     public function insert(
@@ -233,6 +280,32 @@ final class TaskRepository
         $values['assignee_id'] = Uuid::toHex($data->assigneeId);
 
         return $values;
+    }
+
+    /** The filters the list and the board share: status, relation to the reader and a title search. */
+    private function applyFilters(
+        QueryBuilder $query,
+        CurrentUser $reader,
+        ?string $text,
+        string $status,
+        string $relation,
+    ): QueryBuilder {
+        if ($status === 'active') {
+            $query->andWhere('t.deleted_at IS NULL');
+        } elseif ($status === 'inactive') {
+            $query->andWhere('t.deleted_at IS NOT NULL');
+        }
+        if ($relation === 'owned') {
+            $query->andWhere('t.owner_id = UNHEX(:me)')->setParameter('me', Uuid::toHex($reader->id));
+        } elseif ($relation === 'assigned') {
+            $query->andWhere('t.assignee_id = UNHEX(:me)')->setParameter('me', Uuid::toHex($reader->id));
+        }
+        if ($text !== null && $text !== '') {
+            $query->andWhere('t.title LIKE :text')
+                ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
+        }
+
+        return $query;
     }
 
     /** `FROM tasks t` with its joins and the reader's data scope applied. */

@@ -1,7 +1,15 @@
 import AddIcon from '@mui/icons-material/Add';
-import { Alert, Button, Link, MenuItem, TextField } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Link,
+  MenuItem,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+} from '@mui/material';
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { ACTION_ICONS } from '../../components/actionIcons';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataList, type DataColumn } from '../../components/DataList';
@@ -13,6 +21,7 @@ import { useListFilters } from '../../components/useListFilters';
 import { problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { formatDay, isOverdue } from './dates';
+import { TaskBoard } from './TaskBoard';
 import { useSetTaskActive, useTasks, type Task } from './useTasks';
 
 const PER_PAGE = 25;
@@ -23,11 +32,127 @@ const RELATIONS = [
 ] as const;
 type Relation = (typeof RELATIONS)[number]['value'];
 
-/** `/tareas`: the tasks the signed-in user reaches, the ones due first. */
+const VIEWS = [
+  { value: 'lista', label: 'Lista' },
+  { value: 'tablero', label: 'Tablero' },
+] as const;
+type View = (typeof VIEWS)[number]['value'];
+const VIEW_PARAM = 'vista';
+const VIEW_STORAGE_KEY = 'soltec.tasks.view';
+
+/** The view the person used last, so coming back from a task lands where they were. The browser may refuse storage. */
+function rememberedView(): View {
+  try {
+    return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'tablero' ? 'tablero' : 'lista';
+  } catch {
+    return 'lista';
+  }
+}
+
+function remember(view: View): void {
+  try {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+  } catch {
+    // Without storage the view simply is not remembered.
+  }
+}
+
+/**
+ * `/tareas`: the tasks the signed-in user reaches, as a list (the ones due first) or as a board with a column per
+ * group of states. Both views share the filter bar; the address (`?vista=tablero`) says which one is open.
+ */
 export function TasksPage() {
   const can = useCan();
   const filters = useListFilters();
   const [relation, setRelation] = useState<Relation>('any');
+  const [params, setParams] = useSearchParams();
+  const asked = params.get(VIEW_PARAM);
+  const view: View = asked === 'tablero' || asked === 'lista' ? asked : rememberedView();
+
+  const chooseView = (next: View | null) => {
+    if (next === null) {
+      return;
+    }
+    remember(next);
+    setParams({ [VIEW_PARAM]: next }, { replace: true });
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Tareas"
+        actions={
+          <>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={view}
+              onChange={(_event, next: View | null) => chooseView(next)}
+              aria-label="Vista"
+              sx={{ '& .MuiToggleButton-root': { minHeight: 44, px: 2 } }}
+            >
+              {VIEWS.map((option) => (
+                <ToggleButton key={option.value} value={option.value}>
+                  {option.label}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            {can('tasks', 'create') ? (
+              <Button
+                component={RouterLink}
+                to="/tareas/nueva"
+                variant="contained"
+                startIcon={<AddIcon />}
+              >
+                Nueva tarea
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+
+      <FilterBar
+        searchLabel="Buscar por título"
+        search={filters.text}
+        onSearchChange={filters.setText}
+      >
+        <TextField
+          select
+          label="Mostrar"
+          value={relation}
+          onChange={(event) => {
+            setRelation(event.target.value as Relation);
+            filters.setPage(0);
+          }}
+          sx={{ minWidth: 200 }}
+        >
+          {RELATIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        <StatusFilter value={filters.status} onChange={filters.setStatus} />
+      </FilterBar>
+
+      {view === 'tablero' ? (
+        <TaskBoard filters={{ q: filters.query, status: filters.status, relation }} />
+      ) : (
+        <TaskListView filters={filters} relation={relation} />
+      )}
+    </>
+  );
+}
+
+/** The table of tasks (a list of cards on a phone), with its paging and the confirmation to deactivate. */
+function TaskListView({
+  filters,
+  relation,
+}: {
+  filters: ReturnType<typeof useListFilters>;
+  relation: Relation;
+}) {
+  const can = useCan();
   const [pending, setPending] = useState<{ task: Task; activate: boolean; open: boolean } | null>(
     null,
   );
@@ -74,46 +199,6 @@ export function TasksPage() {
 
   return (
     <>
-      <PageHeader
-        title="Tareas"
-        actions={
-          can('tasks', 'create') ? (
-            <Button
-              component={RouterLink}
-              to="/tareas/nueva"
-              variant="contained"
-              startIcon={<AddIcon />}
-            >
-              Nueva tarea
-            </Button>
-          ) : null
-        }
-      />
-
-      <FilterBar
-        searchLabel="Buscar por título"
-        search={filters.text}
-        onSearchChange={filters.setText}
-      >
-        <TextField
-          select
-          label="Mostrar"
-          value={relation}
-          onChange={(event) => {
-            setRelation(event.target.value as Relation);
-            filters.setPage(0);
-          }}
-          sx={{ minWidth: 200 }}
-        >
-          {RELATIONS.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </TextField>
-        <StatusFilter value={filters.status} onChange={filters.setStatus} />
-      </FilterBar>
-
       {failure ? (
         <Alert severity="error" onClose={() => setFailure(null)} sx={{ mb: 2 }}>
           {failure}
