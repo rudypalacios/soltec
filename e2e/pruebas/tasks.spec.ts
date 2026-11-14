@@ -64,3 +64,46 @@ test(
     await expect(page.getByRole('link', { name: title, exact: true })).toBeVisible();
   },
 );
+
+test(
+  'the board shows a task in the column of its state and the card opens it',
+  { tag: '@mobile' },
+  async ({ page, admin, isMobile }) => {
+    const assignee = await admin.createActiveUser('e2e-tablero');
+    const prefix = `E2E tablero ${uniqueSuffix()}`;
+    const title = `${prefix} cableado`;
+    await admin.createTask(title, assignee.id);
+    await admin.createTask(`${prefix} cotización`, assignee.id);
+    await signIn(page, ADMIN.email, ADMIN.password);
+
+    await page.goto('/tareas');
+    await page.getByRole('button', { name: 'Tablero' }).click();
+    await page.getByLabel(/^Buscar por/).fill(prefix);
+    // On a phone the first column is the open tab; on a desktop every column is on the screen.
+    if (isMobile) {
+      await expect(page.getByRole('tab', { name: 'Asignada (2)' })).toBeVisible();
+    } else {
+      await expect(page.getByRole('region', { name: 'Asignada' }).getByRole('link')).toHaveCount(2);
+    }
+
+    // The card is a link to the task, where the state is changed.
+    await page.getByRole('link', { name: title, exact: true }).click();
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await page.getByRole('button', { name: /^Estado: Asignada/ }).click();
+    await page.getByRole('menuitem', { name: 'Aceptada' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+    await expect(page.getByText(/cambió el estado de «Asignada» a «Aceptada»/)).toBeVisible();
+
+    // Back to the tasks the board is still the view, and the card has moved to the next column.
+    await page.getByRole('link', { name: 'Tareas', exact: true }).first().click();
+    await page.getByLabel(/^Buscar por/).fill(prefix);
+    if (isMobile) {
+      await page.getByRole('tab', { name: /^Aceptada/ }).click();
+      await expect(page.getByRole('link', { name: title, exact: true })).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('region', { name: 'Aceptada' }).getByRole('link', { name: title }),
+      ).toBeVisible();
+    }
+  },
+);

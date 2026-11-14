@@ -40,6 +40,7 @@ use Soltec\Modules\Settings\Http\FinancialSettingsController;
 use Soltec\Modules\Settings\Http\MarginLevelController;
 use Soltec\Modules\Settings\Http\PriceController;
 use Soltec\Modules\Settings\Http\SequenceController;
+use Soltec\Modules\Workflow\Http\BoardColumnController;
 use Soltec\Modules\Workflow\Http\WorkflowStateController;
 
 // Route table. Versioned public routes live under /v1 and must be described in contract/openapi.yaml.
@@ -136,6 +137,10 @@ return static function (App $app): void {
             '/workflows/{workflow}/states/{stateId}/reactivate',
             [WorkflowStateController::class, 'reactivate'],
         )->setArgument('permission', 'workflow_states.deactivate');
+        $group->get('/workflows/{workflow}/board-columns', [BoardColumnController::class, 'list'])
+            ->setArgument('permission', 'workflow_states.view');
+        $group->put('/workflows/{workflow}/board-columns', [BoardColumnController::class, 'replace'])
+            ->setArgument('permission', 'workflow_states.edit');
         $group->put('/workflows/{workflow}/transitions', [WorkflowStateController::class, 'setTransitions'])
             ->setArgument('permission', 'workflow_states.edit');
 
@@ -269,6 +274,7 @@ return static function (App $app): void {
         // `tasks` only widens what a person reaches. Writing keeps its permissions. The fixed `assignee-options` comes
         // before `{taskId}`. The thread hangs from the task (`subject`), and its entries have their own routes.
         $group->get('/tasks', [TaskController::class, 'list'])->setArgument('permission', 'internal');
+        $group->get('/tasks/board', [TaskController::class, 'board'])->setArgument('permission', 'internal');
         $group->get('/tasks/assignee-options', [TaskController::class, 'assigneeOptions'])
             ->setArgument('permission', 'internal');
         $group->post('/tasks', [TaskController::class, 'create'])->setArgument('permission', 'tasks.create');

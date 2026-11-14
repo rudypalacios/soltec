@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Soltec\Modules\Workflow\Application;
 
+use Soltec\Modules\Workflow\Domain\BoardColumnRecord;
 use Soltec\Modules\Workflow\Domain\WorkflowCode;
 use Soltec\Modules\Workflow\Domain\WorkflowStateRecord;
 use Soltec\Modules\Workflow\Persistence\WorkflowRepository;
@@ -35,6 +36,16 @@ final class WorkflowEngine
     public function state(WorkflowCode $code, string $stateId): ?WorkflowStateRecord
     {
         return $this->workflows->find($code, $stateId);
+    }
+
+    /**
+     * The columns of the board of the flow, in order, with the states each one groups.
+     *
+     * @return list<BoardColumnRecord>
+     */
+    public function boardColumns(WorkflowCode $code): array
+    {
+        return $this->workflows->boardColumns($code);
     }
 
     /**

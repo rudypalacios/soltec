@@ -9,7 +9,9 @@ import {
 import { useApiClient } from '../access/SessionContext';
 
 type TaskQuery = NonNullable<paths['/v1/tasks']['get']['parameters']['query']>;
+type BoardQuery = NonNullable<paths['/v1/tasks/board']['get']['parameters']['query']>;
 export type Task = components['schemas']['Task'];
+export type TaskBoardColumn = components['schemas']['TaskBoardColumn'];
 export type TaskInput = components['schemas']['TaskInput'];
 export type TaskTransition = components['schemas']['TaskTransition'];
 export type ThreadEntry = components['schemas']['ThreadEntry'];
@@ -23,6 +25,42 @@ export function useTasks(query: TaskQuery) {
     queryKey: ['tasks', 'list', query],
     queryFn: async () => unwrap(await apiClient.GET('/v1/tasks', { params: { query } })),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** How many cards each column of the board loads at a time; «Ver más» asks for the next page of one column. */
+export const BOARD_PAGE_SIZE = 25;
+
+/** The filters of the board are the list's, without the paging and the single column. */
+export type TaskBoardFilters = Omit<BoardQuery, 'page' | 'per_page' | 'column_id'>;
+
+/** The first page of every column of the board. It sits under `['tasks']`, so any change to a task refreshes it. */
+export function useTaskBoard(filters: TaskBoardFilters) {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['tasks', 'board', filters],
+    queryFn: async () =>
+      unwrap(
+        await apiClient.GET('/v1/tasks/board', {
+          params: { query: { ...filters, per_page: BOARD_PAGE_SIZE } },
+        }),
+      ).data,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** One more page of one column. Not cached: the board keeps what it loads until it is refreshed. */
+export function useLoadBoardColumnPage(filters: TaskBoardFilters) {
+  const apiClient = useApiClient();
+  return useMutation({
+    mutationFn: async ({ columnId, page }: { columnId: string; page: number }) =>
+      unwrap(
+        await apiClient.GET('/v1/tasks/board', {
+          params: {
+            query: { ...filters, column_id: columnId, page, per_page: BOARD_PAGE_SIZE },
+          },
+        }),
+      ).data,
   });
 }
 

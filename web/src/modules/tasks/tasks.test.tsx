@@ -59,7 +59,11 @@ const COMMENT = {
   event: null,
   mentions: [{ id: ME.id, name: ME.name }],
 };
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  // The board remembers the view in the browser: one test must not leave it open for the next.
+  window.localStorage.clear();
+});
 
 const thread = (entries: unknown[]) =>
   Response.json({ data: entries, meta: { limit: 30, next_cursor: null } });
@@ -111,6 +115,226 @@ describe('tasks list', () => {
 
     await screen.findByRole('table', { name: 'Lista de tareas' });
     expect(screen.queryByRole('link', { name: /Nueva tarea/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('task board', () => {
+  const column = (n: number, fields: Record<string, unknown>) => ({
+    id: `0192f1c2-7d3a-7a11-8f2e-00000000b0${String(n).padStart(2, '0')}`,
+    workflow: 'task',
+    name: `Columna ${n}`,
+    sort_order: n,
+    color: '#0B6BB0',
+    is_final: false,
+    state_ids: [TASK.state.id],
+    total: 0,
+    tasks: [] as unknown[],
+    ...fields,
+  });
+  const other = (n: number, fields: Record<string, unknown> = {}) => ({
+    ...TASK,
+    id: `0192f1c2-7d3a-7a11-8f2e-00000000f${String(n).padStart(3, '0')}`,
+    title: `Tarea ${n}`,
+    ...fields,
+  });
+  const boardOf = (columns: unknown[]) => () => Response.json({ data: columns });
+
+  it('shows a column per group with its total and a card per task that opens the task', async () => {
+    const grouped = other(2, {
+      title: 'Cotizar cableado',
+      due_date: '2099-01-28',
+      state: { ...TASK.state, id: '0192f1c2-7d3a-7a11-8f2e-0000000000d2', name: 'Aceptada' },
+    });
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': boardOf([
+          column(1, {
+            name: 'Por hacer',
+            total: 2,
+            state_ids: [TASK.state.id, '0192f1c2-7d3a-7a11-8f2e-0000000000d2'],
+            tasks: [TASK, grouped],
+          }),
+          column(2, { name: 'Cerrada', is_final: true }),
+        ]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+
+    const todo = await screen.findByRole('region', { name: 'Por hacer' });
+    expect(within(todo).getByRole('heading', { name: /Por hacer/ })).toBeVisible();
+    expect(within(todo).getByText('2')).toBeVisible();
+    expect(within(todo).getByRole('link', { name: 'Instalar el equipo' })).toHaveAttribute(
+      'href',
+      `/tareas/${TASK.id}`,
+    );
+    expect(within(todo).getAllByText('Ventas')).toHaveLength(2);
+    expect(within(todo).getByText(/vencida/)).toBeVisible();
+    expect(within(todo).getAllByText('Andrés Asignado')).toHaveLength(2);
+    // The column groups several states, so each card says which one it is in.
+    expect(within(todo).getByText('Aceptada')).toBeVisible();
+    expect(within(todo).getByText('Asignada')).toBeVisible();
+    expect(
+      within(screen.getByRole('region', { name: 'Cerrada' })).getByText('Sin tareas'),
+    ).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('does not name the state on a card when its column holds only that state', async () => {
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': boardOf([column(1, { name: 'Asignada', total: 1, tasks: [TASK] })]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+
+    const region = await screen.findByRole('region', { name: 'Asignada' });
+    expect(within(region).queryAllByText('Asignada')).toHaveLength(1);
+  });
+
+  it('switches between the list and the board, remembers it and sends the filters', async () => {
+    const calls: Call[] = [];
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks': () => Response.json(page([TASK])),
+        'GET /v1/tasks/board': (call) => {
+          calls.push(call);
+          return Response.json({
+            data: [column(1, { name: 'Asignada', total: 1, tasks: [TASK] })],
+          });
+        },
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas');
+    const user = userEvent.setup();
+
+    await screen.findByRole('table', { name: 'Lista de tareas' });
+    expect(screen.getByRole('button', { name: 'Lista' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Tablero' }));
+
+    await screen.findByRole('region', { name: 'Asignada' });
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(calls[0]?.query.get('per_page')).toBe('25');
+    expect(window.localStorage.getItem('soltec.tasks.view')).toBe('tablero');
+
+    await user.click(screen.getByRole('combobox', { name: 'Mostrar' }));
+    await user.click(await screen.findByRole('option', { name: 'Asignadas a mí' }));
+    await waitFor(() => expect(calls.at(-1)?.query.get('relation')).toBe('assigned'));
+    expect(calls.at(-1)?.query.get('status')).toBe('active');
+
+    await user.click(screen.getByRole('button', { name: 'Lista' }));
+    expect(await screen.findByRole('table', { name: 'Lista de tareas' })).toBeVisible();
+  });
+
+  it('opens on the view the person used last', async () => {
+    window.localStorage.setItem('soltec.tasks.view', 'tablero');
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': boardOf([column(1, { name: 'Asignada', total: 1, tasks: [TASK] })]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas');
+
+    expect(await screen.findByRole('region', { name: 'Asignada' })).toBeVisible();
+  });
+
+  it('loads the next page of one column with «Ver más» and stops at the total', async () => {
+    const calls: Call[] = [];
+    const first = Array.from({ length: 25 }, (_, index) => other(index + 1));
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': (call) => {
+          calls.push(call);
+          if (call.query.get('column_id')) {
+            return Response.json({
+              data: [column(1, { name: 'Asignada', total: 27, tasks: [other(26), other(27)] })],
+            });
+          }
+          return Response.json({
+            data: [
+              column(1, { name: 'Asignada', total: 27, tasks: first }),
+              column(2, { name: 'Aceptada', total: 1, tasks: [other(99)] }),
+            ],
+          });
+        },
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+    const user = userEvent.setup();
+
+    const region = await screen.findByRole('region', { name: 'Asignada' });
+    expect(within(region).getAllByRole('link')).toHaveLength(25);
+    expect(
+      within(screen.getByRole('region', { name: 'Aceptada' })).queryByRole('button', {
+        name: /Ver más/,
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(within(region).getByRole('button', { name: 'Ver más (2)' }));
+
+    await waitFor(() => expect(within(region).getAllByRole('link')).toHaveLength(27));
+    const more = calls.at(-1);
+    expect(more?.query.get('column_id')).toBe(column(1, {}).id);
+    expect(more?.query.get('page')).toBe('2');
+    expect(within(region).queryByRole('button', { name: /Ver más/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a tab per column on a phone and one list at a time', async () => {
+    setViewportWidth(390);
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': boardOf([
+          column(1, { name: 'Asignada', total: 1, tasks: [TASK] }),
+          column(2, { name: 'Aceptada', total: 1, tasks: [other(2, { title: 'Otra tarea' })] }),
+        ]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+    const user = userEvent.setup();
+
+    const tabs = await screen.findByRole('tablist', { name: 'Columnas del tablero' });
+    expect(within(tabs).getByRole('tab', { name: 'Asignada (1)' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('link', { name: 'Instalar el equipo' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Otra tarea' })).not.toBeInTheDocument();
+
+    await user.click(within(tabs).getByRole('tab', { name: 'Aceptada (1)' }));
+    expect(await screen.findByRole('link', { name: 'Otra tarea' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Instalar el equipo' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a very long title inside the card', async () => {
+    const title = 'Una tarea con un título larguísimo '.repeat(12);
+    const { session } = createTestSession(
+      {
+        'GET /v1/tasks/board': boardOf([
+          column(1, { name: 'Asignada', total: 1, tasks: [other(1, { title })] }),
+        ]),
+      },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+
+    const link = await screen.findByRole('link', { name: title.trim() });
+    expect(link).toHaveStyle({ overflow: 'hidden' });
+  });
+
+  it('says so when the board cannot be loaded', async () => {
+    const { session } = createTestSession(
+      { 'GET /v1/tasks/board': () => problem(500, 'unexpected') },
+      meWith(),
+    );
+    renderApp(session, '/tareas?vista=tablero');
+
+    expect(
+      await screen.findByText('Ocurrió un error inesperado. Inténtalo de nuevo.'),
+    ).toBeVisible();
   });
 });
 

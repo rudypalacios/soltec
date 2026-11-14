@@ -46,6 +46,7 @@ final class WorkflowStateController
         $name = $input->text('name', 1, 100);
         $color = $this->color($input);
         $isTerminal = $input->optionalBoolean('is_terminal');
+        $boardColumnId = $input->nullableUuid('board_column_id');
         $input->done();
 
         $state = $this->states->create(
@@ -54,6 +55,7 @@ final class WorkflowStateController
             (string) $name,
             (string) $color,
             $isTerminal,
+            $boardColumnId,
         );
 
         return Json::write($response, $state->toApi(), 201);

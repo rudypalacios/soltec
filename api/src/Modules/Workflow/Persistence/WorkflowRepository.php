@@ -9,6 +9,7 @@ use Doctrine\DBAL\Connection;
 use Soltec\Kernel\Db\Row;
 use Soltec\Kernel\Db\Timestamps;
 use Soltec\Kernel\Uuid;
+use Soltec\Modules\Workflow\Domain\BoardColumnRecord;
 use Soltec\Modules\Workflow\Domain\WorkflowCode;
 use Soltec\Modules\Workflow\Domain\WorkflowStateRecord;
 
@@ -16,7 +17,8 @@ use Soltec\Modules\Workflow\Domain\WorkflowStateRecord;
 final class WorkflowRepository
 {
     private const COLUMNS = 'LOWER(HEX(s.id)) AS id, s.workflow_code, s.name, s.color, s.sort_order, s.is_initial, '
-        . 's.is_terminal, s.created_at, s.updated_at, s.version, s.deleted_at';
+        . 's.is_terminal, LOWER(HEX(s.board_column_id)) AS board_column_id, s.created_at, s.updated_at, s.version, '
+        . 's.deleted_at';
 
     public function __construct(private readonly Connection $connection)
     {
@@ -108,13 +110,16 @@ final class WorkflowRepository
         string $color,
         int $sortOrder,
         bool $isTerminal,
+        string $boardColumnId,
         DateTimeImmutable $now,
     ): void {
         $this->connection->executeStatement(
-            'INSERT INTO workflow_states (id, workflow_code, name, color, sort_order, is_terminal, created_at, '
-            . 'updated_at) VALUES (UNHEX(:id), :code, :name, :color, :sort_order, :terminal, :now, :now)',
+            'INSERT INTO workflow_states (id, workflow_code, name, color, sort_order, is_terminal, board_column_id, '
+            . 'created_at, updated_at) VALUES (UNHEX(:id), :code, :name, :color, :sort_order, :terminal, '
+            . 'UNHEX(:column), :now, :now)',
             [
                 'id' => Uuid::toHex($id),
+                'column' => Uuid::toHex($boardColumnId),
                 'code' => $code->value,
                 'name' => $name,
                 'color' => $color,
@@ -263,11 +268,126 @@ final class WorkflowRepository
             Row::int($row, 'sort_order'),
             Row::bool($row, 'is_initial'),
             Row::bool($row, 'is_terminal'),
+            Uuid::fromHex(Row::string($row, 'board_column_id')),
             $transitions[$id] ?? [],
             Row::date($row, 'created_at'),
             Row::date($row, 'updated_at'),
             Row::int($row, 'version'),
             Row::nullableDate($row, 'deleted_at'),
+        );
+    }
+
+    /**
+     * The active columns of the board of the flow, in order, each with its states.
+     *
+     * @return list<BoardColumnRecord>
+     */
+    public function boardColumns(WorkflowCode $code): array
+    {
+        $columns = $this->connection->fetchAllAssociative(
+            'SELECT LOWER(HEX(id)) AS id, name, sort_order FROM board_columns '
+            . 'WHERE workflow_code = :code AND deleted_at IS NULL ORDER BY sort_order, id',
+            ['code' => $code->value],
+        );
+        $states = $this->connection->fetchAllAssociative(
+            'SELECT LOWER(HEX(id)) AS id, LOWER(HEX(board_column_id)) AS board_column_id, color, is_terminal, '
+            . 'deleted_at FROM workflow_states WHERE workflow_code = :code ORDER BY sort_order, name, id',
+            ['code' => $code->value],
+        );
+        $byColumn = [];
+        foreach ($states as $state) {
+            $byColumn[Uuid::fromHex(Row::string($state, 'board_column_id'))][] = $state;
+        }
+
+        $records = [];
+        foreach ($columns as $column) {
+            $id = Uuid::fromHex(Row::string($column, 'id'));
+            $own = $byColumn[$id] ?? [];
+            $active = array_values(array_filter($own, static fn (array $state): bool => $state['deleted_at'] === null));
+            $first = $active[0] ?? $own[0] ?? null;
+            $records[] = new BoardColumnRecord(
+                $id,
+                $code,
+                Row::string($column, 'name'),
+                Row::int($column, 'sort_order'),
+                $first === null ? '#7C8996' : Row::string($first, 'color'),
+                array_filter($own, static fn (array $state): bool => Row::bool($state, 'is_terminal')) !== [],
+                array_map(static fn (array $state): string => Uuid::fromHex(Row::string($state, 'id')), $active),
+                array_map(static fn (array $state): string => Uuid::fromHex(Row::string($state, 'id')), $own),
+            );
+        }
+
+        return $records;
+    }
+
+    public function columnIsActive(WorkflowCode $code, string $columnId): bool
+    {
+        return $this->connection->fetchOne(
+            'SELECT 1 FROM board_columns WHERE id = UNHEX(:id) AND workflow_code = :code AND deleted_at IS NULL',
+            ['id' => Uuid::toHex($columnId), 'code' => $code->value],
+        ) !== false;
+    }
+
+    public function nextColumnSortOrder(WorkflowCode $code): int
+    {
+        $max = $this->connection->fetchOne(
+            'SELECT MAX(sort_order) FROM board_columns WHERE workflow_code = :code',
+            ['code' => $code->value],
+        );
+
+        return (is_numeric($max) ? (int) $max : 0) + 1;
+    }
+
+    public function insertColumn(
+        string $id,
+        WorkflowCode $code,
+        string $name,
+        int $sortOrder,
+        DateTimeImmutable $now,
+    ): void {
+        $this->connection->executeStatement(
+            'INSERT INTO board_columns (id, workflow_code, name, sort_order, created_at, updated_at) '
+            . 'VALUES (UNHEX(:id), :code, :name, :sort_order, :now, :now)',
+            [
+                'id' => Uuid::toHex($id),
+                'code' => $code->value,
+                'name' => $name,
+                'sort_order' => $sortOrder,
+                'now' => Timestamps::toDb($now),
+            ],
+        );
+    }
+
+    /** Leaves the row alone (and its version) when nothing changes. */
+    public function updateColumn(string $id, string $name, int $sortOrder, DateTimeImmutable $now): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE board_columns SET name = :name, sort_order = :sort_order, updated_at = :now, '
+            . 'version = version + 1 WHERE id = UNHEX(:id) AND (name <> :name OR sort_order <> :sort_order)',
+            [
+                'id' => Uuid::toHex($id),
+                'name' => $name,
+                'sort_order' => $sortOrder,
+                'now' => Timestamps::toDb($now),
+            ],
+        );
+    }
+
+    public function deactivateColumn(string $id, DateTimeImmutable $now): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE board_columns SET deleted_at = :now, updated_at = :now, version = version + 1 '
+            . 'WHERE id = UNHEX(:id) AND deleted_at IS NULL',
+            ['id' => Uuid::toHex($id), 'now' => Timestamps::toDb($now)],
+        );
+    }
+
+    public function setStateColumn(string $stateId, string $columnId, DateTimeImmutable $now): void
+    {
+        $this->connection->executeStatement(
+            'UPDATE workflow_states SET board_column_id = UNHEX(:column), updated_at = :now, version = version + 1 '
+            . 'WHERE id = UNHEX(:id) AND board_column_id <> UNHEX(:column)',
+            ['id' => Uuid::toHex($stateId), 'column' => Uuid::toHex($columnId), 'now' => Timestamps::toDb($now)],
         );
     }
 }

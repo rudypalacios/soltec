@@ -11,6 +11,7 @@ use Soltec\Tests\Integration\Access\AccessTestCase;
 final class WorkflowStatesTest extends AccessTestCase
 {
     private const MIGRATION = '20261030000002';
+    private const COLUMNS_MIGRATION = '20261114000001';
 
     private string $adminToken;
 
@@ -544,6 +545,11 @@ final class WorkflowStatesTest extends AccessTestCase
     {
         $this->connection->executeStatement('DELETE FROM workflow_transitions');
         $this->connection->executeStatement('DELETE FROM workflow_states');
+        $this->connection->executeStatement('DELETE FROM board_columns');
+        // The seed of 3.1 knows no columns: loosen the column for it, and let the 3.3d migration give every state
+        // its column back and tighten it again, as the deployment does in order.
+        $this->connection->executeStatement('ALTER TABLE workflow_states MODIFY board_column_id BINARY(16) NULL');
         $this->applyMigrationAgain(self::MIGRATION);
+        $this->applyMigrationAgain(self::COLUMNS_MIGRATION);
     }
 }

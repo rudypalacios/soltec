@@ -19,6 +19,7 @@ use Soltec\Modules\Tasks\Domain\TaskRecord;
 use Soltec\Modules\Tasks\Persistence\TaskRepository;
 use Soltec\Modules\Thread\Application\ThreadService;
 use Soltec\Modules\Workflow\Application\WorkflowEngine;
+use Soltec\Modules\Workflow\Domain\BoardColumnRecord;
 use Soltec\Modules\Workflow\Domain\WorkflowCode;
 
 /**
@@ -68,6 +69,55 @@ final class TaskService
             $openOnly,
             $page,
         );
+    }
+
+    /**
+     * The board: one entry per column of the `task` flow, with how many tasks the caller reaches in it and a page of
+     * them. A column that only holds inactive states and has no task is left out. With `$columnId` only that column
+     * comes back, for its "see more".
+     *
+     * @param string $status active, inactive or all
+     * @param string $relation any, owned or assigned
+     * @return list<array{column: BoardColumnRecord, total: int, records: list<TaskRecord>}>
+     * @throws ApiException 404 when `$columnId` names no column of the board
+     */
+    public function board(
+        CurrentUser $caller,
+        ?string $text,
+        string $status,
+        string $relation,
+        ?string $columnId,
+        Pagination $page,
+    ): array {
+        $counts = $this->tasks->countByState($caller, $text, $status, $relation);
+        $board = [];
+        foreach ($this->workflow->boardColumns(WorkflowCode::Task) as $column) {
+            if ($columnId !== null && $column->id !== $columnId) {
+                continue;
+            }
+            $total = 0;
+            foreach ($column->allStateIds as $stateId) {
+                $total += $counts[$stateId] ?? 0;
+            }
+            if ($column->stateIds === [] && $total === 0) {
+                continue;
+            }
+            $records = $total === 0 ? [] : $this->tasks->inStates(
+                $caller,
+                $text,
+                $status,
+                $relation,
+                $column->allStateIds,
+                $column->isFinal,
+                $page,
+            );
+            $board[] = ['column' => $column, 'total' => $total, 'records' => $records];
+        }
+        if ($columnId !== null && $board === []) {
+            throw ApiException::notFound();
+        }
+
+        return $board;
     }
 
     public function get(CurrentUser $caller, string $id): TaskRecord

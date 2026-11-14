@@ -1,8 +1,8 @@
 # ERD — Hito 3: tareas, tickets y cierre del legacy
 
-**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados), la 3.2 (fotos) y la 3.3 (tareas e hilo) · Fecha: 2026-11-10
+**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados), la 3.2 (fotos), la 3.3 (tareas e hilo) y la 3.3d (columnas del tablero) · Fecha: 2026-11-14
 
-Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md), [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md) y [ADR-0029](../../adr/0029-tareas-e-hilo-de-actividad.md). Convenciones: [README](README.md).
+Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md), [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md) y [ADR-0029](../../adr/0029-tareas-e-hilo-de-actividad.md) y [ADR-0030](../../adr/0030-columnas-del-tablero.md). Convenciones: [README](README.md).
 
 ## 3.1 Motor de estados
 
@@ -117,3 +117,30 @@ Más los campos de toda tabla de negocio. Recurso `tasks` con alcance: la alcanz
 | `edited_at` | `DATETIME(3) NULL` | Marca «editado» |
 
 Más los campos de toda tabla de negocio. `thread_entry_mentions (entry_id, user_id)` y `thread_entry_files (entry_id, file_id, sort_order)` son uniones de clave compuesta. Recurso `thread_entries` (ver, crear, editar, desactivar), sin alcance propio: ver el hilo exige ver el registro.
+
+## 3.3d Columnas del tablero
+
+```mermaid
+erDiagram
+    BOARD_COLUMNS ||--|{ WORKFLOW_STATES : "board_column_id"
+```
+
+### `board_columns`
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `workflow_code` | `VARCHAR(30) NOT NULL` | `task` o `ticket`, como `workflow_states` |
+| `name` | `VARCHAR(100) NOT NULL` | Sin índice único: un estado inactivo puede repetir el nombre de uno activo, y el reemplazo del conjunto valida los nombres de las columnas activas |
+| `sort_order` | `INT UNSIGNED NOT NULL` | Posición en el tablero |
+
+Más los campos de toda tabla de negocio. `workflow_states.board_column_id` (`BINARY(16) NOT NULL`, FK) dice a qué columna pertenece cada estado, activo o no.
+
+### Reglas que el esquema no cubre (las aplica `BoardColumnService` con el flujo bloqueado)
+
+- Al reemplazar el conjunto, los estados activos aparecen exactamente una vez y cada columna lleva al menos uno y un nombre que no repite el de otra (sin distinguir mayúsculas).
+- Una columna que queda sin ningún estado se cierra (`deleted_at`); una que solo conserva estados inactivos se conserva al final.
+- El color de una columna es el de su primer estado activo; es «final» si alguno de sus estados es final.
+
+### Siembra
+
+La migración crea una columna por estado existente, con su nombre y su orden, y con el mismo id que el estado.

@@ -16,6 +16,7 @@ import {
   IconButton,
   List,
   ListItem,
+  MenuItem,
   ListItemText,
   Stack,
   TextField,
@@ -33,7 +34,10 @@ import { statusPalette } from '../../theme/tokens';
 import { fieldMessages, problemMessage } from '../access/messages';
 import { useCan } from '../access/SessionContext';
 import { ColorField } from '../parameters/ColorField';
+import { BoardColumnsDialog } from './BoardColumnsDialog';
+import { ColoredName } from './ColoredName';
 import {
+  useBoardColumns,
   useReorderWorkflowStates,
   useSaveWorkflowState,
   useSetWorkflowStateActive,
@@ -81,26 +85,13 @@ export function WorkflowsPage() {
 type Dialog =
   | { kind: 'state'; state: WorkflowState | null }
   | { kind: 'transitions'; state: WorkflowState }
-  | { kind: 'order' };
-
-/** A dot in the color of a state followed by its name. */
-function ColoredName({ state }: { state: WorkflowState }) {
-  return (
-    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-      <Box
-        component="span"
-        aria-hidden
-        data-testid="state-dot"
-        sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: state.color, flexShrink: 0 }}
-      />
-      {state.name}
-    </Box>
-  );
-}
+  | { kind: 'order' }
+  | { kind: 'columns' };
 
 function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }) {
   const can = useCan();
   const states = useWorkflowStates(workflow);
+  const boardColumns = useBoardColumns(workflow);
   const setActive = useSetWorkflowStateActive(workflow);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   // Kept after closing (`open` false) so the confirmation does not lose its text while it fades out.
@@ -113,6 +104,7 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
 
   const rows = states.data;
   const names = new Map((rows ?? []).map((state) => [state.id, state.name]));
+  const columnNames = new Map((boardColumns.data ?? []).map((column) => [column.id, column.name]));
   const activeCount = (rows ?? []).filter((state) => state.is_active).length;
 
   const confirm = async () => {
@@ -196,6 +188,13 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
           : state.transitions_to.map((id) => names.get(id) ?? '?').join(', '),
     },
     {
+      // Where the board draws the state; a phone has no use for it in a card.
+      id: 'column',
+      header: 'Columna del tablero',
+      mobile: 'hidden',
+      render: (state) => columnNames.get(state.board_column_id) ?? '—',
+    },
+    {
       id: 'status',
       header: 'Estado',
       mobile: 'badge',
@@ -207,7 +206,17 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
   return (
     <>
       {can(RESOURCE, 'create') || (can(RESOURCE, 'edit') && activeCount > 1) ? (
-        <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', mb: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{ justifyContent: 'flex-end', mb: 2, flexWrap: 'wrap' }}
+        >
+          {can(RESOURCE, 'edit') && boardColumns.data ? (
+            <Button variant="outlined" onClick={() => setDialog({ kind: 'columns' })}>
+              Columnas del tablero
+            </Button>
+          ) : null}
           {can(RESOURCE, 'edit') && activeCount > 1 ? (
             <Button variant="outlined" onClick={() => setDialog({ kind: 'order' })}>
               Ordenar estados
@@ -254,6 +263,14 @@ function FlowEditor({ workflow, noun }: { workflow: WorkflowCode; noun: string }
           onClose={() => setDialog(null)}
         />
       ) : null}
+      {dialog?.kind === 'columns' && rows && boardColumns.data ? (
+        <BoardColumnsDialog
+          workflow={workflow}
+          states={rows}
+          columns={boardColumns.data}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
       {dialog?.kind === 'order' && rows ? (
         <OrderDialog workflow={workflow} states={rows} onClose={() => setDialog(null)} />
       ) : null}
@@ -287,6 +304,8 @@ function StateDialog({
   onClose: () => void;
 }) {
   const save = useSaveWorkflowState(workflow);
+  const boardColumns = useBoardColumns(workflow);
+  const [boardColumnId, setBoardColumnId] = useState('');
   const [name, setName] = useState(state?.name ?? '');
   const [color, setColor] = useState<string>(state?.color ?? statusPalette[0].value);
   const [isTerminal, setIsTerminal] = useState(state?.is_terminal ?? false);
@@ -305,6 +324,7 @@ function StateDialog({
         color,
         isTerminal: isInitial ? false : isTerminal,
         makeInitial,
+        boardColumnId: state ? undefined : boardColumnId,
         id: state?.id,
         version: state?.version,
       });
@@ -347,6 +367,24 @@ function StateDialog({
               autoFocus
             />
             <ColorField value={color} onChange={setColor} disabled={save.isPending} />
+            {state === null && boardColumns.data ? (
+              <TextField
+                select
+                label="Columna del tablero"
+                value={boardColumnId}
+                onChange={(event) => setBoardColumnId(event.target.value)}
+                helperText="Las tareas en este estado se muestran en esa columna."
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+                fullWidth
+              >
+                <MenuItem value="">Una columna nueva con su nombre</MenuItem>
+                {boardColumns.data.map((column) => (
+                  <MenuItem key={column.id} value={column.id}>
+                    {column.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
             <Box>
               <FormControlLabel
                 control={

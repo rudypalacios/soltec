@@ -56,6 +56,40 @@ final class TaskController
         ]);
     }
 
+    /**
+     * The board of tasks: the columns of the flow, each with its total and a page of its tasks. `column_id` asks
+     * for one column only (its next page); `page` and `per_page` are per column.
+     */
+    public function board(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $query = Input::query($request);
+        $text = $query->nullableText('q', 100);
+        $status = $query->choice('status', ['active', 'inactive', 'all'], 'active');
+        $relation = $query->choice('relation', ['any', 'owned', 'assigned'], 'any');
+        $columnId = $query->nullableUuid('column_id');
+        $page = $query->pagination();
+        $query->done();
+
+        $board = $this->tasks->board(
+            $this->caller($request),
+            $text,
+            (string) $status,
+            (string) $relation,
+            $columnId,
+            $page,
+        );
+
+        return Json::write($response, [
+            'data' => array_map(
+                static fn (array $entry): array => $entry['column']->toApi() + [
+                    'total' => $entry['total'],
+                    'tasks' => array_map(static fn (TaskRecord $task): array => $task->toApi(), $entry['records']),
+                ],
+                $board,
+            ),
+        ]);
+    }
+
     /** The people a task can be assigned to, for the assignee selector. */
     public function assigneeOptions(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {

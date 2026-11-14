@@ -184,6 +184,27 @@ export class AdminApi {
     });
   }
 
+  /** A task owned by the administrator and assigned to `assigneeId`, of the first task type there is. */
+  async createTask(title: string, assigneeId: string): Promise<{ id: string; title: string }> {
+    const types = await call<{ data: { id: string }[] }>('/task-types/options', {
+      token: this.token,
+    });
+    const type = types.data[0];
+    if (!type) {
+      throw new Error('There is no task type.');
+    }
+    return call<{ id: string; title: string }>('/tasks', {
+      method: 'POST',
+      token: this.token,
+      body: JSON.stringify({
+        title,
+        task_type_id: type.id,
+        assignee_id: assigneeId,
+        due_date: '2030-01-15',
+      }),
+    });
+  }
+
   /** Deactivates or reactivates a supplier, which takes its products along (or not). */
   async setSupplierActive(id: string, active: boolean): Promise<void> {
     await call(`/suppliers/${id}/${active ? 'reactivate' : 'deactivate'}`, {
