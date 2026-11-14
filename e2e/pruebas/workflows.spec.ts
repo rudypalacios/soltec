@@ -22,7 +22,8 @@ test(
     await dialog.getByLabel(/^Nombre/).fill(name);
     await dialog.getByRole('button', { name: 'Guardar' }).click();
     await expect(dialog).toBeHidden();
-    await expect(list.getByText(name, { exact: true })).toBeVisible();
+    // On a desktop the name shows twice: as the state and as its board column.
+    await expect(list.getByText(name, { exact: true }).first()).toBeVisible();
 
     // The same name cannot be used twice among the active states of a flow.
     await page.getByRole('button', { name: 'Nuevo estado' }).click();
@@ -54,7 +55,8 @@ test(
       .getByRole('button', { name: 'Reactivar' })
       .click();
     await expect(page.getByRole('dialog', { name: 'Reactivar estado' })).toBeHidden();
-    await expect(list.getByText(name, { exact: true })).toBeVisible();
+    // On a desktop the name shows twice: as the state and as its board column.
+    await expect(list.getByText(name, { exact: true }).first()).toBeVisible();
   },
 );
 
@@ -67,7 +69,7 @@ test('the initial state of a flow cannot be deactivated, and the screen says why
   await workflows.open();
   await workflows.choose('Tickets');
   await expect(
-    workflows.states('Estados de tickets').getByText('Abierto', { exact: true }),
+    workflows.states('Estados de tickets').getByText('Abierto', { exact: true }).first(),
   ).toBeVisible();
 
   await workflows.act('Desactivar', 'Abierto');
