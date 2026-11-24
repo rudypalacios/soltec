@@ -219,6 +219,14 @@ Un sistema interno de solicitudes con aviso («tal usuario pidió tal cosa a tal
 - [ ] **Importación del legacy, prueba paralela y apagado** (pendiente del volcado; P7, P20 y P23 sin respuesta)
 - **Fuera:** campos extendidos del ticket (equipo, contrato, SLA, prioridad), chat libre, offline.
 
+## Transversal
+
+- [x] **N1 Navegación agrupada y búsqueda de pantallas** (pedido del usuario, 2026-11-24; maqueta aprobada; ficha aprobada)
+  - **Hecho:** el menú lateral pasa de una lista plana a grupos plegables (Trabajo, Comercial, Catálogo, Administración) con Inicio suelto y el ícono de cada pantalla; un grupo se dibuja solo si el perfil ve alguna de sus pantallas, empiezan abiertos, el de la pantalla actual no se puede plegar y lo que cada persona pliega se recuerda en su navegador (`soltec.nav.closed.<id>`); búsqueda de pantallas y de secciones internas (Ctrl+K, ⌘K o el campo del menú) con ↑ ↓, Enter y Esc; ruta «Grupo › Pantalla» en la barra superior de escritorio y nombre de la pantalla en la del teléfono; la definición del menú y la búsqueda son funciones puras (`web/src/navigation/navigation.ts`)
+  - **Acordado:** «Catálogo» (la pantalla) pasa a llamarse **«Parámetros del catálogo»**, para no repetir el nombre de Configuración › Parámetros
+  - **Se apartó de la maqueta:** los grupos empiezan todos abiertos (la maqueta mostraba dos plegados solo como ejemplo)
+  - **Fuera:** menú configurable por empresa o persona, favoritos y recientes, barra inferior del teléfono (Hito 8), búsqueda de datos, rutas profundas en la barra superior. Tickets y Cotizaciones entran al menú con sus rebanadas
+
 ## Hito 4 — Cotizador
 - [ ] Listado de precios único (productos y paquetes, filtro de tipo) como selector de la oferta, con selección múltiple y margen por ítem
 - [ ] Ofertas, plantillas, estados, versiones y PDF

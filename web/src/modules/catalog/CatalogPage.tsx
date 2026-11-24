@@ -6,7 +6,7 @@ import { ParameterLists } from '../parameters/ParametersPage';
 export function CatalogPage() {
   return (
     <>
-      <PageHeader title="Catálogo" />
+      <PageHeader title="Parámetros del catálogo" />
       <ParameterLists views={CATALOG_VIEWS} tabsLabel="Catálogo" />
     </>
   );
