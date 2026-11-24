@@ -48,14 +48,14 @@ afterEach(() => vi.unstubAllGlobals());
 const areasHandler = { 'GET /v1/areas': () => Response.json(page([WIRING, POWER, RETIRED])) };
 
 describe('catalog structure', () => {
-  it('opens on the first list the user may view, from the Catálogo entry of the menu', async () => {
+  it('opens on the first list the user may view, from the Parámetros del catálogo entry of the menu', async () => {
     const { session } = createTestSession(
       { 'GET /v1/product-groups': () => Response.json(page([GROUP])), ...areasHandler },
       withAccess(['areas', 'product_groups'], ['view']),
     );
     renderApp(session, '/catalogo');
 
-    expect(await screen.findByRole('heading', { name: 'Catálogo' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Parámetros del catálogo' })).toBeVisible();
     expect(await screen.findByRole('table', { name: 'Lista de áreas' })).toBeVisible();
     const tabs = screen.getByRole('tablist', { name: 'Catálogo' });
     expect(
@@ -65,17 +65,17 @@ describe('catalog structure', () => {
     ).toEqual(['Áreas', 'Grupos de producto']);
     expect(
       within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', {
-        name: 'Catálogo',
+        name: 'Parámetros del catálogo',
       }),
     ).toBeVisible();
   });
 
-  it('hides the Catálogo entry from someone without access to any of its lists', async () => {
+  it('hides the Parámetros del catálogo entry from someone without access to any of its lists', async () => {
     const { session } = createTestSession({}, withAccess(['segments']));
     renderApp(session, '/catalogo');
 
     expect(await screen.findByText('No tienes permiso para ver esta pantalla.')).toBeVisible();
-    expect(screen.queryByRole('link', { name: 'Catálogo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Parámetros del catálogo' })).not.toBeInTheDocument();
   });
 
   it('shows how many active groups each area has', async () => {

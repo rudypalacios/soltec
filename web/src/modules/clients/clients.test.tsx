@@ -442,7 +442,8 @@ describe('client screen', () => {
     expect(screen.getByText(/30 días · límite 15,000.50/)).toBeVisible();
     expect(screen.getByText('Luis Gómez')).toBeVisible();
     expect(screen.getByText('Roberto Mejía')).toBeVisible();
-    expect(screen.getByText('Comercial')).toBeVisible();
+    // The menu has a group of that name too.
+    expect(within(screen.getByRole('main')).getByText('Comercial')).toBeVisible();
   });
 
   it('offers each action only with its own permission', async () => {

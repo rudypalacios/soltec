@@ -1,19 +1,7 @@
 import DevicesOutlined from '@mui/icons-material/DevicesOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
-import ManageAccountsOutlined from '@mui/icons-material/ManageAccountsOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
-import PeopleOutline from '@mui/icons-material/PeopleOutline';
-import AccountTreeOutlined from '@mui/icons-material/AccountTreeOutlined';
-import BusinessOutlined from '@mui/icons-material/BusinessOutlined';
-import CategoryOutlined from '@mui/icons-material/CategoryOutlined';
-import ContactsOutlined from '@mui/icons-material/ContactsOutlined';
-import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined';
-import LocalShippingOutlined from '@mui/icons-material/LocalShippingOutlined';
-import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
-import HomeOutlined from '@mui/icons-material/HomeOutlined';
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
-import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined';
 import {
   AppBar,
   Box,
@@ -22,132 +10,20 @@ import {
   Divider,
   Drawer,
   IconButton,
-  List,
-  ListItemButton,
   ListItemIcon,
-  ListItemText,
   Menu,
   MenuItem,
   Toolbar,
   Typography,
 } from '@mui/material';
-import { useState, type ReactElement, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
-import { CATALOG_VIEWS } from '../modules/parameters/parameterViews';
-import { SETTINGS_SECTIONS } from '../modules/settings/sections';
-import { color } from '../theme/tokens';
+import { NavMenu, NAV_WIDTH } from '../navigation/NavMenu';
+import { NavSearchDialog } from '../navigation/NavSearchDialog';
+import { activeEntry, groupLabel, visibleEntries } from '../navigation/navigation';
 import { Brand } from './Brand';
 import { useIsMobile } from './useIsMobile';
-
-const DRAWER_WIDTH = 232;
-
-interface NavItem {
-  label: string;
-  path: string;
-  icon: ReactElement;
-  /** Without permissions the item is for every signed-in user; with several, any one of them is enough. */
-  permissions?: { resource: string; action: string }[];
-  /** For an item that opens one of several screens: the address to use for whoever may view this one first. */
-  fallbacks?: { path: string; resource: string }[];
-  /** Other addresses that keep the item highlighted (the tabs of the same section). */
-  alsoActiveOn?: string[];
-}
-
-/** The side navigation. Each item shows only to whoever may open it; the server enforces it anyway. */
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Inicio', path: '/', icon: <HomeOutlined /> },
-  {
-    label: 'Usuarios',
-    path: '/usuarios',
-    icon: <PeopleOutline />,
-    permissions: [{ resource: 'users', action: 'view' }],
-  },
-  {
-    label: 'Perfiles',
-    path: '/perfiles',
-    icon: <ManageAccountsOutlined />,
-    permissions: [{ resource: 'roles', action: 'view' }],
-  },
-  {
-    label: 'Departamentos',
-    path: '/departamentos',
-    icon: <AccountTreeOutlined />,
-    permissions: [{ resource: 'departments', action: 'view' }],
-  },
-  {
-    label: 'Tareas',
-    path: '/tareas',
-    icon: <TaskAltOutlined />,
-    // For every internal user: whoever asked for a task, was asked to do it or was mentioned in it sees it.
-  },
-  {
-    label: 'Clientes',
-    path: '/clientes',
-    icon: <BusinessOutlined />,
-    permissions: [{ resource: 'clients', action: 'view' }],
-  },
-  {
-    label: 'Contactos',
-    path: '/contactos',
-    icon: <ContactsOutlined />,
-    permissions: [{ resource: 'contacts', action: 'view' }],
-  },
-  {
-    label: 'Productos',
-    path: '/productos',
-    icon: <Inventory2Outlined />,
-    // Products and bundles are tabs of one section: the item opens the first one the person may view.
-    permissions: [
-      { resource: 'products', action: 'view' },
-      { resource: 'bundles', action: 'view' },
-    ],
-    fallbacks: [{ path: '/paquetes', resource: 'bundles' }],
-    alsoActiveOn: ['/paquetes'],
-  },
-  {
-    label: 'Proveedores',
-    path: '/proveedores',
-    icon: <LocalShippingOutlined />,
-    permissions: [{ resource: 'suppliers', action: 'view' }],
-  },
-  {
-    label: 'Catálogo',
-    path: '/catalogo',
-    icon: <CategoryOutlined />,
-    permissions: CATALOG_VIEWS.map((view) => ({ resource: view.resource, action: 'view' })),
-  },
-  {
-    label: 'Auditoría',
-    path: '/auditoria',
-    icon: <HistoryOutlined />,
-    permissions: [{ resource: 'audit_logs', action: 'view' }],
-  },
-  {
-    label: 'Configuración',
-    path: '/configuracion',
-    icon: <SettingsOutlined />,
-    permissions: SETTINGS_SECTIONS.flatMap((section) =>
-      section.resources.map((resource) => ({ resource, action: 'view' })),
-    ),
-  },
-];
-
-/** Where an item leads: its own address, or the first alternative the person may open when they cannot view it. */
-function targetOf(item: NavItem, can: (resource: string, action: string) => boolean): string {
-  const own = item.permissions?.[0];
-  if (!own || can(own.resource, own.action)) {
-    return item.path;
-  }
-  return item.fallbacks?.find((fallback) => can(fallback.resource, 'view'))?.path ?? item.path;
-}
-
-/** Whether the current address belongs to the section of an item without being its own address. */
-function isAlsoActive(item: NavItem, pathname: string): boolean {
-  return (item.alsoActiveOn ?? []).some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
 
 /**
  * The frame of every signed-in screen: a fixed side menu on a desktop, a drawer behind a button on a phone.
@@ -158,45 +34,42 @@ export function AppShell({ children }: { children: ReactNode }) {
   const state = useSessionState();
   const can = useCan();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const restricted = state.status === 'authenticated' && state.passwordChangeRequired;
   const location = useLocation();
-  const items = restricted
-    ? []
-    : NAV_ITEMS.filter(
-        (item) => !item.permissions || item.permissions.some((p) => can(p.resource, p.action)),
-      );
+  const entries = restricted ? [] : visibleEntries(can);
+  const hasMenu = entries.length > 0;
+  const current = activeEntry(entries, location.pathname);
+
+  // Ctrl+K (⌘K on a Mac) opens the search from anywhere. It takes the shortcut some browsers use for their own search.
+  useEffect(() => {
+    if (!hasMenu) {
+      return undefined;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [hasMenu]);
 
   const navigation = (
-    <Box role="navigation" aria-label="Navegación principal" sx={{ width: DRAWER_WIDTH }}>
-      <Toolbar sx={{ px: 3 }}>
-        <Brand />
-      </Toolbar>
-      <List sx={{ pr: 1.5 }}>
-        {items.map((item) => (
-          <ListItemButton
-            key={item.path}
-            component={NavLink}
-            to={targetOf(item, can)}
-            end={item.path === '/'}
-            className={isAlsoActive(item, location.pathname) ? 'active' : undefined}
-            onClick={() => setDrawerOpen(false)}
-            sx={{
-              minHeight: 44,
-              pl: 3,
-              borderRadius: '0 999px 999px 0',
-              '&.active': { bgcolor: color.primary.tint, color: color.primary.dark },
-              '&.active .MuiListItemIcon-root': { color: color.primary.main },
-              '&.active .MuiListItemText-primary': { fontWeight: 600 },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
-      </List>
-    </Box>
+    <NavMenu
+      onNavigate={() => setDrawerOpen(false)}
+      onSearch={() => {
+        setDrawerOpen(false);
+        setSearchOpen(true);
+      }}
+    />
   );
+  // «Comercial › Clientes» on a desktop; on a phone, the name of the screen in place of the brand.
+  const crumbs = current?.group
+    ? `${groupLabel(current.group)} › ${current.label}`
+    : current?.label;
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -207,12 +80,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         sx={{
           borderBottom: 1,
           borderColor: 'divider',
-          ml: { md: items.length > 0 ? `${DRAWER_WIDTH}px` : 0 },
-          width: { md: items.length > 0 ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%' },
+          ml: { md: hasMenu ? `${NAV_WIDTH}px` : 0 },
+          width: { md: hasMenu ? `calc(100% - ${NAV_WIDTH}px)` : '100%' },
         }}
       >
         <Toolbar>
-          {items.length > 0 && isMobile ? (
+          {hasMenu && isMobile ? (
             <IconButton
               edge="start"
               aria-label="Abrir el menú"
@@ -222,15 +95,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               <MenuIcon />
             </IconButton>
           ) : null}
-          <Box sx={{ display: { xs: 'block', md: restricted ? 'block' : 'none' } }}>
-            <Brand />
-          </Box>
+          {current && hasMenu ? (
+            <Typography
+              component="span"
+              noWrap
+              sx={{ fontSize: { xs: 18, md: 14 }, fontWeight: { xs: 700, md: 400 }, minWidth: 0 }}
+              aria-label="Ruta"
+            >
+              {isMobile ? current.label : crumbs}
+            </Typography>
+          ) : (
+            <Box sx={{ display: { xs: 'block', md: restricted ? 'block' : 'none' } }}>
+              <Brand />
+            </Box>
+          )}
           <Box sx={{ flexGrow: 1 }} />
           <UserMenu />
         </Toolbar>
       </AppBar>
 
-      {items.length > 0 ? (
+      {hasMenu ? (
         isMobile ? (
           <Drawer
             open={drawerOpen}
@@ -243,15 +127,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Drawer
             variant="permanent"
             sx={{
-              width: DRAWER_WIDTH,
+              width: NAV_WIDTH,
               flexShrink: 0,
-              '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+              '& .MuiDrawer-paper': { width: NAV_WIDTH, boxSizing: 'border-box' },
             }}
           >
             {navigation}
           </Drawer>
         )
       ) : null}
+
+      {hasMenu ? <NavSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /> : null}
 
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
         <Toolbar />
