@@ -26,6 +26,9 @@ curl -X POST -H "X-Deploy-Token: $DEPLOY_TOKEN" http://127.0.0.1:8080/api/system
 # Primer administrador (pide correo y contraseña)
 php api/bin/console user:create-admin
 
+# Recordatorios de vencimiento y correos pendientes (en el hosting lo corre un cron cada hora)
+php api/bin/console notifications:run
+
 # Web (en otra terminal; reenvía /api al puerto 8080)
 npm install
 npm run dev                     # http://localhost:5173
@@ -56,3 +59,4 @@ El orden para cualquier instancia nueva (entorno, hosting u otra empresa). El de
 3. **Despliega** (un push, ver la guía): sube el código y aplica las migraciones.
 4. **Revisa los requisitos:** abre `https://<dirección de la instancia>/api/system/requirements`. Corrige todas las fallas y entiende cada aviso; repite hasta que el veredicto sea «Todo listo» o «Listo, con avisos» que aceptas.
 5. **Primer administrador:** pon `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el `.env` y despliega de nuevo (o, con PHP 8.3 en el terminal, `php api/bin/console user:create-admin` en la carpeta de la instancia). Después **quita esas variables del `.env`**.
+6. **Tarea programada de las notificaciones:** agrega en el Cron de cPanel, cada hora, `php api/bin/console notifications:run` (`docs/despliegue.md`, 2.7). Sin ella todo funciona salvo los avisos de «vence mañana» y «venció».

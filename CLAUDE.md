@@ -88,7 +88,7 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 **Hito 3 — Tareas, tickets y cierre del legacy**
 - Motor de estados (estados, transiciones y banderas semánticas; un estado nuevo aplica solo a registros futuros)
 - Hilo de actividad (comentarios, cambios de estado, menciones; bandera interno/externo)
-- Notificaciones configurables por perfil y departamento (en la aplicación y por email) y endpoint de actualizaciones para el polling
+- Notificaciones con reglas en el código (ADR-0031), en la aplicación y por email, y endpoint de actualizaciones para el polling
 - Archivos y fotos (almacenamiento local, WebP normal y miniatura, metadatos en JSON)
 - Tareas (asignada, estado, vencimiento, hilo) y tickets mínimos (cliente, asignado, estado, descripción, hilo)
 - Importación de datos del legacy, prueba paralela y apagado del legacy
@@ -123,7 +123,7 @@ Mantén un `TODO.md` vivo con estos hitos y marca explícitamente qué queda fue
 - Combos se actualizan automáticamente salvo dentro de una cotización vigente.
 - Nada se elimina físicamente: se desactiva y se audita.
 - Todo cambio de estado de un proyecto notifica al jefe o supervisor.
-- Notificaciones configurables por rol y área, no hardcodeadas.
+- Las notificaciones son reglas en el código, no configuración (ADR-0031): quien está involucrado en un registro recibe aviso de todo lo que pasa en él, salvo de lo que hizo él mismo. Cada módulo agrega sus tipos.
 - Numeración de proyectos, cotizaciones y OC autogenerada, única y a prueba de concurrencia.
 - Los estados nuevos aplican solo a registros futuros.
 - El precio de catálogo no se guarda: se calcula desde el costo, el nivel de margen, el IVA y el ISR (ADR-0011).
@@ -260,3 +260,4 @@ Las decisiones técnicas menores que Claude toma sin consultar (nomenclatura, es
 | 2026-11-14 | El selector Lista \| Tablero de `/tareas` manda por la URL (`?vista=`) y, sin ella, usa la última vista guardada en `localStorage` (`soltec.tasks.view`, con respaldo si el navegador lo rechaza); las cargas extra de «Ver más» se descartan cuando el tablero se vuelve a leer. Las columnas sembradas llevan el id de su estado y sus nombres no son únicos en la tabla (el `PUT` los valida). Ver ADR-0030. | Volver desde una tarea debe dejar al usuario en el tablero sin que el detalle sepa de él; sembrar sin generar UUID en SQL; un estado inactivo puede repetir un nombre y la migración no debe fallar por eso. |
 | 2026-11-14 | «Configurar tablero» arrastra en escritorio con `@dnd-kit` (solo en `web/`) y usa selectores en teléfono y en la opción «Usar la lista»; las reglas de mover están en `shared/` (`boardColumns.ts`). El E2E del arrastre es un solo escenario de escritorio sobre el flujo de tickets y vuelve a medir el destino tras una pausa. Ver ADR-0030. | Arrastrar dentro de un diálogo con desplazamiento falla con el dedo, y el teclado entre columnas no es fiable con la librería; dos escenarios que escriben el mismo flujo en paralelo se pisan, y el diálogo se desplaza solo cerca del borde. |
 | 2026-11-24 | El menú lateral se define en `web/src/navigation/navigation.ts` (grupos, permisos y búsqueda como funciones puras, sin JSX) y los íconos viven en `NavMenu.tsx`, tipados por `NavId`: una pantalla nueva sin ícono no compila. Los grupos plegados se recuerdan en `localStorage` por usuario (`soltec.nav.closed.<id>`, con respaldo si el navegador lo rechaza) y se leen cuando el usuario ya llegó, porque su nombre puede llegar después del menú. La pantalla «Catálogo» se llama «Parámetros del catálogo». | Una pantalla nueva se agrega en un solo lugar y la búsqueda la encuentra sola; sin la lectura diferida, la preferencia se leía con un usuario vacío y no se restauraba; «Parámetros» a secas repetía la sección de Configuración. |
+| 2026-11-25 | **Las notificaciones son reglas en el código, no configuración** (reemplaza «configurables por rol y área» del §4 y del Hito 3). Quien es dueño o asignado de un registro recibe aviso de todo lo que pasa en él, el mencionado solo de la mención, y nadie de lo que hizo él mismo; un correo por aviso, sin agrupar; la única configuración es la hora de los recordatorios de vencimiento, que genera el cron del hosting con `notifications:run`. Ver ADR-0031. | Decisión del usuario: una matriz de reglas por perfil y departamento se vuelve ingobernable al crecer la plataforma; si el límite de correo del hosting estorba, se atiende entonces. |

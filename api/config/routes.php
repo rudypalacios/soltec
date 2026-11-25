@@ -32,6 +32,8 @@ use Soltec\Modules\Organization\Http\DepartmentController;
 use Soltec\Modules\Products\Http\BundleController;
 use Soltec\Modules\Products\Http\ProductController;
 use Soltec\Modules\Settings\Http\BrandingController;
+use Soltec\Modules\Notifications\Http\NotificationController;
+use Soltec\Modules\Notifications\Http\NotificationSettingsController;
 use Soltec\Modules\Tasks\Http\TaskController;
 use Soltec\Modules\Thread\Http\ThreadController;
 use Soltec\Modules\Suppliers\Http\SupplierController;
@@ -269,6 +271,15 @@ return static function (App $app): void {
         $group->post('/bundles/{bundleId}/reactivate', [BundleController::class, 'reactivate'])
             ->setArgument('permission', 'bundles.deactivate');
 
+        // Notifications: always the caller's own, so any internal session may read and mark them (ADR-0031). The
+        // fixed `read-all` comes before `{notificationId}`. `updates` is what the web polls every minute (ADR-0005).
+        $group->get('/notifications', [NotificationController::class, 'list'])->setArgument('permission', 'internal');
+        $group->post('/notifications/read-all', [NotificationController::class, 'readAll'])
+            ->setArgument('permission', 'internal');
+        $group->post('/notifications/{notificationId}/read', [NotificationController::class, 'read'])
+            ->setArgument('permission', 'internal');
+        $group->get('/updates', [NotificationController::class, 'updates'])->setArgument('permission', 'internal');
+
         // Tasks: whoever asked for a task, was asked to do it or was mentioned in it reaches it without any permission,
         // so reading and moving are open to any internal session and the service decides (ADR-0029); the data scope of
         // `tasks` only widens what a person reaches. Writing keeps its permissions. The fixed `assignee-options` comes
@@ -307,6 +318,10 @@ return static function (App $app): void {
             ->setArgument('permission', 'company.edit');
         $group->delete('/settings/company/logo', [CompanyController::class, 'deleteLogo'])
             ->setArgument('permission', 'company.edit');
+        $group->get('/settings/notifications', [NotificationSettingsController::class, 'show'])
+            ->setArgument('permission', 'notification_settings.view');
+        $group->patch('/settings/notifications', [NotificationSettingsController::class, 'update'])
+            ->setArgument('permission', 'notification_settings.edit');
         $group->get('/settings/financial', [FinancialSettingsController::class, 'show'])
             ->setArgument('permission', 'financial_settings.view');
         $group->patch('/settings/financial', [FinancialSettingsController::class, 'update'])

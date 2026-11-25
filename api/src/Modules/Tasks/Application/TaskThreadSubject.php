@@ -6,6 +6,7 @@ namespace Soltec\Modules\Tasks\Application;
 
 use Soltec\Kernel\Auth\CurrentUser;
 use Soltec\Modules\Tasks\Persistence\TaskRepository;
+use Soltec\Modules\Thread\Domain\SubjectBrief;
 use Soltec\Modules\Thread\Domain\ThreadSubject;
 
 /**
@@ -26,5 +27,12 @@ final class TaskThreadSubject implements ThreadSubject
     public function canSee(CurrentUser $user, string $subjectId): bool
     {
         return $this->tasks->find($subjectId, $user) !== null;
+    }
+
+    public function brief(string $subjectId): ?SubjectBrief
+    {
+        $task = $this->tasks->brief($subjectId);
+
+        return $task === null ? null : new SubjectBrief($task['title'], [$task['owner_id'], $task['assignee_id']]);
     }
 }

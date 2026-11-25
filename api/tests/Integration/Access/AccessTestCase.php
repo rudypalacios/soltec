@@ -36,7 +36,7 @@ abstract class AccessTestCase extends IntegrationTestCase
     protected const PASSWORD = 'correct horse battery staple';
 
     /** The rows of `role_permissions` the migrations leave (the `admin` role's); a migration that grants more raises it. */
-    protected const SEEDED_PERMISSION_ROWS = 105;
+    protected const SEEDED_PERMISSION_ROWS = 107;
 
     /** The rows of `role_scopes` the migrations leave: the `admin` role's scope on each resource with an owner. */
     protected const SEEDED_SCOPE_ROWS = 13;
@@ -346,7 +346,7 @@ abstract class AccessTestCase extends IntegrationTestCase
         // A run that stopped while the seed was missing must not poison the ones that follow.
         return $this->countRows(
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'admin'",
-        ) === 85;
+        ) === 87;
     }
 
     /** Keeps the seeded catalogs and the `admin` role, drops everything the previous test created. */

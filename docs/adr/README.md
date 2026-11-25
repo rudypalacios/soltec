@@ -37,3 +37,5 @@ Cada ADR registra **una** decisión técnica: qué se decidió, por qué y qué 
 | [0027](0027-fotos-subidas-y-su-acceso.md) | Fotos subidas: quién las ve y cómo viajan | Aceptada |
 | [0028](0028-pruebas-en-la-sesion-no-en-github.md) | Las pruebas corren en la sesión, no en GitHub | Aceptada |
 | [0029](0029-tareas-e-hilo-de-actividad.md) | Tareas e hilo de actividad | Aceptada |
+| [0030](0030-columnas-del-tablero.md) | Columnas del tablero de un flujo | Aceptada |
+| [0031](0031-notificaciones-con-reglas-en-codigo.md) | Notificaciones con reglas en código | Aceptada |

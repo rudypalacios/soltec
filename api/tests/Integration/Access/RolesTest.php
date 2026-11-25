@@ -355,7 +355,9 @@ final class RolesTest extends AccessTestCase
             [
                 'areas', 'audit_logs', 'brands', 'bundles', 'client_statuses', 'clients', 'company', 'contact_types',
                 'contacts',
-                'departments', 'files', 'financial_settings', 'margin_levels', 'payment_methods', 'product_groups',
+                'departments', 'files', 'financial_settings', 'margin_levels',
+                'notification_settings', 'payment_methods',
+                'product_groups',
                 'products',
                 'roles',
                 'security_settings', 'segments', 'sequences', 'suppliers', 'task_types', 'tasks',

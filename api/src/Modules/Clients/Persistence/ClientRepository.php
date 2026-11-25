@@ -100,6 +100,17 @@ final class ClientRepository
         ) !== false;
     }
 
+    /** The name of a client, without any access check (the notices of a change the caller was allowed to make). */
+    public function nameOf(string $id): string
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT name FROM clients WHERE id = UNHEX(:id)',
+            ['id' => Uuid::toHex($id)],
+        );
+
+        return $row === false ? '' : Row::string($row, 'name');
+    }
+
     /** @return array{records: list<ClientRecord>, total: int} */
     public function search(CurrentUser $reader, ClientFilters $filters, Pagination $page): array
     {

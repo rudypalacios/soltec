@@ -35,7 +35,7 @@ MODULOS = [
 
     ("estados", "Motor de estados", "Estados y transiciones configurables con banderas semánticas (p. ej. aceptada, terminal); un estado nuevo aplica solo a registros futuros", 3, ["acceso", "audit"], []),
     ("hilo", "Hilo de actividad", "Comentarios, cambios de estado y menciones sobre cualquier registro; bandera interno/externo desde el inicio", 3, ["acceso"], ["archivos"]),
-    ("notif", "Notificaciones", "Configurables por perfil y departamento; en la aplicación y por email; endpoint de actualizaciones para el polling", 3, ["acceso", "org", "config"], []),
+    ("notif", "Notificaciones", "Avisos en la aplicación y por email con reglas en el código (ADR-0031); endpoint de actualizaciones para el polling", 3, ["acceso", "org", "config"], []),
     ("archivos", "Archivos y fotos", "Almacenamiento local, compresión, WebP normal y miniatura, metadatos en JSON", 3, ["acceso"], []),
     ("tareas", "Tareas", "Lista de pendientes: asignada a alguien, estado, fecha de vencimiento, hilo", 3, ["acceso", "org", "estados", "hilo", "notif"], []),
     ("tickets", "Tickets (helpdesk mínimo)", "Cliente, asignado, estado, descripción e hilo; los campos extendidos se agregan después con migraciones", 3, ["clientes", "estados", "hilo", "notif"], []),

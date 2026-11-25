@@ -16,6 +16,7 @@ use Slim\Psr7\Factory\ResponseFactory;
 use Soltec\Kernel\Auth\CurrentUserLoader;
 use Soltec\Kernel\Db\ConnectionFactory;
 use Soltec\Kernel\Deploy\PostMigrationStep;
+use Soltec\Kernel\Deploy\Requirements\CompositeRequirements;
 use Soltec\Kernel\Deploy\Requirements\ModuleRequirements;
 use Soltec\Kernel\Http\ProblemDetailsErrorHandler;
 use Soltec\Kernel\Http\SecurityHeadersMiddleware;
@@ -28,8 +29,11 @@ use Soltec\Modules\Access\Persistence\PermissionLoader;
 use Soltec\Modules\Files\Application\FileAccessGrant;
 use Soltec\Modules\Files\Application\FileStorage;
 use Soltec\Modules\Files\Persistence\LocalFileStorage;
+use Soltec\Modules\Notifications\Application\ScheduledReminders;
+use Soltec\Modules\Notifications\Deploy\NotificationsRequirements;
 use Soltec\Modules\Products\Application\ProductDeactivationCascade;
 use Soltec\Modules\Suppliers\Application\DeactivationCascade;
+use Soltec\Modules\Tasks\Application\TaskDueReminders;
 use Soltec\Modules\Tasks\Application\TaskThreadSubject;
 use Soltec\Modules\Thread\Application\ThreadFileAccessGrant;
 use Soltec\Modules\Thread\Domain\ThreadSubjects;
@@ -87,7 +91,11 @@ final class Bootstrap
                 Clock::class => autowire(SystemClock::class),
                 DeferredTasks::class => autowire(ShutdownTasks::class),
                 CurrentUserLoader::class => autowire(PermissionLoader::class),
-                ModuleRequirements::class => autowire(AccessRequirements::class),
+                ModuleRequirements::class => factory(
+                    static fn (AccessRequirements $access, NotificationsRequirements $notifications): ModuleRequirements
+                        => new CompositeRequirements([$access, $notifications]),
+                ),
+                ScheduledReminders::class => autowire(TaskDueReminders::class),
                 PostMigrationStep::class => autowire(AdminFromEnvStep::class),
                 ResponseFactoryInterface::class => new ResponseFactory(),
                 MailTransport::class => autowire(PhpMailerTransport::class),

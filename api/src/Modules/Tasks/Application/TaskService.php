@@ -14,6 +14,8 @@ use Soltec\Kernel\Uuid;
 use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Access\Persistence\UserDirectory;
+use Soltec\Modules\Notifications\Application\NotificationService;
+use Soltec\Modules\Notifications\Domain\NotificationType;
 use Soltec\Modules\Tasks\Domain\TaskData;
 use Soltec\Modules\Tasks\Domain\TaskRecord;
 use Soltec\Modules\Tasks\Persistence\TaskRepository;
@@ -41,6 +43,7 @@ final class TaskService
         private readonly ThreadService $thread,
         private readonly UserDirectory $users,
         private readonly AuditLogger $audit,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -165,6 +168,7 @@ final class TaskService
                 'assignee' => $this->person($data->assigneeId),
                 'due_date' => $data->dueDate,
             ], $now);
+            $this->tell(NotificationType::Assigned, [$data->assigneeId], $caller->id, $id, $data->title, [], $now);
             $this->audit->record(
                 $actor,
                 'create',
@@ -208,12 +212,22 @@ final class TaskService
                     'from' => ['id' => $current->data->assigneeId, 'name' => $current->assigneeName],
                     'to' => $this->person($data->assigneeId),
                 ], $now);
+                $this->tellAssigneeChange($caller->id, $current, $data, $now);
             }
             if ($data->dueDate !== $current->data->dueDate) {
                 $this->thread->recordEvent(self::THREAD, $id, $caller->id, 'due_date_changed', [
                     'from' => $current->data->dueDate,
                     'to' => $data->dueDate,
                 ], $now);
+                $this->tell(
+                    NotificationType::DueDateChanged,
+                    [$current->ownerId, $data->assigneeId],
+                    $caller->id,
+                    $id,
+                    $data->title,
+                    ['from' => $current->data->dueDate, 'to' => $data->dueDate],
+                    $now,
+                );
             }
 
             $before = $current->data->toArray();
@@ -299,6 +313,17 @@ final class TaskService
                     'to' => $newDueDate,
                 ], $now);
             }
+            // One notice for the whole step: it carries the new due date when the owner accepted the proposed one.
+            $this->tell(
+                NotificationType::StateChanged,
+                [$current->ownerId, $current->data->assigneeId],
+                $caller->id,
+                $id,
+                $current->data->title,
+                ['from' => $current->stateName, 'to' => $to->name]
+                + ($newDueDate !== null && $newDueDate !== $current->data->dueDate ? ['due_date' => $newDueDate] : []),
+                $now,
+            );
             $this->audit->record(
                 $actor,
                 'update',
@@ -400,6 +425,48 @@ final class TaskService
         if ($data->assigneeId !== $current?->assigneeId && !$this->users->isActiveInternal($data->assigneeId)) {
             throw ValidationException::field('assignee_id', 'not_found');
         }
+    }
+
+    /**
+     * Tells the people of the task about a change (ADR-0031). The actor is never told of their own change.
+     *
+     * @param list<string> $recipients
+     * @param array<string, mixed> $data
+     */
+    private function tell(
+        NotificationType $type,
+        array $recipients,
+        string $actorId,
+        string $taskId,
+        string $title,
+        array $data,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->notifications->publish($type, $recipients, $actorId, self::THREAD, $taskId, $title, $data, $now);
+    }
+
+    /**
+     * A new assignee is told they got the task, the old one that they no longer have it, and the owner (when it is
+     * neither of them) who has it now.
+     */
+    private function tellAssigneeChange(
+        string $actorId,
+        TaskRecord $current,
+        TaskData $data,
+        \DateTimeImmutable $now,
+    ): void {
+        $oldId = $current->data->assigneeId;
+        $this->tell(NotificationType::Assigned, [$data->assigneeId], $actorId, $current->id, $data->title, [], $now);
+        $this->tell(NotificationType::Unassigned, [$oldId], $actorId, $current->id, $data->title, [], $now);
+        $this->tell(
+            NotificationType::AssigneeChanged,
+            array_values(array_diff([$current->ownerId], [$oldId, $data->assigneeId])),
+            $actorId,
+            $current->id,
+            $data->title,
+            ['from' => $current->assigneeName, 'to' => $this->person($data->assigneeId)['name']],
+            $now,
+        );
     }
 
     /** @return array{id: string, name: string} */

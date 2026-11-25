@@ -54,6 +54,54 @@ final class TaskRepository
         return $row === false ? null : $this->hydrate($row);
     }
 
+    /**
+     * The title and the two people of a task, without any access check: the notices need them for whoever reads.
+     *
+     * @return array{title: string, owner_id: string, assignee_id: string}|null
+     */
+    public function brief(string $id): ?array
+    {
+        $row = $this->connection->fetchAssociative(
+            'SELECT title, LOWER(HEX(owner_id)) AS owner_id, LOWER(HEX(assignee_id)) AS assignee_id '
+            . 'FROM tasks WHERE id = UNHEX(:id)',
+            ['id' => Uuid::toHex($id)],
+        );
+        if ($row === false) {
+            return null;
+        }
+
+        return [
+            'title' => Row::string($row, 'title'),
+            'owner_id' => Uuid::fromHex(Row::string($row, 'owner_id')),
+            'assignee_id' => Uuid::fromHex(Row::string($row, 'assignee_id')),
+        ];
+    }
+
+    /**
+     * The active tasks that are not closed and fall due between two dates (both included), for the reminders.
+     *
+     * @return list<array{id: string, title: string, owner_id: string, assignee_id: string, due_date: string}>
+     */
+    public function openDueBetween(string $from, string $to): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT LOWER(HEX(t.id)) AS id, t.title, LOWER(HEX(t.owner_id)) AS owner_id, '
+            . 'LOWER(HEX(t.assignee_id)) AS assignee_id, t.due_date FROM tasks t '
+            . 'JOIN workflow_states st ON st.id = t.state_id '
+            . 'WHERE t.deleted_at IS NULL AND st.is_terminal = 0 AND t.due_date BETWEEN :from AND :to '
+            . 'ORDER BY t.due_date, t.id',
+            ['from' => $from, 'to' => $to],
+        );
+
+        return array_map(static fn (array $row): array => [
+            'id' => Uuid::fromHex(Row::string($row, 'id')),
+            'title' => Row::string($row, 'title'),
+            'owner_id' => Uuid::fromHex(Row::string($row, 'owner_id')),
+            'assignee_id' => Uuid::fromHex(Row::string($row, 'assignee_id')),
+            'due_date' => Row::string($row, 'due_date'),
+        ], $rows);
+    }
+
     /** Locks the row until the end of the transaction. */
     public function lock(string $id): bool
     {

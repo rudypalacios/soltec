@@ -1,0 +1,362 @@
+paths:
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      summary: List the caller's notifications, newest first.
+      description:
+        Always the caller's own; nobody reads another person's, and no permission is needed. The rules of who is told
+        of what are code, not configuration (ADR-0031). Read with a cursor, not with pages. Send `meta.next_cursor`
+        back as `before` for the next older ones; it is null on the last page. `meta.unread_count` counts every unread
+        notification, not only the ones in this page. A notification whose comment was deactivated is not listed.
+      tags:
+        - Notifications
+      x-permission: internal
+      parameters:
+        - name: unread
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+            default: 'false'
+        - name: before
+          in: query
+          required: false
+          description: The id of the last notification already shown.
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: A page of notifications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      summary: Mark every unread notification of the caller as read.
+      description: Idempotent. Answers how many were unread.
+      tags:
+        - Notifications
+      x-permission: internal
+      responses:
+        '200':
+          description: How many notifications were marked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - marked
+                properties:
+                  marked:
+                    type: integer
+                    minimum: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/NotificationId'
+    post:
+      operationId: markNotificationRead
+      summary: Mark one notification as read.
+      description:
+        Idempotent. One already read keeps the moment it was read. It is what the web calls when the person opens
+        the notification. A notification that is not the caller's is 404.
+      tags:
+        - Notifications
+      x-permission: internal
+      responses:
+        '200':
+          description: The notification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/updates:
+    get:
+      operationId: getUpdates
+      summary: What changed for the caller since the web last looked.
+      description:
+        The cheap endpoint the web polls about every minute (ADR-0005) and pauses while the tab is hidden. It returns
+        how many notifications are unread and, when `since` is given, how many arrived after that moment; the web
+        sends back the `server_time` of the previous answer. When the numbers change, the web reads the list.
+      tags:
+        - Notifications
+      x-permission: internal
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+      responses:
+        '200':
+          description: The counts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Updates'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+  /v1/settings/notifications:
+    get:
+      operationId: getNotificationSettings
+      summary: The settings of the notifications.
+      description:
+        The hour from which the due-date reminders go out, in the company's time zone, and when the hourly job last
+        ran (null if never). The notices themselves are not configurable.
+      tags:
+        - Notifications
+      x-permission: notification_settings.view
+      responses:
+        '200':
+          description: The settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Unexpected'
+    patch:
+      operationId: updateNotificationSettings
+      summary: Change the hour of the due-date reminders.
+      description:
+        A task due tomorrow, or overdue, is told once from that hour on, the first time the hourly job runs after it.
+        A stale version answers 409 `conflict`.
+      tags:
+        - Notifications
+      x-permission: notification_settings.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettingsUpdate'
+      responses:
+        '200':
+          description: The updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/Unexpected'
+components:
+  parameters:
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+  schemas:
+    NotificationType:
+      type: string
+      description:
+        What happened. `assigned`, `unassigned` and `assignee_changed` are about who does the record; `comment` and
+        `mention` come from its thread; `state_changed` and `due_date_changed` are changes of the record; `due_soon`
+        and `overdue` are reminders nobody caused (no actor); `client_seller_added` and `client_seller_removed` are
+        about the advisers of a client. A module that appears later adds its own values.
+      enum:
+        - assigned
+        - unassigned
+        - assignee_changed
+        - comment
+        - mention
+        - state_changed
+        - due_date_changed
+        - due_soon
+        - overdue
+        - client_seller_added
+        - client_seller_removed
+    Notification:
+      type: object
+      required:
+        - id
+        - type
+        - subject
+        - actor
+        - data
+        - is_read
+        - read_at
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        subject:
+          type: object
+          description: The record it is about, with the title it had when the notification was written.
+          required:
+            - type
+            - id
+            - title
+          properties:
+            type:
+              type: string
+              enum:
+                - task
+                - ticket
+                - client
+            id:
+              $ref: '#/components/schemas/Uuid'
+            title:
+              type: string
+        actor:
+          description: Who did it; null for a reminder.
+          nullable: true
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              $ref: '#/components/schemas/Uuid'
+            name:
+              type: string
+        data:
+          type: object
+          description:
+            What the sentence needs besides the type. `state_changed` has `from` and `to` (state names) and may carry
+            `due_date`; `assignee_changed` has `from` and `to` (names); `due_date_changed` has `from` and `to` (dates);
+            `due_soon` and `overdue` have `due_date`. Empty for the others.
+          additionalProperties: true
+        is_read:
+          type: boolean
+        read_at:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    NotificationPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        meta:
+          type: object
+          required:
+            - limit
+            - next_cursor
+            - unread_count
+          properties:
+            limit:
+              type: integer
+            next_cursor:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/Uuid'
+            unread_count:
+              type: integer
+              minimum: 0
+    Updates:
+      type: object
+      required:
+        - unread_count
+        - new_count
+        - server_time
+      properties:
+        unread_count:
+          type: integer
+          minimum: 0
+        new_count:
+          type: integer
+          nullable: true
+          minimum: 0
+          description: Notifications created after `since`; null when `since` was not given.
+        server_time:
+          $ref: '#/components/schemas/Timestamp'
+    NotificationSettings:
+      type: object
+      required:
+        - due_reminder_hour
+        - last_run_at
+        - created_at
+        - updated_at
+        - version
+      properties:
+        due_reminder_hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          description: The local hour (company time zone) from which the due-date reminders go out.
+        last_run_at:
+          nullable: true
+          description: When the hourly job last ran; null if it never did.
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+        version:
+          type: integer
+          minimum: 1
+    NotificationSettingsUpdate:
+      allOf:
+        - $ref: '#/components/schemas/Version'
+        - type: object
+          required:
+            - due_reminder_hour
+          properties:
+            due_reminder_hour:
+              type: integer
+              minimum: 0
+              maximum: 23

@@ -74,6 +74,8 @@ tags:
     description: What the owner asks the assignee to do by a date, with its state.
   - name: Thread
     description: The activity thread of a record, with comments, mentions, photos and the events the system writes.
+  - name: Notifications
+    description: What happens to the records a person is involved in, told in the application and by email, and the polling endpoint the web asks every minute.
   - name: Access catalogs
     description: Read-only lists used to build the permission matrix.
 components:
