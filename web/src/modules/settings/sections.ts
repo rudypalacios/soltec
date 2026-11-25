@@ -13,5 +13,10 @@ export const SETTINGS_SECTIONS = [
     path: '/configuracion/parametros',
     resources: ['contact_types', 'client_statuses', 'segments', 'tax_regimes', 'payment_methods'],
   },
+  {
+    label: 'Notificaciones',
+    path: '/configuracion/notificaciones',
+    resources: ['notification_settings'],
+  },
   { label: 'Seguridad', path: '/configuracion/seguridad', resources: ['security_settings'] },
 ] as const;

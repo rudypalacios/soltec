@@ -22,6 +22,7 @@ final class ClientNoticesTest extends ClientsTestCase
         self::assertSame($id, $this->text($notice, 'subject', 'id'));
         self::assertSame('Compartido', $this->text($notice, 'subject', 'title'));
         self::assertCount(1, $this->mail->sent);
+        self::assertStringContainsString('te agregó como asesor del cliente «Compartido».', $this->mail->sent[0]->body);
         self::assertStringContainsString('https://app.example.test/clientes/' . $id, $this->mail->sent[0]->body);
 
         // Adding the same adviser again changes nothing and tells nobody twice.

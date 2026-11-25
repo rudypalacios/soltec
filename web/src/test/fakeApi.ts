@@ -73,6 +73,9 @@ export function createTestSession(
     // The home screen of a profile that shows both widgets, as every profile did before it was configurable.
     'GET /v1/dashboard': () =>
       Response.json({ data: [{ code: 'quick_links' }, { code: 'service_status' }] }),
+    // The bell of the top bar asks for the unread count in every screen of a signed-in session.
+    'GET /v1/updates': () =>
+      Response.json({ unread_count: 0, new_count: null, server_time: '2026-11-25T12:00:00.000Z' }),
     'GET /v1/health': () => Response.json({ status: 'ok', checks: { database: 'ok' } }),
     ...handlers,
   };

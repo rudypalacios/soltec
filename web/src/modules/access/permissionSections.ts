@@ -32,6 +32,7 @@ const SECTIONS: readonly SectionDefinition[] = [
       'margin_levels',
       'workflow_states',
       'sequences',
+      'notification_settings',
       'security_settings',
     ],
   },

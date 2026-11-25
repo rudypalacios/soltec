@@ -8,6 +8,7 @@ type CompanyUpdate = components['schemas']['CompanyUpdate'];
 type FinancialSettingsUpdate = components['schemas']['FinancialSettingsUpdate'];
 type SequenceUpdate = components['schemas']['SequenceUpdate'];
 type SecuritySettingsUpdate = components['schemas']['SecuritySettingsUpdate'];
+type NotificationSettingsUpdate = components['schemas']['NotificationSettingsUpdate'];
 
 /** The image of the company's logo. The version in the query string makes a new logo a new URL for the cache. */
 export function brandingLogoUrl(version: string): string {
@@ -106,6 +107,26 @@ export function useSaveFinancialSettings() {
     mutationFn: async (body: FinancialSettingsUpdate) =>
       unwrap(await apiClient.PATCH('/v1/settings/financial', { body })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['financial-settings'] }),
+  });
+}
+
+export function useNotificationSettings() {
+  const apiClient = useApiClient();
+  return useQuery({
+    queryKey: ['notification-settings'],
+    queryFn: async () => unwrap(await apiClient.GET('/v1/settings/notifications')),
+    // The form works on a copy of what was read: a background refresh must not replace what is being chosen.
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSaveNotificationSettings() {
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: NotificationSettingsUpdate) =>
+      unwrap(await apiClient.PATCH('/v1/settings/notifications', { body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification-settings'] }),
   });
 }
 

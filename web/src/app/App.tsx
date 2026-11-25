@@ -20,6 +20,8 @@ import { UserCreatePage } from '../modules/access/UserCreatePage';
 import { UserEditPage } from '../modules/access/UserEditPage';
 import { UsersPage } from '../modules/access/UsersPage';
 import { AuditPage } from '../modules/audit/AuditPage';
+import { NotificationSettingsPage } from '../modules/notifications/NotificationSettingsPage';
+import { NotificationsPage } from '../modules/notifications/NotificationsPage';
 import { HomePage } from '../modules/home/HomePage';
 import { DepartmentsPage } from '../modules/organization/DepartmentsPage';
 import { CompanyPage } from '../modules/settings/CompanyPage';
@@ -140,6 +142,7 @@ export function App() {
             </RequirePermission>
           }
         />
+        <Route path="notificaciones" element={<NotificationsPage />} />
         <Route path="tareas" element={<TasksPage />} />
         <Route
           path="tareas/nueva"
@@ -362,6 +365,14 @@ export function App() {
             }
           />
           <Route path="parametros" element={<ParametersPage />} />
+          <Route
+            path="notificaciones"
+            element={
+              <RequirePermission resource="notification_settings" action="view">
+                <NotificationSettingsPage />
+              </RequirePermission>
+            }
+          />
           <Route
             path="seguridad"
             element={
