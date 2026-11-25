@@ -19,6 +19,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCan, useSession, useSessionState } from '../modules/access/SessionContext';
+import { NotificationBell } from '../modules/notifications/NotificationBell';
 import { NavMenu, NAV_WIDTH } from '../navigation/NavMenu';
 import { NavSearchDialog } from '../navigation/NavSearchDialog';
 import { activeEntry, groupLabel, visibleEntries } from '../navigation/navigation';
@@ -110,6 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Box>
           )}
           <Box sx={{ flexGrow: 1 }} />
+          {hasMenu ? <NotificationBell /> : null}
           <UserMenu />
         </Toolbar>
       </AppBar>

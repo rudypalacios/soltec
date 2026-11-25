@@ -6,6 +6,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   company: 'Empresa',
   financial_settings: 'Finanzas',
   security_settings: 'Seguridad',
+  notification_settings: 'Notificaciones',
   sequences: 'Numeración',
   margin_levels: 'Niveles de margen',
   devices: 'Dispositivos',

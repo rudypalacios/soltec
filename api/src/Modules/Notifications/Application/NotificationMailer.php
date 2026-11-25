@@ -119,8 +119,16 @@ final class NotificationMailer
                 ucfirst($target),
                 $this->date($data, 'due_date'),
             ),
-            NotificationType::ClientSellerAdded => sprintf('%s te agregó como asesor de %s.', $actor, $target),
-            NotificationType::ClientSellerRemoved => sprintf('%s te quitó como asesor de %s.', $actor, $target),
+            NotificationType::ClientSellerAdded => sprintf(
+                '%s te agregó como asesor del cliente «%s».',
+                $actor,
+                $title,
+            ),
+            NotificationType::ClientSellerRemoved => sprintf(
+                '%s te quitó como asesor del cliente «%s».',
+                $actor,
+                $title,
+            ),
         };
 
         $link = rtrim($this->config->string('APP_URL'), '/') . $path . $notice['subject_id'];
