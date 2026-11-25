@@ -17,4 +17,7 @@ interface ThreadSubject
 
     /** Whether the user reaches the record: because they are involved in it, or by permission and data scope. */
     public function canSee(CurrentUser $user, string $subjectId): bool;
+
+    /** The record's title and the people involved in it, for the notices a comment causes; null if it does not exist. */
+    public function brief(string $subjectId): ?SubjectBrief;
 }

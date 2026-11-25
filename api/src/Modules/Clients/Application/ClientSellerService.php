@@ -17,6 +17,8 @@ use Soltec\Modules\Clients\Persistence\ClientContactRepository;
 use Soltec\Modules\Clients\Persistence\ClientRepository;
 use Soltec\Modules\Clients\Persistence\ClientSellerRepository;
 use Soltec\Modules\Contacts\Persistence\ContactRepository;
+use Soltec\Modules\Notifications\Application\NotificationService;
+use Soltec\Modules\Notifications\Domain\NotificationType;
 
 /**
  * The advisers of a client (ADR-0025). A client always has exactly one responsible adviser; a prospect has only that
@@ -37,6 +39,7 @@ final class ClientSellerService
         private readonly ClientContactRepository $links,
         private readonly ContactRepository $contacts,
         private readonly AuditLogger $audit,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -74,6 +77,7 @@ final class ClientSellerService
 
             $this->sellers->add($client->id, $userId, false);
             $this->audit->record($actor, 'seller_add', self::ENTITY, $client->id, null, ['user_id' => $userId]);
+            $this->tell(NotificationType::ClientSellerAdded, $userId, $actor, $client->id, $client->data->name);
         });
 
         return $this->clientService->get($caller, $clientId);
@@ -99,6 +103,7 @@ final class ClientSellerService
 
             $this->sellers->remove($client->id, $userId);
             $this->audit->record($actor, 'seller_remove', self::ENTITY, $client->id, ['user_id' => $userId], null);
+            $this->tell(NotificationType::ClientSellerRemoved, $userId, $actor, $client->id, $client->data->name);
         });
 
         return $this->clientService->get($caller, $clientId);
@@ -242,6 +247,7 @@ final class ClientSellerService
                 throw ValidationException::field('from_user_id', 'not_found');
             }
             $wasResponsible = $this->sellers->isResponsible($clientId, $fromUserId);
+            $name = $this->clients->nameOf($clientId);
             if ($this->sellers->isSeller($clientId, $toUserId)) {
                 $this->sellers->remove($clientId, $fromUserId);
                 if ($wasResponsible) {
@@ -249,7 +255,9 @@ final class ClientSellerService
                 }
             } else {
                 $this->sellers->replace($clientId, $fromUserId, $toUserId);
+                $this->tell(NotificationType::ClientSellerAdded, $toUserId, $actor, $clientId, $name);
             }
+            $this->tell(NotificationType::ClientSellerRemoved, $fromUserId, $actor, $clientId, $name);
             $this->audit->record(
                 $actor,
                 'reassign',
@@ -279,6 +287,18 @@ final class ClientSellerService
             $people['movable'],
         ));
         $totals['moved'] += count($people['movable']);
+    }
+
+    /** Tells one adviser they were added to a client or taken off it (ADR-0031); never the person who did it. */
+    private function tell(
+        NotificationType $type,
+        string $userId,
+        ActorContext $actor,
+        string $clientId,
+        string $name,
+    ): void {
+        $now = $this->clock->now();
+        $this->notifications->publish($type, [$userId], $actor->userId, 'client', $clientId, $name, [], $now);
     }
 
     /**

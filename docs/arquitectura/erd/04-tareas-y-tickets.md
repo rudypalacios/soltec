@@ -1,8 +1,8 @@
 # ERD — Hito 3: tareas, tickets y cierre del legacy
 
-**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados), la 3.2 (fotos), la 3.3 (tareas e hilo) y la 3.3d (columnas del tablero) · Fecha: 2026-11-14
+**Estado:** se detalla por rebanada; hoy la 3.1 (motor de estados), la 3.2 (fotos), la 3.3 (tareas e hilo), la 3.3d (columnas del tablero) y la 3.4 (notificaciones) · Fecha: 2026-11-25
 
-Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md), [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md) y [ADR-0029](../../adr/0029-tareas-e-hilo-de-actividad.md) y [ADR-0030](../../adr/0030-columnas-del-tablero.md). Convenciones: [README](README.md).
+Se completa con cada rebanada del Hito 3 (archivos, hilo, notificaciones, tareas y tickets). Decisiones: [ADR-0026](../../adr/0026-flujos-de-estado.md), [ADR-0027](../../adr/0027-fotos-subidas-y-su-acceso.md) y [ADR-0029](../../adr/0029-tareas-e-hilo-de-actividad.md), [ADR-0030](../../adr/0030-columnas-del-tablero.md) y [ADR-0031](../../adr/0031-notificaciones-con-reglas-en-codigo.md). Convenciones: [README](README.md).
 
 ## 3.1 Motor de estados
 
@@ -144,3 +144,34 @@ Más los campos de toda tabla de negocio. `workflow_states.board_column_id` (`BI
 ### Siembra
 
 La migración crea una columna por estado existente, con su nombre y su orden, y con el mismo id que el estado.
+
+## 3.4 Notificaciones
+
+```mermaid
+erDiagram
+    USERS ||--o{ NOTIFICATIONS : "user_id (a quién)"
+    USERS ||--o{ NOTIFICATIONS : "actor_id (quién lo hizo)"
+```
+
+### `notifications`
+
+Una fila por persona avisada y por evento ([ADR-0031](../../adr/0031-notificaciones-con-reglas-en-codigo.md)).
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `user_id` | `BINARY(16) NOT NULL` | FK `users`; quien recibe el aviso. Solo lee sus propias filas |
+| `type` | `VARCHAR(40) NOT NULL` | Un caso de `NotificationType` (código): `assigned`, `unassigned`, `assignee_changed`, `comment`, `mention`, `state_changed`, `due_date_changed`, `due_soon`, `overdue`, `client_seller_added`, `client_seller_removed` |
+| `subject_type`, `subject_id` | `VARCHAR(30)`, `BINARY(16)` | El registro del que trata (`task`, `ticket` en 3.5, `client`); sin FK, como el hilo |
+| `entry_id` | `BINARY(16) NULL` | El comentario del hilo del que viene (comentario o mención); desactivarlo retira el aviso |
+| `actor_id` | `BINARY(16) NULL` | FK `users`; quien causó el cambio. Nulo en un recordatorio |
+| `data` | `JSON NOT NULL` | Lo que la frase necesita: `title` (el título del registro al avisar) y, según el tipo, `from`/`to` (nombres de estado o de asignado, fechas) o `due_date` |
+| `dedupe_key` | `VARCHAR(120) NULL` | Único. Solo los recordatorios: `<tipo>:<tarea>:<vencimiento>:<persona>`; repetir la corrida no repite el aviso |
+| `read_at` | `DATETIME(3) NULL` | Se llena al abrir el aviso o al marcar todos |
+| `email_status` | `VARCHAR(10) NOT NULL` | `pending`, `sending` (alguien lo tomó), `sent` o `failed` |
+| `email_error` | `VARCHAR(255) NULL` | El motivo del servidor de correo si falló |
+
+Más los campos de toda tabla de negocio. Orden de lectura: por `id` (UUID v7), con cursor. Índices: `(user_id, deleted_at, id)` para la lista, `(user_id, deleted_at, read_at)` para el contador, `entry_id` y `email_status`.
+
+### `notification_settings`
+
+Fila única (`singleton`): `due_reminder_hour` (`TINYINT`, hora local de la empresa desde la que salen los recordatorios, 8 por defecto) y `last_run_at` (cuándo corrió por última vez `notifications:run`; no cuenta como cambio de configuración). Recurso de permisos `notification_settings` (ver y editar); `admin` lo recibe.

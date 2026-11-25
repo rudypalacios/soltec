@@ -6,6 +6,7 @@ declare(strict_types=1);
 use Soltec\Kernel\Bootstrap;
 use Soltec\Modules\Access\Console\CreateAdminCommand;
 use Soltec\Modules\Access\Console\StdioConsole;
+use Soltec\Modules\Notifications\Console\NotificationsRunCommand;
 
 // Console entry point, uploaded with the API: php api/bin/console <command>
 if (PHP_SAPI !== 'cli') {
@@ -15,9 +16,13 @@ if (PHP_SAPI !== 'cli') {
 $appRoot = dirname(__DIR__);
 require $appRoot . '/vendor/autoload.php';
 
+$commands = [
+    CreateAdminCommand::NAME => CreateAdminCommand::class,
+    NotificationsRunCommand::NAME => NotificationsRunCommand::class,
+];
 $command = $argv[1] ?? '';
-if ($command !== CreateAdminCommand::NAME) {
-    fwrite(STDERR, sprintf("Usage: php bin/console %s\n", CreateAdminCommand::NAME));
+if (!isset($commands[$command])) {
+    fwrite(STDERR, sprintf("Usage: php bin/console <%s>\n", implode('|', array_keys($commands))));
     exit(1);
 }
 
@@ -25,7 +30,7 @@ $container = Bootstrap::createContainer($appRoot);
 $io = new StdioConsole();
 
 try {
-    $code = $container->get(CreateAdminCommand::class)->run($io);
+    $code = $container->get($commands[$command])->run($io);
 } catch (Throwable $error) {
     fwrite(STDERR, sprintf("Failed: %s\n", $error->getMessage()));
     $code = 1;

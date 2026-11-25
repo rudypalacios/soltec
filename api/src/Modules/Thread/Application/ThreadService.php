@@ -16,6 +16,8 @@ use Soltec\Modules\Access\Application\ActorContext;
 use Soltec\Modules\Access\Persistence\AuditLogger;
 use Soltec\Modules\Access\Persistence\UserDirectory;
 use Soltec\Modules\Files\Persistence\FileRepository;
+use Soltec\Modules\Notifications\Application\NotificationService;
+use Soltec\Modules\Notifications\Domain\NotificationType;
 use Soltec\Modules\Thread\Domain\Mentions;
 use Soltec\Modules\Thread\Domain\ThreadCursor;
 use Soltec\Modules\Thread\Domain\ThreadEntryRecord;
@@ -42,6 +44,7 @@ final class ThreadService
         private readonly FileRepository $files,
         private readonly UserDirectory $users,
         private readonly AuditLogger $audit,
+        private readonly NotificationService $notifications,
     ) {
     }
 
@@ -74,7 +77,7 @@ final class ThreadService
         string $body,
         array $fileIds,
     ): array {
-        $this->assertCanSee($caller, $type, $subjectId);
+        $subject = $this->assertCanSee($caller, $type, $subjectId);
         $id ??= Uuid::v7();
         $existing = $this->entries->find($id);
         if ($existing !== null) {
@@ -93,6 +96,7 @@ final class ThreadService
                 $caller,
                 $actor,
                 $type,
+                $subject,
                 $subjectId,
                 $id,
                 $body,
@@ -118,6 +122,7 @@ final class ThreadService
                     'mentions' => $mentioned,
                     'file_ids' => $fileIds,
                 ]);
+                $this->announceComment($caller->id, $subject, $subjectId, $id, $mentioned);
             });
         } catch (UniqueConstraintViolationException) {
             // Two sends of the same id at once: the one that lost is a retry when it carries the same comment.
@@ -169,6 +174,16 @@ final class ThreadService
             $after = [];
             if ($textChanged) {
                 $this->entries->replaceMentions($entryId, $mentioned);
+                $previous = array_column($entry->mentions, 'id');
+                $this->notifications->retireMentions($entryId, array_values(array_diff($previous, $mentioned)));
+                $subject = $this->subjects->get($entry->subjectType);
+                $this->announceMentions(
+                    $caller->id,
+                    $this->subjects->get($entry->subjectType),
+                    $entry->subjectId,
+                    $entryId,
+                    array_values(array_diff($mentioned, $previous)),
+                );
                 $before['body'] = $entry->body;
                 $after['body'] = $body === '' ? null : $body;
             }
@@ -202,6 +217,7 @@ final class ThreadService
 
             $now = $this->clock->now();
             $this->entries->setDeletedAt($entryId, $now, $now);
+            $this->notifications->retireEntry($entryId);
             $this->audit->record($actor, 'deactivate', self::ENTITY, $entryId, ['is_active' => true], [
                 'is_active' => false,
             ]);
@@ -253,6 +269,77 @@ final class ThreadService
         $this->assertCanSee($caller, $type, $subjectId);
 
         return $this->users->search($text, $limit);
+    }
+
+    /**
+     * The notices of a new comment: a mentioned person is told of the mention, and the other people of the record
+     * (owner, assignee) of the comment. Whoever writes is never told.
+     *
+     * @param list<string> $mentioned
+     */
+    private function announceComment(
+        string $authorId,
+        ThreadSubject $subject,
+        string $subjectId,
+        string $entryId,
+        array $mentioned,
+    ): void {
+        $brief = $subject->brief($subjectId);
+        if ($brief === null) {
+            return;
+        }
+        $this->notifications->publish(
+            NotificationType::Mention,
+            $mentioned,
+            $authorId,
+            $subject->type(),
+            $subjectId,
+            $brief->title,
+            [],
+            $this->clock->now(),
+            $entryId,
+        );
+        $this->notifications->publish(
+            NotificationType::Comment,
+            array_values(array_diff($brief->participantIds, $mentioned)),
+            $authorId,
+            $subject->type(),
+            $subjectId,
+            $brief->title,
+            [],
+            $this->clock->now(),
+            $entryId,
+        );
+    }
+
+    /**
+     * The mention notices of an edited comment: only the people it newly mentions (the others were told when they
+     * were first mentioned, and an edit is not announced as a new comment).
+     *
+     * @param list<string> $newlyMentioned
+     */
+    private function announceMentions(
+        string $authorId,
+        ThreadSubject $subject,
+        string $subjectId,
+        string $entryId,
+        array $newlyMentioned,
+    ): void {
+        $brief = $newlyMentioned === [] ? null : $subject->brief($subjectId);
+        if ($brief === null) {
+            return;
+        }
+        $this->notifications->publish(
+            NotificationType::Mention,
+            $newlyMentioned,
+            $authorId,
+            $subject->type(),
+            $subjectId,
+            $brief->title,
+            [],
+            $this->clock->now(),
+            $entryId,
+        );
     }
 
     private function assertCanSee(CurrentUser $caller, string $type, string $subjectId): ThreadSubject

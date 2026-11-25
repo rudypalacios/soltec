@@ -137,6 +137,19 @@ php api/bin/console user:create-admin
 
 Pide correo, nombre y contraseña (12 a 72 caracteres, dos veces, sin eco). No expone ninguna ruta. Ese usuario crea después a los demás desde la aplicación.
 
+### 2.7 La tarea programada de las notificaciones (ADR-0031)
+
+Los avisos de «vence mañana» y «venció» no los causa ninguna petición, así que los crea un comando que el cron del hosting ejecuta **cada hora**. Sin él, todo funciona salvo esos dos avisos, y `/api/system/requirements` lo advierte (`notifications.cron`).
+
+1. En cPanel, *Cron Jobs*, agrega una tarea **cada hora** (`0 * * * *`) con el PHP 8.3 (ver 2.6) y la carpeta de la instancia, por ejemplo:
+
+   ```
+   cd /home/<usuario-cpanel>/<carpeta-de-la-instancia> && /opt/cpanel/ea-php83/root/usr/bin/php api/bin/console notifications:run
+   ```
+2. **La línea no cambia nunca.** La hora a la que salen los recordatorios se cambia en la aplicación (*Configuración › Notificaciones*, 8:00 por defecto, hora de la empresa): el cron despierta cada hora y el comando decide si ya es la hora. La precisión es de una hora y el aviso sale en la primera corrida desde esa hora.
+3. El comando también envía los correos que hayan quedado pendientes y dice qué hizo (`Reminders: 2 created. Emails: 3 sent, 0 failed.`). Termina con código 1 si algún correo falló; el motivo queda en `notifications.email_error`.
+4. Una vez por entorno. Comprueba en `/api/system/requirements` que `notifications.cron` pase tras la primera hora.
+
 ## 3. Primer despliegue
 
 1. Verifica que lo de la sección 2 está hecho.

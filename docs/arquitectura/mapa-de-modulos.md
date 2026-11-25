@@ -53,7 +53,7 @@ Las dependencias duras (●) son las que obligan el orden de construcción. Las 
 |----|--------|-----------|------------|---------------------|
 | 13 | Motor de estados | Estados y transiciones configurables con banderas semánticas (p. ej. aceptada, terminal); un estado nuevo aplica solo a registros futuros | 01, 05 | — |
 | 14 | Hilo de actividad | Comentarios, cambios de estado y menciones sobre cualquier registro; bandera interno/externo desde el inicio | 01 | 16 |
-| 15 | Notificaciones | Configurables por perfil y departamento; en la aplicación y por email; endpoint de actualizaciones para el polling | 01, 02, 03 | — |
+| 15 | Notificaciones | Avisos en la aplicación y por email con reglas en el código (ADR-0031); endpoint de actualizaciones para el polling | 01, 02, 03 | — |
 | 16 | Archivos y fotos | Almacenamiento local, compresión, WebP normal y miniatura, metadatos en JSON | 01 | — |
 | 17 | Tareas | Lista de pendientes: asignada a alguien, estado, fecha de vencimiento, hilo | 01, 02, 13, 14, 15 | — |
 | 18 | Tickets (helpdesk mínimo) | Cliente, asignado, estado, descripción e hilo; los campos extendidos se agregan después con migraciones | 12, 13, 14, 15 | — |
